@@ -700,7 +700,7 @@ void AnnotatePlugin::setupOverlayRmbMenu()
 
 void AnnotatePlugin::showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y )
 {
-    m_rmbOverlay = overlay;;
+    m_rmbOverlay = overlay;
     m_overlayRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
@@ -722,7 +722,9 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         rectangle_placemark->setGeometry( new GeoDataPolygon );
         rectangle_placemark->setParent( m_annotationDocument );
         rectangle_placemark->setStyleUrl( "#polygon" );
-        /* ? */
+
+        // This was missing and was causing to crash when trying to move or update the overlay.
+        // Is it ok?
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, rectangle_placemark );
 
         GroundOverlayFrame *frame = new GroundOverlayFrame( rectangle_placemark, overlay, m_marbleWidget->textureLayer() );
