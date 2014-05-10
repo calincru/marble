@@ -6,7 +6,6 @@
 // the source code.
 //
 // Copyright 2013      Adrian Draghici <draghici.adrian.b@gmail.com>
-// Copyright 2014      Calin Cruceru   <crucerucalincristian@gmail.com>
 //
 
 #include "GroundOverlayFrame.h"

@@ -5,12 +5,15 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009      Andrew Manson <g.real.ate@gmail.com>
-// Copyright 2013      Thibaut Gridel <tgridel@free.fr>
+// Copyright 2009       Andrew Manson           <g.real.ate@gmail.com>
+// Copyright 2013       Thibaut Gridel          <tgridel@free.fr>
+// Copyright 2014       Calin-Cristian Cruceru  <crucerucalincristian@gmail.com>
 //
 
+// Self
 #include "AnnotatePlugin.h"
 
+// Marble
 #include "MarbleDebug.h"
 #include "AbstractProjection.h"
 #include "AreaAnnotation.h"
@@ -34,7 +37,7 @@
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
 
-
+// Qt
 #include <QFileDialog>
 #include <QAction>
 #include <QNetworkAccessManager>
@@ -42,11 +45,13 @@
 #include <QNetworkRequest>
 #include <QMessageBox>
 
+
+
 namespace Marble
 {
 
 AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
-    : RenderPlugin(model),
+    : RenderPlugin( model ),
       m_widgetInitialized( false ),
       m_marbleWidget( 0 ),
       m_overlayRmbMenu( new QMenu( m_marbleWidget ) ),
@@ -170,6 +175,7 @@ QString AnnotatePlugin::runtimeTrace() const
 {
     return QString("Annotate Items: %1").arg( m_annotationDocument->size() );
 }
+
 const QList<QActionGroup*>* AnnotatePlugin::actionGroups() const
 {
     return &m_actions;
@@ -227,7 +233,7 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
         const GeoDataPolygon *poly = dynamic_cast<const GeoDataPolygon*>( m_polygon_placemark->geometry() );
         Q_ASSERT( poly );
         if ( !poly->outerBoundary().isEmpty() ) {
-            AreaAnnotation* area = new AreaAnnotation( m_polygon_placemark );
+            AreaAnnotation *area = new AreaAnnotation( m_polygon_placemark );
             m_graphicsItems.append( area );
             m_marbleWidget->update();
         }
@@ -391,7 +397,7 @@ void AnnotatePlugin::loadAnnotationFile()
         return;
     }
 
-    GeoDataDocument* document = dynamic_cast<GeoDataDocument*>( parser.releaseDocument() );
+    GeoDataDocument *document = dynamic_cast<GeoDataDocument*>( parser.releaseDocument() );
     Q_ASSERT( document );
     file.close();
 
@@ -400,14 +406,14 @@ void AnnotatePlugin::loadAnnotationFile()
             GeoDataPlacemark *placemark = static_cast<GeoDataPlacemark*>( feature );
             if( placemark->geometry()->nodeType() == GeoDataTypes::GeoDataPointType ) {
                 GeoDataPlacemark *newPlacemark = new GeoDataPlacemark( *placemark );
-                PlacemarkTextAnnotation* annotation = new PlacemarkTextAnnotation( newPlacemark );
+                PlacemarkTextAnnotation *annotation = new PlacemarkTextAnnotation( newPlacemark );
                 m_graphicsItems.append( annotation );
                 m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, newPlacemark );
             } else if( placemark->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
                 GeoDataPlacemark *newPlacemark = new GeoDataPlacemark( *placemark );
                 newPlacemark->setParent( m_annotationDocument );
                 newPlacemark->setStyleUrl( placemark->styleUrl() );
-                AreaAnnotation* annotation = new AreaAnnotation( newPlacemark );
+                AreaAnnotation *annotation = new AreaAnnotation( newPlacemark );
                 m_graphicsItems.append( annotation );
                 m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, newPlacemark );
             }
@@ -419,10 +425,10 @@ void AnnotatePlugin::loadAnnotationFile()
     emit repaintNeeded(QRegion());
 }
 
-bool AnnotatePlugin::eventFilter(QObject* watched, QEvent* event)
+bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 {
     if( !m_widgetInitialized ) {
-        MarbleWidget* marbleWidget = qobject_cast<MarbleWidget*>( watched );
+        MarbleWidget *marbleWidget = qobject_cast<MarbleWidget*>( watched );
         if( marbleWidget ) {
             m_marbleWidget = marbleWidget;
             setupGroundOverlayModel();
@@ -436,8 +442,6 @@ bool AnnotatePlugin::eventFilter(QObject* watched, QEvent* event)
     if( !m_marbleWidget ) {
         return false;
     }
-    //FIXME why is the QEvent::MousePress not working? caught somewhere else?
-    //does this mean we need to centralize the event handling?
 
     //so far only accept mouse events
     if( event->type() != QEvent::MouseButtonPress &&
@@ -462,7 +466,8 @@ bool AnnotatePlugin::eventFilter(QObject* watched, QEvent* event)
     if ( event->type() == QEvent::MouseButtonRelease ) {
         for ( int i = 0; i < m_groundOverlayModel.rowCount(); ++i ) {
             QModelIndex index = m_groundOverlayModel.index( i, 0 );
-            GeoDataGroundOverlay *overlay = dynamic_cast<GeoDataGroundOverlay*>( qvariant_cast<GeoDataObject*>( index.data( MarblePlacemarkModel::ObjectPointerRole ) ) );
+            GeoDataGroundOverlay *overlay = dynamic_cast<GeoDataGroundOverlay*>(
+                        qvariant_cast<GeoDataObject*>( index.data( MarblePlacemarkModel::ObjectPointerRole ) ) );
 
             if ( overlay->latLonBox().contains( GeoDataCoordinates( lon, lat ) ) ) {
                 if ( mouseEvent->button() == Qt::LeftButton ) {
@@ -532,6 +537,7 @@ bool AnnotatePlugin::eventFilter(QObject* watched, QEvent* event)
     if ( event->type() != QEvent::MouseMove && event->type() != QEvent::MouseButtonRelease ) {
         clearOverlayFrames();
     }
+
     //FIXME: finish cleaning this up
 
     GeoDataCoordinates const coordinates( lon, lat );
@@ -540,7 +546,7 @@ bool AnnotatePlugin::eventFilter(QObject* watched, QEvent* event)
         //Add a placemark on the screen
         GeoDataPlacemark *placemark = new GeoDataPlacemark;
         placemark->setCoordinate( coordinates );
-        PlacemarkTextAnnotation* textAnnotation = new PlacemarkTextAnnotation( placemark );
+        PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
         m_graphicsItems.append( textAnnotation );
         emit placemarkAdded();
@@ -561,21 +567,21 @@ bool AnnotatePlugin::eventFilter(QObject* watched, QEvent* event)
     return false;
 }
 
-void AnnotatePlugin::setupActions(MarbleWidget* widget)
+void AnnotatePlugin::setupActions(MarbleWidget *widget)
 {
     qDeleteAll( m_actions );
     m_actions.clear();
     m_toolbarActions.clear();
 
     if( widget ) {
-        QActionGroup* group = new QActionGroup(0);
+        QActionGroup *group = new QActionGroup(0);
         group->setExclusive( false );
 
-        QActionGroup* nonExclusiveGroup = new QActionGroup(0);
+        QActionGroup *nonExclusiveGroup = new QActionGroup(0);
         nonExclusiveGroup->setExclusive( false );
 
 
-        QAction* enableInputAction = new QAction(this);
+        QAction *enableInputAction = new QAction(this);
         enableInputAction->setText( tr("Enable Moving Map") );
         enableInputAction->setCheckable(true);
         enableInputAction->setChecked( true );
@@ -583,7 +589,7 @@ void AnnotatePlugin::setupActions(MarbleWidget* widget)
         connect( enableInputAction, SIGNAL(toggled(bool)),
                  widget, SLOT(setInputEnabled(bool)) );
 
-        QAction* addPlacemark= new QAction(this);
+        QAction *addPlacemark= new QAction(this);
         addPlacemark->setText( tr("Add Placemark") );
         addPlacemark->setCheckable( true );
         addPlacemark->setIcon( QIcon( ":/icons/draw-placemark.png") );
@@ -592,14 +598,14 @@ void AnnotatePlugin::setupActions(MarbleWidget* widget)
         connect( this, SIGNAL(placemarkAdded()) ,
                  addPlacemark, SLOT(toggle()) );
 
-        QAction* drawPolygon = new QAction( this );
+        QAction *drawPolygon = new QAction( this );
         drawPolygon->setText( tr("Add Polygon") );
         drawPolygon->setCheckable( true );
         drawPolygon->setIcon( QIcon( ":/icons/draw-polygon.png") );
         connect( drawPolygon, SIGNAL(toggled(bool)),
                  this, SLOT(setDrawingPolygon(bool)) );
 
-        QAction* addOverlay = new QAction( this );
+        QAction *addOverlay = new QAction( this );
         addOverlay->setText( tr("Add Ground Overlay") );
         addOverlay->setCheckable( true );
         addOverlay->setIcon( QIcon( ":/icons/draw-overlay.png") );
@@ -610,7 +616,7 @@ void AnnotatePlugin::setupActions(MarbleWidget* widget)
         connect( this, SIGNAL(overlayAdded()),
                  addOverlay, SLOT(toggle()) );
 
-        QAction* removeItem = new QAction( this );
+        QAction *removeItem = new QAction( this );
         removeItem->setText( tr("Remove Item") );
         removeItem->setCheckable( true );
         removeItem->setIcon( QIcon( ":/icons/edit-delete-shred.png") );
@@ -619,28 +625,28 @@ void AnnotatePlugin::setupActions(MarbleWidget* widget)
         connect( this, SIGNAL(itemRemoved()),
                  removeItem, SLOT(toggle()) );
 
-        QAction* loadAnnotationFile = new QAction( this );
+        QAction *loadAnnotationFile = new QAction( this );
         loadAnnotationFile->setText( tr("Load Annotation File" ) );
         loadAnnotationFile->setIcon( QIcon( ":/icons/document-import.png") );
         connect( loadAnnotationFile, SIGNAL(triggered()),
                  this, SLOT(loadAnnotationFile()) );
 
-        QAction* saveAnnotationFile = new QAction( this );
+        QAction *saveAnnotationFile = new QAction( this );
         saveAnnotationFile->setText( tr("Save Annotation File") );
         saveAnnotationFile->setIcon( QIcon( ":/icons/document-export.png") );
         connect( saveAnnotationFile, SIGNAL(triggered()),
                  this, SLOT(saveAnnotationFile()) );
 
-        QAction* clearAnnotations = new QAction( this );
+        QAction *clearAnnotations = new QAction( this );
         clearAnnotations->setText( tr("Clear all Annotations") );
         clearAnnotations->setIcon( QIcon( ":/icons/remove.png") );
         connect( drawPolygon, SIGNAL(toggled(bool)), clearAnnotations, SLOT(setDisabled(bool)) );
         connect( clearAnnotations, SIGNAL(triggered()),
                  this, SLOT(clearAnnotations()) );
 
-        QAction* beginSeparator = new QAction( this );
+        QAction *beginSeparator = new QAction( this );
         beginSeparator->setSeparator( true );
-        QAction* endSeparator = new QAction ( this );
+        QAction *endSeparator = new QAction ( this );
         endSeparator->setSeparator( true );
 
 
@@ -709,7 +715,8 @@ void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
 
     EditGroundOverlayDialog *dialog = new EditGroundOverlayDialog( overlay, m_marbleWidget->textureLayer() );
 
-    connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)), this, SLOT(updateOverlayFrame(GeoDataGroundOverlay*)) );
+    connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)),
+             this, SLOT(updateOverlayFrame(GeoDataGroundOverlay*)) );
 
     dialog->exec();
 }
@@ -723,13 +730,12 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         rectangle_placemark->setParent( m_annotationDocument );
         rectangle_placemark->setStyleUrl( "#polygon" );
 
-        // This was missing and was causing to crash when trying to move or update the overlay.
-        // Is it ok?
+        // This was missing and was causing the application to crash when trying to move or update
+        // the overlay in any way. Is it ok?
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, rectangle_placemark );
 
         GroundOverlayFrame *frame = new GroundOverlayFrame( rectangle_placemark, overlay, m_marbleWidget->textureLayer() );
         m_graphicsItems.append( frame );
-
         m_groundOverlayFrames.insert( overlay, frame );
 
         displayOverlayEditDialog( overlay );

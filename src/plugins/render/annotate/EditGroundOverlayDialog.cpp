@@ -6,7 +6,6 @@
 // the source code.
 //
 // Copyright 2013      Adrian Draghici <draghici.adrian.b@gmail.com>
-// Copyright 2014      Calin Cruceru   <crucerucalincristian@gmail.com>
 //
 
 #include "EditGroundOverlayDialog.h"
@@ -19,8 +18,8 @@ class EditGroundOverlayDialog::Private : public Ui::UiEditGroundOverlayDialog
 {
 
 public:
-    GeoDataGroundOverlay* m_overlay;
-    TextureLayer* m_textureLayer;
+    GeoDataGroundOverlay *m_overlay;
+    TextureLayer         *m_textureLayer;
 
     Private( GeoDataGroundOverlay *overlay, TextureLayer *textureLayer );
     ~Private();
@@ -31,14 +30,16 @@ public:
 EditGroundOverlayDialog::Private::Private( GeoDataGroundOverlay *overlay, TextureLayer *textureLayer ) :
     Ui::UiEditGroundOverlayDialog(), m_overlay( overlay ), m_textureLayer( textureLayer )
 {
+
 }
 
 EditGroundOverlayDialog::Private::~Private()
 {
+
 }
 
-EditGroundOverlayDialog::EditGroundOverlayDialog( GeoDataGroundOverlay *overlay, TextureLayer *textureLayer, QWidget *parent ) :
-    QDialog( parent ), d( new Private( overlay, textureLayer ) )
+EditGroundOverlayDialog::EditGroundOverlayDialog( GeoDataGroundOverlay *overlay, TextureLayer *textureLayer, QWidget *parent )
+    : QDialog( parent ), d( new Private( overlay, textureLayer ) )
 {
     d->setupUi( this );
 

@@ -6,7 +6,6 @@
 // the source code.
 //
 // Copyright 2013      Adrian Draghici <draghici.adrian.b@gmail.com>
-// Copyright 2014      Calin Cruceru   <crucerucalincristian@gmail.com>
 //
 
 #ifndef MARBLE_EDITGROUNDOVERLAYDIALOG_H
@@ -28,16 +27,16 @@ public:
     EditGroundOverlayDialog( GeoDataGroundOverlay *overlay, TextureLayer *textureLayer, QWidget *parent = 0 );
     ~EditGroundOverlayDialog();
 
-private:
-    class Private;
-    Private *d;
-
 private slots:
     void updateGroundOverlay();
     void setGroundOverlayUpdated();
 
 signals:
     void groundOverlayUpdated( GeoDataGroundOverlay* );
+
+private:
+    class Private;
+    Private *d;
 };
 
 }

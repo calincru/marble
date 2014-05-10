@@ -5,8 +5,9 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009 Andrew Manson <g.real.ate@gmail.com>
-// Copyright 2013      Thibaut Gridel <tgridel@free.fr>
+// Copyright 2009       Andrew Manson           <g.real.ate@gmail.com>
+// Copyright 2013       Thibaut Gridel          <tgridel@free.fr>
+// Copyright 2014       Calin-Cristian Cruceru  <crucerucalincristian@gmail.com>
 //
 
 //
@@ -28,12 +29,13 @@
 #include <QMenu>
 #include <QSortFilterProxyModel>
 
+
 class QNetworkAccessManager;
 class QNetworkReply;
 
-
 namespace Marble
 {
+
 class MarbleWidget;
 class TextureLayer;
 class PlacemarkTextAnnotation;
@@ -41,11 +43,11 @@ class GeoDataDocument;
 class GeoDataLinearRing;
 class GeoDataLineString;
 
-/**
- * @short The class that specifies the Marble layer interface of a plugin.
- *
- */
 
+/**
+ * @brief This class specifies the Marble layer interface of a plugin which
+ * annotates maps with polygons and placemarks.
+ */
 class AnnotatePlugin :  public RenderPlugin
 {
     Q_OBJECT
@@ -53,8 +55,8 @@ class AnnotatePlugin :  public RenderPlugin
     Q_INTERFACES( Marble::RenderPluginInterface )
     MARBLE_PLUGIN( AnnotatePlugin )
 
-    public:
-        explicit AnnotatePlugin(const MarbleModel *model = 0);
+public:
+    explicit AnnotatePlugin(const MarbleModel *model = 0);
     virtual ~AnnotatePlugin();
 
     QStringList backendTypes() const;
@@ -113,8 +115,16 @@ public slots:
     void saveAnnotationFile();
     void loadAnnotationFile();
 
+
+private slots:
+    void editOverlay();
+    void removeOverlay();
+    void updateOverlayFrame( GeoDataGroundOverlay *overlay );
+
+
 protected:
     bool eventFilter(QObject* watched, QEvent* event);
+
 private:
     void setupActions(MarbleWidget* m);
     void setupGroundOverlayModel();
@@ -126,36 +136,32 @@ private:
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
-    bool    m_widgetInitialized;
-    MarbleWidget* m_marbleWidget;
 
-    QMenu*                  m_overlayRmbMenu;
+    bool m_widgetInitialized;
+    MarbleWidget *m_marbleWidget;
+
+    QMenu                   *m_overlayRmbMenu;
     QList<QActionGroup*>    m_actions;
     QList<QActionGroup*>    m_toolbarActions;
-    QSortFilterProxyModel m_groundOverlayModel;
+    QSortFilterProxyModel   m_groundOverlayModel;
     QMap<GeoDataGroundOverlay*, SceneGraphicsItem*> m_groundOverlayFrames;
 
     GeoDataDocument *m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
-    //used while creating new polygons
-    GeoDataPlacemark* m_polygon_placemark;
-    SceneGraphicsItem *m_selectedItem;
-
+    // used while creating new polygons
+    GeoDataPlacemark     *m_polygon_placemark;
+    SceneGraphicsItem    *m_selectedItem;
     GeoDataGroundOverlay *m_rmbOverlay;
+
+    //    QNetworkAccessManager* m_networkAccessManager;
+    //    QErrorMessage m_errorMessage;
 
     bool m_addingPlacemark;
     bool m_drawingPolygon;
     bool m_addingOverlay;
     bool m_removingItem;
-    //    QNetworkAccessManager* m_networkAccessManager;
-    //    QErrorMessage m_errorMessage;
     bool m_isInitialized;
-
-private slots:
-    void editOverlay();
-    void removeOverlay();
-    void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 };
 
 
