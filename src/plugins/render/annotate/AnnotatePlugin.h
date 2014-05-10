@@ -140,13 +140,13 @@ private:
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
 
-    QMenu                   *m_overlayRmbMenu;
+    QMenu*                  m_overlayRmbMenu;
     QList<QActionGroup*>    m_actions;
     QList<QActionGroup*>    m_toolbarActions;
     QSortFilterProxyModel   m_groundOverlayModel;
     QMap<GeoDataGroundOverlay*, SceneGraphicsItem*> m_groundOverlayFrames;
 
-    GeoDataDocument *m_annotationDocument;
+    GeoDataDocument*          m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
     // used while creating new polygons

@@ -436,7 +436,9 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             setupActions( marbleWidget );
             m_marbleWidget->model()->treeModel()->addDocument( m_annotationDocument );
             m_widgetInitialized = true;
+            return true;
         }
+        return false;
     }
 
     if( !m_marbleWidget ) {
@@ -451,7 +453,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
 
-    QMouseEvent* mouseEvent = dynamic_cast<QMouseEvent*>(event);
+    QMouseEvent *mouseEvent = dynamic_cast<QMouseEvent*>(event);
     Q_ASSERT( mouseEvent );
 
     qreal lon, lat;
@@ -554,9 +556,9 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     // deal with drawing a polygon
-    if ( mouseEvent->button() == Qt::LeftButton
-         && mouseEvent->type() == QEvent::MouseButtonPress
-         && m_drawingPolygon ) {
+    if ( mouseEvent->button() == Qt::LeftButton &&
+         mouseEvent->type() == QEvent::MouseButtonPress &&
+         m_drawingPolygon ) {
         m_marbleWidget->model()->treeModel()->removeFeature( m_polygon_placemark );
         GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygon_placemark->geometry() );
         poly->outerBoundary().append(GeoDataCoordinates(lon, lat));
