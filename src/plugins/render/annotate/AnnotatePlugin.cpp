@@ -540,8 +540,6 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         clearOverlayFrames();
     }
 
-    //FIXME: finish cleaning this up
-
     GeoDataCoordinates const coordinates( lon, lat );
     // deal with adding a placemark
     if ( mouseEvent->button() == Qt::LeftButton && m_addingPlacemark ) {
@@ -732,8 +730,6 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         rectangle_placemark->setParent( m_annotationDocument );
         rectangle_placemark->setStyleUrl( "#polygon" );
 
-        // This was missing and was causing the application to crash when trying to move or update
-        // the overlay in any way. Is it ok?
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, rectangle_placemark );
 
         GroundOverlayFrame *frame = new GroundOverlayFrame( rectangle_placemark, overlay, m_marbleWidget->textureLayer() );

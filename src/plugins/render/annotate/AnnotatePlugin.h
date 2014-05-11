@@ -10,10 +10,6 @@
 // Copyright 2014       Calin-Cristian Cruceru  <crucerucalincristian@gmail.com>
 //
 
-//
-// This class provides a Marble plugin to annotate maps with polygons
-// and placemarks
-//
 
 #ifndef MARBLE_ANNOTATEPLUGIN_H
 #define MARBLE_ANNOTATEPLUGIN_H
