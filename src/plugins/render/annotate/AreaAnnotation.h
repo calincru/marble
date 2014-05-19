@@ -13,6 +13,7 @@
 #define AREAANNOTATION_H
 
 #include "SceneGraphicsItem.h"
+#include "GeoDataCoordinates.h"
 
 namespace Marble
 {
@@ -29,6 +30,8 @@ public:
 
 private:
     int m_movedPoint;
+    bool m_movingPolygon;
+    GeoDataCoordinates m_movedPointCoords;
     const ViewportParams *m_viewport;
 };
 

@@ -46,7 +46,6 @@
 #include <QMessageBox>
 
 
-
 namespace Marble
 {
 
@@ -186,7 +185,7 @@ const QList<QActionGroup*>* AnnotatePlugin::toolbarActionGroups() const
     return &m_toolbarActions;
 }
 
-bool AnnotatePlugin::render( GeoPainter *painter, ViewportParams *viewport, const QString& renderPos, GeoSceneLayer * layer )
+bool AnnotatePlugin::render( GeoPainter *painter, ViewportParams *viewport, const QString& renderPos, GeoSceneLayer *layer )
 {
     Q_UNUSED(renderPos);
     Q_UNUSED(layer);
@@ -483,7 +482,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 }
             }
         }
-     }
+    }
 
     // handle easily the mousemove
     if( event->type() == QEvent::MouseMove && m_selectedItem ) {
@@ -517,8 +516,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                         emit itemRemoved();
                     }
                     return true;
-                }
-                else {
+                } else {
                     if( item->sceneEvent( event ) ) {
                         if( event->type() == QEvent::MouseButtonPress ) {
                             m_selectedItem = item;
@@ -577,8 +575,8 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         QActionGroup *group = new QActionGroup(0);
         group->setExclusive( false );
 
-        QActionGroup *nonExclusiveGroup = new QActionGroup(0);
-        nonExclusiveGroup->setExclusive( false );
+        //QActionGroup *nonExclusiveGroup = new QActionGroup(0);
+        //nonExclusiveGroup->setExclusive( false );
 
 
         QAction *enableInputAction = new QAction(this);
@@ -671,10 +669,10 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         //        nonExclusiveGroup->addAction( downloadOsm );
 
         m_actions.append( group );
-        m_actions.append( nonExclusiveGroup );
+        //m_actions.append( nonExclusiveGroup );
 
         m_toolbarActions.append( group );
-        m_toolbarActions.append( nonExclusiveGroup );
+        //m_toolbarActions.append( nonExclusiveGroup );
     }
 
     emit actionGroupsChanged();
@@ -735,8 +733,6 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         GroundOverlayFrame *frame = new GroundOverlayFrame( rectangle_placemark, overlay, m_marbleWidget->textureLayer() );
         m_graphicsItems.append( frame );
         m_groundOverlayFrames.insert( overlay, frame );
-
-        displayOverlayEditDialog( overlay );
     }
 }
 
