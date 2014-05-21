@@ -25,9 +25,18 @@ public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
+
+    /**
+     * @brief In the implementation of these virtual functions, the following
+     * convention has been followed: if the event cannot be dealt with in this
+     * class (for example when right clicking a node or polygon), the functions
+     * return false and AnnotatePlugin::eventFilter deals with it.
+     */
     virtual bool mousePressEvent( QMouseEvent *event );
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
+
+    virtual const char *graphicType() const;
 
     QList<int> selectedNodes() const;
 

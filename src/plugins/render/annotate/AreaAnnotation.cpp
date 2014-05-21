@@ -17,6 +17,7 @@
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
 #include "ViewportParams.h"
+#include "SceneGraphicTypes.h"
 
 #include <QDebug>
 
@@ -41,7 +42,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
     if( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
         const GeoDataLinearRing &ring = polygon->outerBoundary();
-        for( int i = 0; i <  ring.size(); ++i ) {
+        for( int i = 0; i < ring.size(); ++i ) {
             QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
 
             if ( !m_selectedNodes.contains( i ) ) {
@@ -69,11 +70,14 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
 
     m_movedNodeCoords.set( lon, lat );
-    for ( int i = 0; i < regionList.size()-1; ++i ) {
+    for ( int i = 0; i < regionList.size() - 1; ++i ) {
         if( regionList.at(i).contains( event->pos()) ) {
-            m_movedNode = i;
-            return true;
-
+            if ( event->button() == Qt::LeftButton ) {
+                m_movedNode = i;
+                return true;
+            } else if ( event->button() == Qt::RightButton ) {
+                return false;
+            }
         }
     }
 
@@ -83,10 +87,9 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
             if ( event->button() == Qt::LeftButton ) {
                 m_movingPolygon = true;
                 return true;
-            } // right click on the entire polygon will be caught in AnnotatePlugin::eventFilter
-              // because we need the marble widget and annotation document to implement the action
-              // the rmb menu will contain.
-            return true;
+            } else if ( event->button() == Qt::RightButton ) {
+                return false;
+            }
         }
     }
 
@@ -169,20 +172,21 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
                 }
 
                 return true;
-            }// else if ( event->button() == Qt::RightButton ) {
-            //    showNodeRmbMenu( i, event->x(), event->y() );
-           // }
+            }
         }
     }
 
-    // We get here only when we right-clicked the node and this situation is checked
-    // in AnnotatePlugin::eventFilter.
     return false;
 }
 
 QList<int> AreaAnnotation::selectedNodes() const
 {
     return m_selectedNodes;
+}
+
+const char *AreaAnnotation::graphicType() const
+{
+    return SceneGraphicTypes::SceneGraphicAreaAnnotation;
 }
 
 }
