@@ -90,6 +90,7 @@ AnnotatePlugin::~AnnotatePlugin()
     }
     delete m_annotationDocument;
     //    delete m_networkAccessManager;
+    delete m_overlayRmbMenu;
 }
 
 QStringList AnnotatePlugin::backendTypes() const
@@ -426,7 +427,7 @@ void AnnotatePlugin::loadAnnotationFile()
 
 bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 {
-    if( !m_widgetInitialized ) {
+    if ( !m_widgetInitialized ) {
         MarbleWidget *marbleWidget = qobject_cast<MarbleWidget*>( watched );
         if( marbleWidget ) {
             m_marbleWidget = marbleWidget;
@@ -444,15 +445,14 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
 
-    //so far only accept mouse events
+    // So far only accept mouse events.
     if( event->type() != QEvent::MouseButtonPress &&
         event->type() != QEvent::MouseButtonRelease &&
-        event->type() != QEvent::MouseMove )
-    {
+        event->type() != QEvent::MouseMove ) {
         return false;
     }
 
-    QMouseEvent *mouseEvent = dynamic_cast<QMouseEvent*>(event);
+    QMouseEvent *mouseEvent = dynamic_cast<QMouseEvent*>( event );
     Q_ASSERT( mouseEvent );
 
     qreal lon, lat;
@@ -464,6 +464,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
 
+    // Events caught by ground overlays at mouse release. So far we have: displaying the overlay frame
+    // (marking it as selected), removing it and showing a rmb menu with options.
     if ( event->type() == QEvent::MouseButtonRelease ) {
         for ( int i = 0; i < m_groundOverlayModel.rowCount(); ++i ) {
             QModelIndex index = m_groundOverlayModel.index( i, 0 );
@@ -482,17 +484,19 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 }
             }
         }
+        // Do not return since the rowCount() may be 0 (when the user interacts with a polygon or placemark)
     }
 
-    // handle easily the mousemove
-    if( event->type() == QEvent::MouseMove && m_selectedItem ) {
-        if( m_selectedItem->sceneEvent( event ) ) {
+    // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
+    // function and updating the placemark within the marble widget.
+    if( mouseEvent->type() == QEvent::MouseMove && m_selectedItem ) {
+        if( m_selectedItem->sceneEvent( mouseEvent ) ) {
             m_marbleWidget->model()->treeModel()->updateFeature( m_selectedItem->placemark() );
             return true;
         }
     }
 
-    //Pass the event to Graphics Items
+    // Pass the event to Graphics Items.
     foreach( SceneGraphicsItem *item, m_graphicsItems ) {
         QListIterator<QRegion> it ( item->regions() );
 
@@ -500,7 +504,9 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             QRegion region = it.next();
             if( region.contains( mouseEvent->pos() ) ) {
                 // deal with removing items
-                if( mouseEvent->button() == Qt::LeftButton && event->type() == QEvent::MouseButtonRelease && m_removingItem ) {
+                if( mouseEvent->button() == Qt::LeftButton &&
+                    mouseEvent->type() == QEvent::MouseButtonRelease &&
+                    m_removingItem ) {
 
                     const int result = QMessageBox::question( m_marbleWidget,
                                                               QObject::tr( "Remove current item" ),
@@ -517,8 +523,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                     }
                     return true;
                 } else {
-                    if( item->sceneEvent( event ) ) {
-                        if( event->type() == QEvent::MouseButtonPress ) {
+                    if ( item->sceneEvent( mouseEvent ) ) {
+                        if( mouseEvent->type() == QEvent::MouseButtonPress ) {
                             m_selectedItem = item;
                             if ( !m_groundOverlayFrames.values().contains( item ) ) {
                                 clearOverlayFrames();
@@ -534,7 +540,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
-    if ( event->type() != QEvent::MouseMove && event->type() != QEvent::MouseButtonRelease ) {
+    if ( mouseEvent->type() != QEvent::MouseMove && mouseEvent->type() != QEvent::MouseButtonRelease ) {
         clearOverlayFrames();
     }
 

@@ -5,23 +5,27 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009      Andrew Manson <g.real.ate@gmail.com>
-// Copyright 2013      Thibaut Gridel <tgridel@free.fr>
+// Copyright 2009      Andrew Manson            <g.real.ate@gmail.com>
+// Copyright 2013      Thibaut Gridel           <tgridel@free.fr>
+// Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com
 //
 #include "AreaAnnotation.h"
+
+#include <qmath.h>
 
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
 #include "ViewportParams.h"
 
+#include <QDebug>
 
 namespace Marble
 {
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
-      m_movedPoint( -1 ),
+      m_movedNode( -1 ),
       m_movingPolygon( false ),
       m_viewport( 0 )
 {
@@ -34,13 +38,20 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
     QList<QRegion> regionList;
 
     painter->save();
-    painter->setBrush( Oxygen::aluminumGray1 );
     if( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
         const GeoDataLinearRing &ring = polygon->outerBoundary();
-        for( int i = 0; i<  ring.size(); ++i ) {
-            painter->drawEllipse( ring.at(i) , 10, 10 );
-            regionList.append( painter->regionFromEllipse( ring.at(i), 10, 10 ));
+        for( int i = 0; i <  ring.size(); ++i ) {
+            QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
+
+            if ( !m_selectedNodes.contains( i ) ) {
+                painter->setBrush( Oxygen::aluminumGray3);
+            } else {
+                painter->setBrush( Oxygen::aluminumGray6 );
+            }
+
+            painter->drawEllipse( ring.at(i) , 15, 15 );
+            regionList.append( newRegion );
         }
         regionList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
     }
@@ -56,19 +67,25 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
 
-    // react to all ellipse point markers and skip the polygon
-    for( int i = 0; i < regionList.size()-1; ++i ) {
+
+    m_movedNodeCoords.set( lon, lat );
+    for ( int i = 0; i < regionList.size()-1; ++i ) {
         if( regionList.at(i).contains( event->pos()) ) {
-            m_movedPoint = i;
+            m_movedNode = i;
             return true;
+
         }
     }
 
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
         if ( polygon->latLonAltBox().contains( GeoDataCoordinates(lon, lat) ) ) {
-            m_movingPolygon = true;
-            m_movedPointCoords.set( lon, lat );
+            if ( event->button() == Qt::LeftButton ) {
+                m_movingPolygon = true;
+                return true;
+            } // right click on the entire polygon will be caught in AnnotatePlugin::eventFilter
+              // because we need the marble widget and annotation document to implement the action
+              // the rmb menu will contain.
             return true;
         }
     }
@@ -82,7 +99,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return false;
     }
 
-    if ( m_movedPoint < 0 && !m_movingPolygon ) {
+    if ( m_movedNode < 0 && !m_movingPolygon ) {
         return false;
     }
 
@@ -92,16 +109,16 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
 
-    if( m_movedPoint >= 0 && placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
+    if ( m_movedNode >= 0 && placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
         GeoDataLinearRing &ring = polygon->outerBoundary();
-        ring[m_movedPoint] = GeoDataCoordinates( lon, lat );
+        ring[m_movedNode] = GeoDataCoordinates( lon, lat );
         return true;
     }
 
     Q_ASSERT( m_movingPolygon );
-    qreal centerLonDiff = lon - m_movedPointCoords.longitude();
-    qreal centerLatDiff = lat - m_movedPointCoords.latitude();
+    qreal centerLonDiff = lon - m_movedNodeCoords.longitude();
+    qreal centerLatDiff = lat - m_movedNodeCoords.latitude();
 
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( placemark()->geometry() );
@@ -114,7 +131,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
             poly->outerBoundary().append( GeoDataCoordinates(ringLon + centerLonDiff, ringLat + centerLatDiff) );
         }
 
-        m_movedPointCoords.set( lon, lat );
+        m_movedNodeCoords.set( lon, lat );
         return true;
     }
 
@@ -123,10 +140,49 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
-    Q_UNUSED(event);
-    m_movedPoint = -1;
+    QList<QRegion> regionList = regions();
+
+    m_movedNode = -1;
     m_movingPolygon = false;
-    return true;
+
+    qreal lon, lat;
+    m_viewport->geoCoordinates( event->pos().x(),
+                                event->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
+
+    // the node gets selected only if it is clicked and not moved. We return true
+    // so the loop within AnnotatePlugin stops when checking SceneGraphicItems events.
+    if ( qFabs(lon - m_movedNodeCoords.longitude()) > 0.001 ||
+         qFabs(lat - m_movedNodeCoords.latitude()) > 0.001 ) {
+        return true;
+    }
+
+    for( int i = 0; i < regionList.size()-1; ++i ) {
+        if( regionList.at(i).contains( event->pos()) ) {
+
+            if ( event->button() == Qt::LeftButton ) {
+                if ( !m_selectedNodes.contains( i ) ) {
+                    m_selectedNodes.append( i );
+                } else {
+                    m_selectedNodes.removeAll( i );
+                }
+
+                return true;
+            }// else if ( event->button() == Qt::RightButton ) {
+            //    showNodeRmbMenu( i, event->x(), event->y() );
+           // }
+        }
+    }
+
+    // We get here only when we right-clicked the node and this situation is checked
+    // in AnnotatePlugin::eventFilter.
+    return false;
+}
+
+QList<int> AreaAnnotation::selectedNodes() const
+{
+    return m_selectedNodes;
 }
 
 }
