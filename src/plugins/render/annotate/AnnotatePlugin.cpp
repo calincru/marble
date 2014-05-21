@@ -36,6 +36,7 @@
 #include "MarbleWidgetInputHandler.h"
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
+#include "SceneGraphicTypes.h"
 
 // Qt
 #include <QFileDialog>
@@ -63,8 +64,6 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       //          m_networkAccessManager( 0 ),
       m_isInitialized( false )
 {
-    Q_UNUSED(model);
-
     // Plugin is enabled by default
     setEnabled( true );
     // Plugin is not visible by default
@@ -85,9 +84,10 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
 
 AnnotatePlugin::~AnnotatePlugin()
 {
-    if( m_marbleWidget != 0 ) {
+    if ( m_marbleWidget ) {
         m_marbleWidget->model()->treeModel()->removeDocument( m_annotationDocument );
     }
+
     delete m_annotationDocument;
     //    delete m_networkAccessManager;
     delete m_overlayRmbMenu;
@@ -153,12 +153,15 @@ QIcon AnnotatePlugin::icon() const
 
 void AnnotatePlugin::initialize()
 {
-    if( !m_isInitialized ) {
-        m_widgetInitialized= false;
+    if ( !m_isInitialized ) {
+        m_widgetInitialized = false;
+
         delete m_polygon_placemark;
         m_polygon_placemark = 0;
+
         delete m_selectedItem;
         m_selectedItem = 0;
+
         m_addingPlacemark = false;
         m_drawingPolygon = false;
         m_removingItem = false;
@@ -176,23 +179,23 @@ QString AnnotatePlugin::runtimeTrace() const
     return QString("Annotate Items: %1").arg( m_annotationDocument->size() );
 }
 
-const QList<QActionGroup*>* AnnotatePlugin::actionGroups() const
+const QList<QActionGroup*> *AnnotatePlugin::actionGroups() const
 {
     return &m_actions;
 }
 
-const QList<QActionGroup*>* AnnotatePlugin::toolbarActionGroups() const
+const QList<QActionGroup*> *AnnotatePlugin::toolbarActionGroups() const
 {
     return &m_toolbarActions;
 }
 
-bool AnnotatePlugin::render( GeoPainter *painter, ViewportParams *viewport, const QString& renderPos, GeoSceneLayer *layer )
+bool AnnotatePlugin::render( GeoPainter *painter, ViewportParams *viewport, const QString &renderPos, GeoSceneLayer *layer )
 {
-    Q_UNUSED(renderPos);
-    Q_UNUSED(layer);
+    Q_UNUSED( renderPos );
+    Q_UNUSED( layer );
 
     QListIterator<SceneGraphicsItem*> iter( m_graphicsItems );
-    while( iter.hasNext() ) {
+    while ( iter.hasNext() ) {
         iter.next()->paint( painter, viewport );
     }
 
@@ -201,14 +204,14 @@ bool AnnotatePlugin::render( GeoPainter *painter, ViewportParams *viewport, cons
 
 void AnnotatePlugin::enableModel( bool enabled )
 {
-    if( enabled ) {
-        if( m_marbleWidget ) {
+    if ( enabled ) {
+        if ( m_marbleWidget ) {
             setupActions( m_marbleWidget );
             m_marbleWidget->model()->treeModel()->addDocument( m_annotationDocument );
         }
     } else {
         setupActions( 0 );
-        if( m_marbleWidget ) {
+        if ( m_marbleWidget ) {
             m_marbleWidget->model()->treeModel()->removeDocument( m_annotationDocument );
         }
     }
@@ -222,22 +225,21 @@ void AnnotatePlugin::setAddingPlacemark( bool enabled )
 void AnnotatePlugin::setDrawingPolygon( bool enabled )
 {
     m_drawingPolygon = enabled;
-    if( enabled ) {
+    if ( enabled ) {
         m_polygon_placemark = new GeoDataPlacemark;
         m_polygon_placemark->setGeometry( new GeoDataPolygon( Tessellate ) );
         m_polygon_placemark->setParent( m_annotationDocument );
         m_polygon_placemark->setStyleUrl( "#polygon" );
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygon_placemark );
     } else {
-        //stopped drawing the polygon
         const GeoDataPolygon *poly = dynamic_cast<const GeoDataPolygon*>( m_polygon_placemark->geometry() );
         Q_ASSERT( poly );
+
         if ( !poly->outerBoundary().isEmpty() ) {
             AreaAnnotation *area = new AreaAnnotation( m_polygon_placemark );
             m_graphicsItems.append( area );
             m_marbleWidget->update();
-        }
-        else {
+        } else {
             m_marbleWidget->model()->treeModel()->removeFeature( m_polygon_placemark );
             delete m_polygon_placemark;
         }
@@ -380,6 +382,7 @@ void AnnotatePlugin::loadAnnotationFile()
 {
     QString const filename = QFileDialog::getOpenFileName(0, tr("Open Annotation File"),
                      QString(), tr("All Supported Files (*.kml);;Kml Annotation file (*.kml)"));
+
     if ( filename.isNull() ) {
         return;
     }
@@ -404,6 +407,7 @@ void AnnotatePlugin::loadAnnotationFile()
     foreach( GeoDataFeature *feature, document->featureList() ) {
         if( feature->nodeType() == GeoDataTypes::GeoDataPlacemarkType ) {
             GeoDataPlacemark *placemark = static_cast<GeoDataPlacemark*>( feature );
+
             if( placemark->geometry()->nodeType() == GeoDataTypes::GeoDataPointType ) {
                 GeoDataPlacemark *newPlacemark = new GeoDataPlacemark( *placemark );
                 PlacemarkTextAnnotation *annotation = new PlacemarkTextAnnotation( newPlacemark );
@@ -422,14 +426,14 @@ void AnnotatePlugin::loadAnnotationFile()
     m_marbleWidget->centerOn( document->latLonAltBox() );
 
     delete document;
-    emit repaintNeeded(QRegion());
+    emit repaintNeeded( QRegion() );
 }
 
 bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 {
     if ( !m_widgetInitialized ) {
         MarbleWidget *marbleWidget = qobject_cast<MarbleWidget*>( watched );
-        if( marbleWidget ) {
+        if ( marbleWidget ) {
             m_marbleWidget = marbleWidget;
             setupGroundOverlayModel();
             setupOverlayRmbMenu();
@@ -441,14 +445,10 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
 
-    if( !m_marbleWidget ) {
-        return false;
-    }
-
     // So far only accept mouse events.
-    if( event->type() != QEvent::MouseButtonPress &&
-        event->type() != QEvent::MouseButtonRelease &&
-        event->type() != QEvent::MouseMove ) {
+    if ( event->type() != QEvent::MouseButtonPress &&
+         event->type() != QEvent::MouseButtonRelease &&
+         event->type() != QEvent::MouseMove ) {
         return false;
     }
 
@@ -460,7 +460,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                                                      mouseEvent->pos().y(),
                                                      lon, lat,
                                                      GeoDataCoordinates::Radian );
-    if( !isOnGlobe ) {
+    if ( !isOnGlobe ) {
         return false;
     }
 
@@ -497,7 +497,19 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     // Pass the event to Graphics Items.
+    // Pot chiar sa pun tot asta intr-o functie noua. Ar arata mai modularizat.
+    // Sa ramana gen verificarea asta a graphics-urilor DEJA desentate si separat,
+    // dupa, eventurile pentru crearea lor.
     foreach( SceneGraphicsItem *item, m_graphicsItems ) {
+
+        if ( item->graphicType() == SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
+
+        } else if ( item->graphicType() == SceneGraphicTypes::SceneGraphicGroundOverlay ) {
+
+        } else if ( item->graphicType() == SceneGraphicTypes::SceneGraphicPlacemark ) {
+
+        }
+
         QListIterator<QRegion> it ( item->regions() );
 
         while ( it.hasNext() ) {

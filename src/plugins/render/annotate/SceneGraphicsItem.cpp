@@ -58,6 +58,5 @@ bool SceneGraphicsItem::sceneEvent( QEvent *event )
     return false;
 }
 
-
 }
 

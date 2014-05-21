@@ -16,6 +16,8 @@
 #include "ViewportParams.h"
 #include "SceneGraphicTypes.h"
 
+#include <QDebug>
+
 namespace Marble
 {
 
@@ -43,7 +45,6 @@ void GroundOverlayFrame::paint(GeoPainter *painter, const ViewportParams *viewpo
             regionList.append( painter->regionFromEllipse( ring.at(i), 10, 10 ) );
         }
         regionList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
-        regionList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
     }
     painter->restore();
     setRegions( regionList );
@@ -52,8 +53,9 @@ void GroundOverlayFrame::paint(GeoPainter *painter, const ViewportParams *viewpo
 bool GroundOverlayFrame::mousePressEvent( QMouseEvent *event )
 {
     QList<QRegion> regionList = regions();
-    // react to all ellipse point markers and skip the polygon
-    for ( int i = 0; i < regionList.size() - 1; ++i ) {
+
+    // React to all ellipse as well as to the polygon.
+    for ( int i = 0; i < regionList.size(); ++i ) {
         if ( regionList.at(i).contains( event->pos() ) ) {
             m_movedPoint = i;
 

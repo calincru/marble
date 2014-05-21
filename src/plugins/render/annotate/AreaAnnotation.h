@@ -26,6 +26,11 @@ public:
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
+    enum RightClickedRegion {
+        Node,
+        Polygon
+    };
+
     /**
      * @brief In the implementation of these virtual functions, the following
      * convention has been followed: if the event cannot be dealt with in this
@@ -40,12 +45,15 @@ public:
 
     QList<int> selectedNodes() const;
 
+    AreaAnnotation::RightClickedRegion rightClickedRegion() const;
+
 private:
-    int m_movedNode;
-    int m_rmbNode;
-    bool m_movingPolygon;
-    QList<int> m_selectedNodes;
+    int                m_movedNodeIndex;
     GeoDataCoordinates m_movedNodeCoords;
+
+    RightClickedRegion m_rightClicked;
+    QList<int> m_selectedNodes;
+
     const ViewportParams *m_viewport;
 };
 

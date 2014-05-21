@@ -83,8 +83,8 @@ public:
 
     virtual QString runtimeTrace() const;
 
-    virtual const QList<QActionGroup*>* actionGroups() const;
-    virtual const QList<QActionGroup*>* toolbarActionGroups() const;
+    virtual const QList<QActionGroup*> *actionGroups() const;
+    virtual const QList<QActionGroup*> *toolbarActionGroups() const;
 
     bool render( GeoPainter *painter, ViewportParams *viewport,
                  const QString& renderPos, GeoSceneLayer * layer = 0 );
@@ -119,10 +119,10 @@ private slots:
 
 
 protected:
-    bool eventFilter(QObject* watched, QEvent* event);
+    bool eventFilter( QObject *watched, QEvent *event );
 
 private:
-    void setupActions(MarbleWidget* m);
+    void setupActions( MarbleWidget *marbleWidget );
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
     //    void readOsmFile( QIODevice* device, bool flyToFile );

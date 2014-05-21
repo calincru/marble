@@ -15,8 +15,8 @@ namespace Marble
 {
 
 /**
- * @brief: This namespace includes all available graphic items a user can interact with
- * using the annotate plugin.
+ * @brief: This namespace includes all available graphic items names a user can
+ * interact with using the annotate plugin.
  */
 
 namespace SceneGraphicTypes

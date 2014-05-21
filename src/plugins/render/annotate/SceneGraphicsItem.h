@@ -59,18 +59,18 @@ public:
      */
     bool sceneEvent( QEvent *event );
 
-protected:
-    /**
-     * @brief A setter for the m_regions private member.
-     */
-    void setRegions( const QList<QRegion> &regions );
-
     /**
      * @brief It is used for downcasting a SceneGraphicItem. It returns a const char
      * which is the name of the element's class and is implemented within the
      * SceneGraphicTypes namespace.
      */
     virtual const char *graphicType() const = 0;
+
+protected:
+    /**
+     * @brief A setter for the m_regions private member.
+     */
+    void setRegions( const QList<QRegion> &regions );
 
     /**
      * @brief Pure virtual functions which handle the mouse events, all of which are
