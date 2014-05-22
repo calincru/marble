@@ -75,13 +75,13 @@ bool PlacemarkTextAnnotation::mousePressEvent( QMouseEvent* event )
 bool PlacemarkTextAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
     Q_UNUSED( event );
-    return false;
+    return true;
 }
 
 bool PlacemarkTextAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
     Q_UNUSED( event );
-    return false;
+    return true;
 }
 
 

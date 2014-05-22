@@ -128,7 +128,7 @@ bool GroundOverlayFrame::mouseMoveEvent( QMouseEvent *event )
 
 bool GroundOverlayFrame::mouseReleaseEvent( QMouseEvent *event )
 {
-    Q_UNUSED(event);
+    Q_UNUSED( event );
 
     m_movedPoint = -1;
     m_textureLayer->reset();

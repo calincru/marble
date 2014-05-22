@@ -39,10 +39,10 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
     QList<QRegion> regionList;
 
     painter->save();
-    if( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
+    if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
         const GeoDataLinearRing &ring = polygon->outerBoundary();
-        for( int i = 0; i < ring.size(); ++i ) {
+        for ( int i = 0; i < ring.size(); ++i ) {
             QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
 
             if ( !m_selectedNodes.contains( i ) ) {
@@ -74,7 +74,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     // is the entire polygon. This fact will be used in mouseMoveEvent to know
     // whether to move a node or the whole polygon.
     for ( int i = 0; i < regionList.size(); ++i ) {
-        if( regionList.at(i).contains( event->pos()) ) {
+        if ( regionList.at(i).contains( event->pos()) ) {
 
             if ( event->button() == Qt::LeftButton ) {
                 m_movedNodeIndex = i;
@@ -87,6 +87,10 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                     m_rightClicked = Node;
                 }
 
+                // Return false because we cannot fully deal with this event within this class.
+                // We need to have access to the marble widget pointer to show a menu of options
+                // on the screen as well as control of the object since one of the options will be
+                // "remove polygon".
                 return false;
             }
         }
@@ -107,6 +111,8 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     QList<QRegion> regionList = regions();
     qreal lon, lat;
+    // There is no need to check whether the coordinates or on the globe because
+    // this check is done by the caller function.
     m_viewport->geoCoordinates( event->pos().x(),
                                 event->pos().y(),
                                 lon, lat,
@@ -161,13 +167,13 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     // The node gets selected only if it is clicked and not moved.
     if ( qFabs(lon - m_movedNodeCoords.longitude()) > 0.001 ||
          qFabs(lat - m_movedNodeCoords.latitude()) > 0.001 ) {
-        return false;
+        return true;
     }
 
     // Only loop untill size - 1 because we only want to mark nodes
     // as selected, and not the entire polygon.
-    for( int i = 0; i < regionList.size() - 1; ++i ) {
-        if( regionList.at(i).contains( event->pos()) ) {
+    for ( int i = 0; i < regionList.size() - 1; ++i ) {
+        if ( regionList.at(i).contains( event->pos()) ) {
 
             if ( event->button() == Qt::LeftButton ) {
                 if ( !m_selectedNodes.contains( i ) ) {
@@ -181,7 +187,10 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         }
     }
 
-    return false;
+    // We return true even if we get here, because it means that there were no nodes to
+    // be marked (the interior of the polygon has been clicked) and we don't want to do
+    // anything else than release it, so we tell caller that we handled the event.
+    return true;
 }
 
 QList<int> AreaAnnotation::selectedNodes() const

@@ -29,7 +29,7 @@ GeoWidgetBubble::GeoWidgetBubble( GeoDataPlacemark *placemark )
       m_offset( QPoint( 10, 10 ) )
 {
     m_widget->setVisible(false);
-    m_widget->setPalette( QPalette(Qt::lightGray, Qt::lightGray) );
+    m_widget->setPalette( QPalette( Qt::lightGray, Qt::lightGray ) );
 }
 
 GeoWidgetBubble::~GeoWidgetBubble()
@@ -39,14 +39,14 @@ GeoWidgetBubble::~GeoWidgetBubble()
 
 void GeoWidgetBubble::paint( QPainter *painter )
 {
-    if( !m_widgetInitialized && m_widget ) {
+    if ( !m_widgetInitialized && m_widget ) {
         QWidget *widget = dynamic_cast<QWidget*>( painter->device() );
         if ( widget ) {
             setParentWidget( widget );
         }
     }
 
-    if( !m_hidden ) {
+    if ( !m_hidden ) {
         if ( m_widgetInitialized ) {
 
             m_widget->setVisible( true );
@@ -64,7 +64,7 @@ void GeoWidgetBubble::paint( QPainter *painter )
 
             //draw the border
             painter->setPen( QPen( Oxygen::aluminumGray4 ) );
-            painter->setBrush( QBrush( QColor( 255, 255, 255) , Qt::SolidPattern ) );
+            painter->setBrush( QBrush( QColor( 255, 255, 255), Qt::SolidPattern ) );
             painter->drawRoundedRect( QRect( position + borderOffset, widgetSize + borderSize ), 10, 10 );
 
             painter->restore();
@@ -88,7 +88,7 @@ void GeoWidgetBubble::moveTo( const QPoint &pos )
 
 void GeoWidgetBubble::setHidden( bool hide )
 {
-    if( m_hidden == hide ) {
+    if ( m_hidden == hide ) {
         return;
     }
 

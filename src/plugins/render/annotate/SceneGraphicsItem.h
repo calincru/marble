@@ -31,7 +31,6 @@ class GeoDataPlacemark;
  * annotate plugin. It is not instantiated by itself but it is always used
  * as a part of a derived object.
  */
-
 class SceneGraphicsItem : public GeoGraphicsItem
 {
 public:
@@ -42,6 +41,11 @@ public:
      * @brief Returns the list of regions which form the scene graphic element.
      */
     QList<QRegion> regions() const;
+
+    /**
+     * @brief A setter for the m_regions private member.
+     */
+    void setRegions( const QList<QRegion> &regions );
 
     /**
      * @brief SceneGraphicItem class, when called from one of its derived classes'
@@ -61,17 +65,12 @@ public:
 
     /**
      * @brief It is used for downcasting a SceneGraphicItem. It returns a const char
-     * which is the name of the element's class and is implemented within the
-     * SceneGraphicTypes namespace.
+     * which is the name of the element's class and is defined within the SceneGraphicTypes
+     * namespace.
      */
     virtual const char *graphicType() const = 0;
 
 protected:
-    /**
-     * @brief A setter for the m_regions private member.
-     */
-    void setRegions( const QList<QRegion> &regions );
-
     /**
      * @brief Pure virtual functions which handle the mouse events, all of which are
      * re-implemented in every SceneGraphicItem derived classes.

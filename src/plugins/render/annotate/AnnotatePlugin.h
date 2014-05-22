@@ -19,6 +19,7 @@
 #include "GeoDataLatLonBox.h"
 #include "GeoDataGroundOverlay.h"
 #include "GroundOverlayFrame.h"
+#include "AreaAnnotation.h"
 
 #include <QObject>
 #include <QErrorMessage>
@@ -115,6 +116,7 @@ public slots:
 private slots:
     void editOverlay();
     void removeOverlay();
+    void removePolygon();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
 
@@ -125,9 +127,11 @@ private:
     void setupActions( MarbleWidget *marbleWidget );
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
+    void setupPolygonRmbMenu();
     //    void readOsmFile( QIODevice* device, bool flyToFile );
 
     void showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y );
+    void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
     void displayOverlayEditDialog( GeoDataGroundOverlay *overlay );
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
@@ -136,7 +140,10 @@ private:
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
 
-    QMenu*                  m_overlayRmbMenu;
+    QMenu *m_overlayRmbMenu;
+    QMenu *m_polygonRmbMenu;
+
+
     QList<QActionGroup*>    m_actions;
     QList<QActionGroup*>    m_toolbarActions;
     QSortFilterProxyModel   m_groundOverlayModel;
@@ -146,7 +153,8 @@ private:
     QList<SceneGraphicsItem*> m_graphicsItems;
 
     // used while creating new polygons
-    GeoDataPlacemark     *m_polygon_placemark;
+    GeoDataPlacemark     *m_polygonPlacemark;
+    AreaAnnotation       *m_rmbSelectedArea;
     SceneGraphicsItem    *m_selectedItem;
     GeoDataGroundOverlay *m_rmbOverlay;
 

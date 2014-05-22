@@ -27,7 +27,7 @@ public:
     explicit GeoWidgetBubble( GeoDataPlacemark *placemark );
     ~GeoWidgetBubble();
 
-    void paint(QPainter *p);
+    void paint( QPainter *p );
 
     void setParentWidget( QWidget *parent );
 
