@@ -18,6 +18,7 @@
 #include "GeoPainter.h"
 #include "ViewportParams.h"
 #include "SceneGraphicTypes.h"
+#include "MarbleMath.h"
 
 #include <QDebug>
 
@@ -28,6 +29,7 @@ namespace Marble
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
       m_movedNodeIndex( -1 ),
+      m_rightClickedNode( -1 ),
       m_viewport( 0 )
 {
 
@@ -69,7 +71,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                                 GeoDataCoordinates::Radian );
 
 
-    m_movedNodeCoords.set( lon, lat );
+    m_movedPointCoords.set( lon, lat );
     // We loop through all regions from the list, including the last one, which
     // is the entire polygon. This fact will be used in mouseMoveEvent to know
     // whether to move a node or the whole polygon.
@@ -81,15 +83,15 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                 return true;
 
             } else if ( event->button() == Qt::RightButton ) {
-                if ( i == regionList.size() - 1 ) {
-                    m_rightClicked = Polygon;
+                if ( i < regionList.size() - 1 ) {
+                    m_rightClickedNode = i;
                 } else {
-                    m_rightClicked = Node;
+                    m_rightClickedNode = -1;
                 }
 
                 // Return false because we cannot fully deal with this event within this class.
-                // We need to have access to the marble widget pointer to show a menu of options
-                // on the screen as well as control of the object since one of the options will be
+                // We need to have access to the marble widget to show a menu of options on the
+                // screen as well as control of the object since one of the options will be
                 // "remove polygon".
                 return false;
             }
@@ -111,18 +113,19 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     QList<QRegion> regionList = regions();
     qreal lon, lat;
-    // There is no need to check whether the coordinates or on the globe because
-    // this check is done by the caller function.
+    // There is no need to check whether the coordinates are on the globe because
+    // this is already checked by the caller function (AnnotatePlugin::eventFilter).
     m_viewport->geoCoordinates( event->pos().x(),
                                 event->pos().y(),
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
+    GeoDataCoordinates const coords( lon, lat );
 
     if ( m_movedNodeIndex >= 0 && m_movedNodeIndex < regionList.size() - 1 ) {
         if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
             GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
             GeoDataLinearRing &ring = polygon->outerBoundary();
-            ring[m_movedNodeIndex] = GeoDataCoordinates( lon, lat );
+            ring[m_movedNodeIndex] = coords;
             return true;
         } else {
             return false;
@@ -130,8 +133,9 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     }
 
     Q_ASSERT( m_movedNodeIndex == regionList.size() - 1 );
-    qreal centerLonDiff = lon - m_movedNodeCoords.longitude();
-    qreal centerLatDiff = lat - m_movedNodeCoords.latitude();
+    qreal bearing = coords.bearing( m_movedPointCoords );
+    qreal distance = distanceSphere( coords, m_movedPointCoords );
+    qDebug() << "Bearing: " <<  bearing << "; Distance: " << distance << "\n";
 
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
 
@@ -140,12 +144,14 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         poly->outerBoundary().clear();
 
         for ( int i = 0; i < ring.size(); ++i ) {
-            qreal ringLon = ring.at(i).longitude();
-            qreal ringLat = ring.at(i).latitude();
-            poly->outerBoundary().append( GeoDataCoordinates(ringLon + centerLonDiff, ringLat + centerLatDiff) );
+            qreal newLon = ring.at(i).longitude() - distance * sin( bearing );
+            qreal newLat = ring.at(i).latitude() - distance * cos( bearing );
+
+            GeoDataCoordinates::normalizeLonLat( newLon, newLat );
+            poly->outerBoundary().append( GeoDataCoordinates( newLon, newLat ) );
         }
 
-        m_movedNodeCoords.set( lon, lat );
+        m_movedPointCoords.set( lon, lat );
         return true;
     }
 
@@ -157,6 +163,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     QList<QRegion> regionList = regions();
 
     m_movedNodeIndex = -1;
+    m_rightClickedNode = -1;
 
     qreal lon, lat;
     m_viewport->geoCoordinates( event->pos().x(),
@@ -165,8 +172,9 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
                                 GeoDataCoordinates::Radian );
 
     // The node gets selected only if it is clicked and not moved.
-    if ( qFabs(lon - m_movedNodeCoords.longitude()) > 0.001 ||
-         qFabs(lat - m_movedNodeCoords.latitude()) > 0.001 ) {
+    // Is this value ok in order to avoid this?
+    if ( qFabs(lon - m_movedPointCoords.longitude()) > 0.001 ||
+         qFabs(lat - m_movedPointCoords.latitude()) > 0.001 ) {
         return true;
     }
 
@@ -193,7 +201,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     return true;
 }
 
-QList<int> AreaAnnotation::selectedNodes() const
+QList<int> &AreaAnnotation::selectedNodes()
 {
     return m_selectedNodes;
 }
@@ -203,9 +211,9 @@ const char *AreaAnnotation::graphicType() const
     return SceneGraphicTypes::SceneGraphicAreaAnnotation;
 }
 
-AreaAnnotation::RightClickedRegion AreaAnnotation::rightClickedRegion() const
+int AreaAnnotation::rightClickedNode() const
 {
-    return m_rightClicked;
+    return m_rightClickedNode;
 }
 
 }

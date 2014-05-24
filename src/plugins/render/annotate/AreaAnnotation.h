@@ -24,25 +24,19 @@ class AreaAnnotation : public SceneGraphicsItem
 public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
 
-    enum RightClickedRegion {
-        Node,
-        Polygon
-    };
-
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
     virtual const char *graphicType() const;
 
-    QList<int> selectedNodes() const;
+    QList<int> &selectedNodes();
 
-    AreaAnnotation::RightClickedRegion rightClickedRegion() const;
+    int rightClickedNode() const;
 
 private:
     int                m_movedNodeIndex;
-    GeoDataCoordinates m_movedNodeCoords;
+    GeoDataCoordinates m_movedPointCoords;
     QList<int>         m_selectedNodes;
-
-    RightClickedRegion m_rightClicked;
+    int                m_rightClickedNode;
 
     const ViewportParams *m_viewport;
 

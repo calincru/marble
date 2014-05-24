@@ -55,6 +55,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_marbleWidget( 0 ),
       m_overlayRmbMenu( new QMenu( m_marbleWidget ) ),
       m_polygonRmbMenu( new QMenu( m_marbleWidget ) ),
+      m_nodeRmbMenu( new QMenu( m_marbleWidget ) ),
       m_annotationDocument( new GeoDataDocument ),
       m_polygonPlacemark( 0 ),
       m_selectedItem( 0 ),
@@ -90,8 +91,6 @@ AnnotatePlugin::~AnnotatePlugin()
 
     delete m_annotationDocument;
     // delete m_networkAccessManager;
-    delete m_overlayRmbMenu;
-    delete m_polygonRmbMenu;
 }
 
 QStringList AnnotatePlugin::backendTypes() const
@@ -439,6 +438,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             setupGroundOverlayModel();
             setupOverlayRmbMenu();
             setupPolygonRmbMenu();
+            setupNodeRmbMenu();
             setupActions( marbleWidget );
             m_marbleWidget->model()->treeModel()->addDocument( m_annotationDocument );
             m_widgetInitialized = true;
@@ -462,6 +462,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                                                      mouseEvent->pos().y(),
                                                      lon, lat,
                                                      GeoDataCoordinates::Radian );
+    qDebug() << "Lon: " << lon << "; Lat: " << lat << "\n";
     if ( !isOnGlobe ) {
         if ( m_selectedItem ) {
             m_selectedItem = 0;
@@ -498,11 +499,11 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
-    // function and updating the placemark within the marble widget.
+    // handler and updating the placemark from the marble widget.
     //
     // It is important to deal with the MouseMove event here because it changes the state of the selected
     // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
-    // globe, which is treated a above).
+    // globe, which is treated above).
     if ( mouseEvent->type() == QEvent::MouseMove && m_selectedItem ) {
         if ( m_selectedItem->sceneEvent( mouseEvent ) ) {
             m_marbleWidget->model()->treeModel()->updateFeature( m_selectedItem->placemark() );
@@ -560,11 +561,11 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                     AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
                     Q_ASSERT( area );
 
-                    if ( area->rightClickedRegion() == AreaAnnotation::Polygon ) {
+                    if ( area->rightClickedNode() == -1 ) {
                         showPolygonRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
                     } else {
-                        Q_ASSERT( area->rightClickedRegion() == AreaAnnotation::Node );
-                        // TODO
+                        Q_ASSERT( area->rightClickedNode() >= 0 );
+                        showNodeRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
                     }
 
                     return true;
@@ -750,6 +751,17 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
 }
 
+void AnnotatePlugin::setupNodeRmbMenu()
+{
+    QAction *selectNode = new QAction( tr( "Select Node" ), m_nodeRmbMenu );
+    QAction *deleteNode = new QAction( tr( "Delete Node" ), m_nodeRmbMenu );
+
+    m_nodeRmbMenu->addAction( selectNode );
+    m_nodeRmbMenu->addAction( deleteNode );
+    connect( selectNode, SIGNAL(triggered()), this, SLOT(selectNode()) );
+    connect( deleteNode, SIGNAL(triggered()), this, SLOT(removeNode()) );
+}
+
 //void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )
 //{
 //}
@@ -764,6 +776,18 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 {
     m_rmbSelectedArea = selectedArea;
     m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
+}
+
+void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
+{
+    if ( area->selectedNodes().contains( area->rightClickedNode() ) ) {
+        m_nodeRmbMenu->actions().at(0)->setText( tr("Unselect Node") );
+    } else {
+        m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
+    }
+
+    m_rmbSelectedArea = area;
+    m_nodeRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
 void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
@@ -834,6 +858,47 @@ void AnnotatePlugin::removePolygon()
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
     delete m_rmbSelectedArea->feature();
     delete m_rmbSelectedArea;
+}
+
+void AnnotatePlugin::selectNode()
+{
+    if ( m_rmbSelectedArea->selectedNodes().contains(  m_rmbSelectedArea->rightClickedNode() ) ) {
+        m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
+    } else {
+        m_rmbSelectedArea->selectedNodes().append( m_rmbSelectedArea->rightClickedNode() );
+    }
+}
+
+void AnnotatePlugin::removeNode()
+{
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
+    poly->outerBoundary().remove( m_rmbSelectedArea->rightClickedNode() );
+
+    // If the node is selected, remove it from the selected list of nodes as well.
+    m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
+
+    // If the polygon has only 2 nodes, we remove it all.
+    if ( m_rmbSelectedArea->regions().size() <= 4 ) {
+        m_rmbSelectedArea->selectedNodes().clear();
+
+        m_graphicsItems.removeAll( m_rmbSelectedArea );
+        m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
+        delete m_rmbSelectedArea->feature();
+        delete m_rmbSelectedArea;
+
+        return;
+    }
+
+    QList<int>::iterator itBegin = m_rmbSelectedArea->selectedNodes().begin();
+    QList<int>::const_iterator itEnd = m_rmbSelectedArea->selectedNodes().constEnd();
+
+    // Decrement the indexes of the selected nodes which have bigger indexes than the
+    // removed one's.
+    for ( ; itBegin != itEnd; ++itBegin ) {
+        if ( *itBegin > m_rmbSelectedArea->rightClickedNode() ) {
+            (*itBegin)--;
+        }
+    }
 }
 
 }

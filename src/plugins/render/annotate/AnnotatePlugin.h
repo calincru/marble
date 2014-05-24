@@ -88,7 +88,7 @@ public:
     virtual const QList<QActionGroup*> *toolbarActionGroups() const;
 
     bool render( GeoPainter *painter, ViewportParams *viewport,
-                 const QString& renderPos, GeoSceneLayer * layer = 0 );
+                 const QString &renderPos, GeoSceneLayer *layer = 0 );
 
 signals:
     void placemarkAdded();
@@ -117,6 +117,8 @@ private slots:
     void editOverlay();
     void removeOverlay();
     void removePolygon();
+    void selectNode();
+    void removeNode();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
 
@@ -128,10 +130,12 @@ private:
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
     void setupPolygonRmbMenu();
+    void setupNodeRmbMenu();
     //    void readOsmFile( QIODevice* device, bool flyToFile );
 
     void showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y );
     void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
+    void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
     void displayOverlayEditDialog( GeoDataGroundOverlay *overlay );
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
@@ -142,7 +146,7 @@ private:
 
     QMenu *m_overlayRmbMenu;
     QMenu *m_polygonRmbMenu;
-
+    QMenu *m_nodeRmbMenu;
 
     QList<QActionGroup*>    m_actions;
     QList<QActionGroup*>    m_toolbarActions;
