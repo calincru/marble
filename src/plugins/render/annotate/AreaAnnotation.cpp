@@ -73,7 +73,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
     m_movedPointCoords.set( lon, lat );
     // We loop through all regions from the list, including the last one, which
-    // is the entire polygon. This fact will be used in mouseMoveEvent to know
+    // is the entire polygon. This will be useful in mouseMoveEvent to know
     // whether to move a node or the whole polygon.
     for ( int i = 0; i < regionList.size(); ++i ) {
         if ( regionList.at(i).contains( event->pos()) ) {
@@ -135,7 +135,6 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     Q_ASSERT( m_movedNodeIndex == regionList.size() - 1 );
     qreal bearing = coords.bearing( m_movedPointCoords );
     qreal distance = distanceSphere( coords, m_movedPointCoords );
-    qDebug() << "Bearing: " <<  bearing << "; Distance: " << distance << "\n";
 
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
 

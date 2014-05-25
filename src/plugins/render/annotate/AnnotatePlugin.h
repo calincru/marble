@@ -118,7 +118,9 @@ private slots:
     void removeOverlay();
     void removePolygon();
     void selectNode();
-    void removeNode();
+    void deleteNode();
+    void unselectNodes();
+    void deleteSelectedNodes();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
 
@@ -156,11 +158,10 @@ private:
     GeoDataDocument*          m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
-    // used while creating new polygons
     GeoDataPlacemark     *m_polygonPlacemark;
-    AreaAnnotation       *m_rmbSelectedArea;
     SceneGraphicsItem    *m_selectedItem;
     GeoDataGroundOverlay *m_rmbOverlay;
+    AreaAnnotation       *m_rmbSelectedArea;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;

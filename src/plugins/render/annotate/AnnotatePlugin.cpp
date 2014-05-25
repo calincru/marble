@@ -44,6 +44,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QMessageBox>
+#include <QtAlgorithms>
 
 
 namespace Marble
@@ -462,7 +463,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                                                      mouseEvent->pos().y(),
                                                      lon, lat,
                                                      GeoDataCoordinates::Radian );
-    qDebug() << "Lon: " << lon << "; Lat: " << lat << "\n";
+
     if ( !isOnGlobe ) {
         if ( m_selectedItem ) {
             m_selectedItem = 0;
@@ -499,7 +500,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
-    // handler and updating the placemark from the marble widget.
+    // handler and updating the placemark geometry.
     //
     // It is important to deal with the MouseMove event here because it changes the state of the selected
     // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
@@ -745,9 +746,16 @@ void AnnotatePlugin::setupOverlayRmbMenu()
 
 void AnnotatePlugin::setupPolygonRmbMenu()
 {
+    QAction *unselectNodes = new QAction( tr( "Unselect all nodes" ), m_polygonRmbMenu );
+    QAction *deleteAllSelected = new QAction( tr( "Delete all selected nodes" ), m_polygonRmbMenu );
     QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
 
+    m_polygonRmbMenu->addAction( unselectNodes );
+    m_polygonRmbMenu->addAction( deleteAllSelected );
     m_polygonRmbMenu->addAction( removePolygon );
+
+    connect( unselectNodes, SIGNAL(triggered()), this, SLOT(unselectNodes()) );
+    connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
     connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
 }
 
@@ -758,8 +766,9 @@ void AnnotatePlugin::setupNodeRmbMenu()
 
     m_nodeRmbMenu->addAction( selectNode );
     m_nodeRmbMenu->addAction( deleteNode );
+
     connect( selectNode, SIGNAL(triggered()), this, SLOT(selectNode()) );
-    connect( deleteNode, SIGNAL(triggered()), this, SLOT(removeNode()) );
+    connect( deleteNode, SIGNAL(triggered()), this, SLOT(deleteNode()) );
 }
 
 //void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )
@@ -869,7 +878,54 @@ void AnnotatePlugin::selectNode()
     }
 }
 
-void AnnotatePlugin::removeNode()
+void AnnotatePlugin::unselectNodes()
+{
+    m_rmbSelectedArea->selectedNodes().clear();
+}
+
+void AnnotatePlugin::deleteSelectedNodes()
+{
+    QList<int> &selectedNodes = m_rmbSelectedArea->selectedNodes();
+
+    // If there are no selected nodes, exit the function.
+    if ( !selectedNodes.size() ) {
+        return;
+    }
+
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
+
+    // If the number of nodes remained after deleting the selected ones is 0, 1 or 2, we remove the
+    // entire polygon.
+    if ( poly->outerBoundary().size() - selectedNodes.size() < 3 ) {
+        selectedNodes.clear();
+
+        m_graphicsItems.removeAll( m_rmbSelectedArea );
+        m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
+        delete m_rmbSelectedArea->feature();
+        delete m_rmbSelectedArea;
+
+        return;
+    }
+
+    // Sorting and iterating through the list of selected nodes backwards is important because when
+    // caling outerBoundary.remove, the indexes of the selected nodes bigger than the removed one's
+    // (in one step of the iteration) should be all decremented due to the way QVector::remove works.
+    // Sorting and iterating backwards is, therefore, faster than iterating through the list and at
+    // each iteration, iterate one more time through the list in order to decrement the above
+    // mentioned nodes (O(N * logN) > O(N ^ 2) in terms of complexity).
+    qSort( selectedNodes.begin(), selectedNodes.end() );
+
+    QListIterator<int> it( selectedNodes );
+    it.toBack();
+
+    while ( it.hasPrevious() ) {
+        poly->outerBoundary().remove( it.previous() );
+    }
+
+    selectedNodes.clear();
+}
+
+void AnnotatePlugin::deleteNode()
 {
     GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
     poly->outerBoundary().remove( m_rmbSelectedArea->rightClickedNode() );

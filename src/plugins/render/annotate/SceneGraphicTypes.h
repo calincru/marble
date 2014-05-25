@@ -15,15 +15,15 @@ namespace Marble
 {
 
 /**
- * @brief: This namespace includes all available graphic items names a user can
+ * @brief: This namespace includes all available graphic item names a user can
  * interact with using the annotate plugin.
  */
 
 namespace SceneGraphicTypes
 {
     extern const char *SceneGraphicAreaAnnotation;
-	extern const char *SceneGraphicGroundOverlay;
-	extern const char *SceneGraphicPlacemark;
+    extern const char *SceneGraphicGroundOverlay;
+    extern const char *SceneGraphicPlacemark;
 }
 
 }
