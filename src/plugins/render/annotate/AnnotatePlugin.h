@@ -18,6 +18,7 @@
 #include "SceneGraphicsItem.h"
 #include "GeoDataLatLonBox.h"
 #include "GeoDataGroundOverlay.h"
+#include "GeoDataPolygon.h"
 #include "GroundOverlayFrame.h"
 #include "AreaAnnotation.h"
 
@@ -100,6 +101,7 @@ public slots:
 
     void setAddingPlacemark( bool );
     void setDrawingPolygon( bool );
+    void setAddingPolygonHole( bool );
     void setAddingOverlay( bool );
     void setRemovingItems( bool );
 
@@ -162,12 +164,14 @@ private:
     SceneGraphicsItem    *m_selectedItem;
     GeoDataGroundOverlay *m_rmbOverlay;
     AreaAnnotation       *m_rmbSelectedArea;
+    GeoDataPolygon       *m_holedPolygon;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;
 
     bool m_addingPlacemark;
     bool m_drawingPolygon;
+    bool m_addingPolygonHole;
     bool m_addingOverlay;
     bool m_removingItem;
     bool m_isInitialized;

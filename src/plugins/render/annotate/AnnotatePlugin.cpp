@@ -62,6 +62,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_selectedItem( 0 ),
       m_addingPlacemark( false ),
       m_drawingPolygon( false ),
+      m_addingPolygonHole( false ),
       m_removingItem( false ),
       // m_networkAccessManager( 0 ),
       m_isInitialized( false )
@@ -246,6 +247,18 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
         }
         m_polygonPlacemark = 0;
     }
+}
+
+void AnnotatePlugin::setAddingPolygonHole( bool enabled )
+{
+    if ( !enabled && m_holedPolygon->innerBoundaries().last().size() <= 2 ) {
+        m_holedPolygon->innerBoundaries().last().clear();
+    }
+
+    m_addingPolygonHole = enabled;
+    m_holedPolygon = 0;
+
+    emit repaintNeeded( QRegion() );
 }
 
 void AnnotatePlugin::setAddingOverlay( bool enabled )
@@ -476,6 +489,34 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     GeoDataCoordinates const coords( lon, lat );
 
 
+    // Deal with adding a placemark.
+    if ( mouseEvent->button() == Qt::LeftButton && m_addingPlacemark ) {
+
+        GeoDataPlacemark *placemark = new GeoDataPlacemark;
+        placemark->setCoordinate( coords );
+        PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
+        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
+        m_graphicsItems.append( textAnnotation );
+
+        emit placemarkAdded();
+        return true;
+    }
+
+    // Deal with drawing a polygon.
+    if ( mouseEvent->button() == Qt::LeftButton &&
+         mouseEvent->type() == QEvent::MouseButtonPress &&
+         m_drawingPolygon ) {
+
+        m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
+        GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
+        poly->outerBoundary().append( coords );
+        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
+
+        return true;
+    }
+
+
+
     // Events caught by ground overlays at mouse release. So far we have: displaying the overlay frame
     // (marking it as selected), removing it and showing a rmb menu with options.
     if ( event->type() == QEvent::MouseButtonRelease ) {
@@ -499,6 +540,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         // Do not return since the rowCount() may be 0 (when the user interacts with a polygon or placemark).
     }
 
+
     // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
     // handler and updating the placemark geometry.
     //
@@ -512,9 +554,10 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
+
     // Pass the event to Graphics Items.
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
-        QListIterator<QRegion> it ( item->regions() );
+        QListIterator<QRegion> it( item->regions() );
 
         while ( it.hasNext() ) {
             QRegion region = it.next();
@@ -538,6 +581,33 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                     delete item;
                     emit itemRemoved();
                 }
+                return true;
+
+            } else if ( mouseEvent->button() == Qt::LeftButton &&
+                        mouseEvent->type() == QEvent::MouseButtonPress &&
+                        m_addingPolygonHole ) {
+
+                // Ignore if someone by mistake clicks another scene graphic element while having
+                // checked "Add Polygon Hole".
+                if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
+                    return true;
+                }
+
+                // We can now be sure that the geometry of the scene graphic item is a polygon.
+                GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
+                Q_ASSERT( poly );
+
+                // If it is the first click in the interior of a polygon, we initialize the polygon
+                // on which a hole will be drawn.
+                if ( !m_holedPolygon ) {
+                    m_holedPolygon = poly;
+                    poly->innerBoundaries().append( GeoDataLinearRing() );
+                } else if ( m_holedPolygon != poly ) {
+                    // Ignore clicks on other polygons if the polygon has already been initialized.
+                    return true;
+                }
+
+                m_holedPolygon->innerBoundaries().last().append( coords );
                 return true;
 
             // We call sceneEvent only if event type is other than MouseEvent. That is because we however
@@ -577,34 +647,6 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 
     if ( mouseEvent->type() != QEvent::MouseMove && mouseEvent->type() != QEvent::MouseButtonRelease ) {
         clearOverlayFrames();
-    }
-
-
-    // Deal with adding a placemark.
-    if ( mouseEvent->button() == Qt::LeftButton && m_addingPlacemark ) {
-
-        GeoDataPlacemark *placemark = new GeoDataPlacemark;
-        placemark->setCoordinate( coords );
-        PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
-        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
-        m_graphicsItems.append( textAnnotation );
-
-        emit placemarkAdded();
-        return true;
-    }
-
-
-    // Deal with drawing a polygon.
-    if ( mouseEvent->button() == Qt::LeftButton &&
-         mouseEvent->type() == QEvent::MouseButtonPress &&
-         m_drawingPolygon ) {
-
-        m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
-        GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
-        poly->outerBoundary().append( coords );
-        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
-
-        return true;
     }
 
     return false;
@@ -647,6 +689,12 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         drawPolygon->setIcon( QIcon( ":/icons/draw-polygon.png") );
         connect( drawPolygon, SIGNAL(toggled(bool)),
                  this, SLOT(setDrawingPolygon(bool)) );
+
+        QAction *addHole = new QAction( this );
+        addHole->setText( tr("Add Polygon Hole") );
+        addHole->setCheckable( true );
+        connect( addHole, SIGNAL(toggled(bool)),
+                 this, SLOT(setAddingPolygonHole(bool)) );
 
         QAction *addOverlay = new QAction( this );
         addOverlay->setText( tr("Add Ground Overlay") );
@@ -705,6 +753,7 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         group->addAction( beginSeparator );
         group->addAction( addPlacemark );
         group->addAction( drawPolygon );
+        group->addAction( addHole );
         group->addAction( addOverlay );
         group->addAction( removeItem );
         group->addAction( loadAnnotationFile );

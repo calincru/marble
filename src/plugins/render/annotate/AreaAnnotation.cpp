@@ -43,9 +43,11 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
     painter->save();
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
         const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
-        const GeoDataLinearRing &ring = polygon->outerBoundary();
-        for ( int i = 0; i < ring.size(); ++i ) {
-            QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
+        const GeoDataLinearRing &outerRing = polygon->outerBoundary();
+        const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+        for ( int i = 0; i < outerRing.size(); ++i ) {
+            QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
             if ( !m_selectedNodes.contains( i ) ) {
                 painter->setBrush( Oxygen::aluminumGray3);
@@ -53,10 +55,21 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                 painter->setBrush( Oxygen::aluminumGray6 );
             }
 
-            painter->drawEllipse( ring.at(i) , 15, 15 );
+            painter->drawEllipse( outerRing.at(i) , 15, 15 );
             regionList.append( newRegion );
         }
-        regionList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
+
+        foreach ( const GeoDataLinearRing ring, innerRings ) {
+            for ( int i = 0; i < ring.size(); ++i ) {
+                QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
+
+                painter->setBrush( Oxygen::aluminumGray3 );
+                painter->drawEllipse( ring.at(i), 15, 15 );
+                regionList.append( newRegion );
+            }
+        }
+
+        regionList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
     }
     painter->restore();
     setRegions( regionList );
@@ -139,15 +152,31 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
 
         GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-        GeoDataLinearRing ring( poly->outerBoundary() );
-        poly->outerBoundary().clear();
+        GeoDataLinearRing outerRing( poly->outerBoundary() );
+        QVector<GeoDataLinearRing> innerRings( poly->innerBoundaries() );
 
-        for ( int i = 0; i < ring.size(); ++i ) {
-            qreal newLon = ring.at(i).longitude() - distance * sin( bearing );
-            qreal newLat = ring.at(i).latitude() - distance * cos( bearing );
+        poly->outerBoundary().clear();
+        poly->innerBoundaries().clear();
+
+        for ( int i = 0; i < outerRing.size(); ++i ) {
+            qreal newLon = outerRing.at(i).longitude() - distance * sin( bearing );
+            qreal newLat = outerRing.at(i).latitude() - distance * cos( bearing );
 
             GeoDataCoordinates::normalizeLonLat( newLon, newLat );
             poly->outerBoundary().append( GeoDataCoordinates( newLon, newLat ) );
+        }
+
+        foreach ( GeoDataLinearRing ring, innerRings ) {
+            GeoDataLinearRing newRing;
+            for ( int i = 0; i < ring.size(); ++i ) {
+                qreal newLon = ring.at(i).longitude() - distance * sin( bearing );
+                qreal newLat = ring.at(i).latitude() - distance * cos( bearing );
+
+                GeoDataCoordinates::normalizeLonLat( newLon, newLat );
+                newRing.append( GeoDataCoordinates( newLon, newLat ) );
+            }
+
+            poly->innerBoundaries().append( newRing );
         }
 
         m_movedPointCoords.set( lon, lat );
