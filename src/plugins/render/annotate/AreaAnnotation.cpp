@@ -29,7 +29,7 @@ namespace Marble
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
       m_movedNodeIndex( -1 ),
-      m_rightClickedNode( -1 ),
+      m_rightClickedNode( -2 ),
       m_viewport( 0 )
 {
 
@@ -46,6 +46,8 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
         const GeoDataLinearRing &outerRing = polygon->outerBoundary();
         const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
+        // First paint and add to the region list the nodes which form the outerBoundary, as
+        // well as the entire outer polygon.
         for ( int i = 0; i < outerRing.size(); ++i ) {
             QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
@@ -59,14 +61,26 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
             regionList.append( newRegion );
         }
 
+        // Then paint and add to the region list the nodes which form the innerBoundaries, as
+        // well as each inner polygon.
+        int sizeOffset = outerRing.size();
+        m_innerBoundariesList.clear();
+
         foreach ( const GeoDataLinearRing ring, innerRings ) {
             for ( int i = 0; i < ring.size(); ++i ) {
                 QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
 
-                painter->setBrush( Oxygen::aluminumGray3 );
+                if ( !m_selectedNodes.contains( i + sizeOffset ) ) {
+                    painter->setBrush( Oxygen::aluminumGray3 );
+                } else {
+                    painter->setBrush( Oxygen::aluminumGray6 );
+                }
+
                 painter->drawEllipse( ring.at(i), 15, 15 );
                 regionList.append( newRegion );
             }
+            sizeOffset += ring.size();
+            m_innerBoundariesList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
         }
 
         regionList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
@@ -83,6 +97,14 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
 
+
+    // Check if the clicked region is an inner boundary of the polygon.
+    for ( int i = 0; i < m_innerBoundariesList.size(); ++i ) {
+        if ( m_innerBoundariesList.at(i).contains( event->pos() ) ) {
+            m_rightClickedNode = -2;
+            return false;
+        }
+    }
 
     m_movedPointCoords.set( lon, lat );
     // We loop through all regions from the list, including the last one, which
@@ -134,17 +156,38 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                                 GeoDataCoordinates::Radian );
     GeoDataCoordinates const coords( lon, lat );
 
+    // This means one of the nodes has been clicked. The clicked node can be on the outer
+    // boundary of the polygon as well as on its inner boundary.
     if ( m_movedNodeIndex >= 0 && m_movedNodeIndex < regionList.size() - 1 ) {
         if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
             GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-            GeoDataLinearRing &ring = polygon->outerBoundary();
-            ring[m_movedNodeIndex] = coords;
+            GeoDataLinearRing &outerRing = polygon->outerBoundary();
+
+            // This means the clicked node is one of the nodes which form one of the
+            // polygon's inner boundaries.
+            if ( m_movedNodeIndex >= outerRing.size() ) {
+                int newIndex = m_movedNodeIndex - outerRing.size();
+                QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+                for ( int i = 0; i < innerRings.size(); ++i ) {
+                    if ( newIndex - innerRings.at(i).size() < 0 ) {
+                        innerRings[i].at(newIndex) = coords;
+                        break;
+                    } else {
+                        newIndex -= innerRings.at(i).size();
+                    }
+                }
+            } else {
+                outerRing[m_movedNodeIndex] = coords;
+            }
             return true;
         } else {
             return false;
         }
     }
 
+    // This means the interior of the polygon has been clicked (excepting its "holes" - its
+    // inner boundaries) and here we handle the move of the entire polygon.
     Q_ASSERT( m_movedNodeIndex == regionList.size() - 1 );
     qreal bearing = coords.bearing( m_movedPointCoords );
     qreal distance = distanceSphere( coords, m_movedPointCoords );
@@ -175,7 +218,6 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                 GeoDataCoordinates::normalizeLonLat( newLon, newLat );
                 newRing.append( GeoDataCoordinates( newLon, newLat ) );
             }
-
             poly->innerBoundaries().append( newRing );
         }
 
@@ -191,7 +233,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     QList<QRegion> regionList = regions();
 
     m_movedNodeIndex = -1;
-    m_rightClickedNode = -1;
+    m_rightClickedNode = -2;
 
     qreal lon, lat;
     m_viewport->geoCoordinates( event->pos().x(),

@@ -634,9 +634,12 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 
                     if ( area->rightClickedNode() == -1 ) {
                         showPolygonRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
-                    } else {
-                        Q_ASSERT( area->rightClickedNode() >= 0 );
+                    } else if ( area->rightClickedNode() >= 0 ){
                         showNodeRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
+                    } else {
+                        // If the region clicked is the interior of an innerBoundary of a polygon,
+                        // we pass the event handling further.
+                        return false;
                     }
 
                     return true;

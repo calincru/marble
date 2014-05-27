@@ -33,6 +33,8 @@ public:
     int rightClickedNode() const;
 
 private:
+    QList<QRegion>     m_innerBoundariesList;
+
     int                m_movedNodeIndex;
     GeoDataCoordinates m_movedPointCoords;
     QList<int>         m_selectedNodes;
