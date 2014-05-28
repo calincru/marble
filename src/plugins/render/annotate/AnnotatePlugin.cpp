@@ -35,7 +35,7 @@
 #include "MarbleWidgetInputHandler.h"
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
-#include "SceneGraphicTypes.h"
+#include "SceneGraphicsTypes.h"
 
 // Qt
 #include <QFileDialog>
@@ -555,7 +555,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
 
-    // Pass the event to Graphics Items.
+    // Pass the event to Graphic Items.
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
         QListIterator<QRegion> it( item->regions() );
 
@@ -590,21 +590,25 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 // Ignore if someone by mistake clicks another scene graphic element while having
                 // checked "Add Polygon Hole".
                 if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-                    return true;
+                    break;
                 }
 
-                // We can now be sure that the geometry of the scene graphic item is a polygon.
+                // We can now be sure that the scene graphic item is an area annotation and its
+                // geometry is a polygon.
+                AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
                 GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
+                Q_ASSERT( area );
                 Q_ASSERT( poly );
 
-                // If it is the first click in the interior of a polygon, we initialize the polygon
-                // on which a hole will be drawn.
-                if ( !m_holedPolygon ) {
+                // If it is the first click in the interior of a polygon and the event position is not
+                // a hole of the polygon, we initialize the polygon on which we want to draw a hole.
+                if ( !m_holedPolygon && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
                     m_holedPolygon = poly;
                     poly->innerBoundaries().append( GeoDataLinearRing() );
-                } else if ( m_holedPolygon != poly ) {
-                    // Ignore clicks on other polygons if the polygon has already been initialized.
-                    return true;
+                } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+                    // Ignore clicks on other polygons if the polygon has already been initialized or
+                    // if the clicked position is contained in one of the polygon's holes.
+                    break;
                 }
 
                 m_holedPolygon->innerBoundaries().last().append( coords );
@@ -638,8 +642,11 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                         showNodeRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
                     } else {
                         // If the region clicked is the interior of an innerBoundary of a polygon,
-                        // we pass the event handling further.
-                        return false;
+                        // we pass the event handling further. This guarantees that the events are
+                        // caught by imbricated polygons irrespective of their number (e.g. we can
+                        // have polygon within polygon within polygon, etc ).
+                        Q_ASSERT( area->isInnerBoundsPoint( mouseEvent->pos() ) );
+                        break;
                     }
 
                     return true;
@@ -695,6 +702,7 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
 
         QAction *addHole = new QAction( this );
         addHole->setText( tr("Add Polygon Hole") );
+        // TODO: set icon
         addHole->setCheckable( true );
         connect( addHole, SIGNAL(toggled(bool)),
                  this, SLOT(setAddingPolygonHole(bool)) );

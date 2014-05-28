@@ -17,7 +17,7 @@
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
 #include "ViewportParams.h"
-#include "SceneGraphicTypes.h"
+#include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
 
 #include <QDebug>
@@ -49,7 +49,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
         // First paint and add to the region list the nodes which form the outerBoundary, as
         // well as the entire outer polygon.
         for ( int i = 0; i < outerRing.size(); ++i ) {
-            QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
+            QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 20, 20 );
 
             if ( !m_selectedNodes.contains( i ) ) {
                 painter->setBrush( Oxygen::aluminumGray3);
@@ -68,7 +68,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
 
         foreach ( const GeoDataLinearRing ring, innerRings ) {
             for ( int i = 0; i < ring.size(); ++i ) {
-                QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
+                QRegion newRegion = painter->regionFromEllipse( ring.at(i), 20, 20 );
 
                 if ( !m_selectedNodes.contains( i + sizeOffset ) ) {
                     painter->setBrush( Oxygen::aluminumGray3 );
@@ -98,13 +98,6 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                                 GeoDataCoordinates::Radian );
 
 
-    // Check if the clicked region is an inner boundary of the polygon.
-    for ( int i = 0; i < m_innerBoundariesList.size(); ++i ) {
-        if ( m_innerBoundariesList.at(i).contains( event->pos() ) ) {
-            m_rightClickedNode = -2;
-            return false;
-        }
-    }
 
     m_movedPointCoords.set( lon, lat );
     // We loop through all regions from the list, including the last one, which
@@ -112,6 +105,12 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     // whether to move a node or the whole polygon.
     for ( int i = 0; i < regionList.size(); ++i ) {
         if ( regionList.at(i).contains( event->pos()) ) {
+
+            // Check if the clicked region is an inner boundary of the polygon.
+            if ( i == regionList.size() - 1 && isInnerBoundsPoint( event->pos() ) ) {
+                m_rightClickedNode = -2;
+                return false;
+            }
 
             if ( event->button() == Qt::LeftButton ) {
                 m_movedNodeIndex = i;
@@ -230,6 +229,12 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
+    // If the event is caught in one of the polygon's holes, we return false in
+    // order to pass it to other potential polygons which have been drawn there.
+    if ( isInnerBoundsPoint( event->pos() ) && m_movedNodeIndex == -1 ) {
+        return false;
+    }
+
     QList<QRegion> regionList = regions();
 
     m_movedNodeIndex = -1;
@@ -276,14 +281,25 @@ QList<int> &AreaAnnotation::selectedNodes()
     return m_selectedNodes;
 }
 
-const char *AreaAnnotation::graphicType() const
-{
-    return SceneGraphicTypes::SceneGraphicAreaAnnotation;
-}
-
 int AreaAnnotation::rightClickedNode() const
 {
     return m_rightClickedNode;
+}
+
+bool AreaAnnotation::isInnerBoundsPoint( QPoint point ) const
+{
+    for ( int i = 0; i < m_innerBoundariesList.size(); ++i ) {
+        if ( m_innerBoundariesList.at(i).contains( point ) ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+const char *AreaAnnotation::graphicType() const
+{
+    return SceneGraphicTypes::SceneGraphicAreaAnnotation;
 }
 
 }

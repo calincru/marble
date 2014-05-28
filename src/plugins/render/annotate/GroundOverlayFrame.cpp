@@ -14,7 +14,7 @@
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
 #include "ViewportParams.h"
-#include "SceneGraphicTypes.h"
+#include "SceneGraphicsTypes.h"
 
 #include <QDebug>
 

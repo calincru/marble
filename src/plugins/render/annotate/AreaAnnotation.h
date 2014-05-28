@@ -26,11 +26,13 @@ public:
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
-    virtual const char *graphicType() const;
-
     QList<int> &selectedNodes();
 
     int rightClickedNode() const;
+
+    bool isInnerBoundsPoint( QPoint point ) const;
+
+    virtual const char *graphicType() const;
 
 private:
     QList<QRegion>     m_innerBoundariesList;

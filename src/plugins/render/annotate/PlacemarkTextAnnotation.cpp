@@ -20,7 +20,7 @@
 #include "ViewportParams.h"
 #include "MarbleDirs.h"
 #include "MarbleDebug.h"
-#include "SceneGraphicTypes.h"
+#include "SceneGraphicsTypes.h"
 
 #include <QPixmap>
 

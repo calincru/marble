@@ -9,7 +9,7 @@
 //
 
 
-#include "SceneGraphicTypes.h"
+#include "SceneGraphicsTypes.h"
 
 
 namespace Marble

@@ -23,7 +23,7 @@ set( annotate_SRCS
   GroundOverlayFrame.cpp
   PlacemarkTextAnnotation.cpp
   SceneGraphicsItem.cpp
-  SceneGraphicTypes.cpp
+  SceneGraphicsTypes.cpp
   TextEditor.cpp
 )
 
