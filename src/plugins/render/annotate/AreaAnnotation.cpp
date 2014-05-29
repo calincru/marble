@@ -49,7 +49,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
         // First paint and add to the region list the nodes which form the outerBoundary, as
         // well as the entire outer polygon.
         for ( int i = 0; i < outerRing.size(); ++i ) {
-            QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 20, 20 );
+            QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
             if ( !m_selectedNodes.contains( i ) ) {
                 painter->setBrush( Oxygen::aluminumGray3);
@@ -61,14 +61,13 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
             regionList.append( newRegion );
         }
 
-        // Then paint and add to the region list the nodes which form the innerBoundaries, as
-        // well as each inner polygon.
+        // Then paint and add to the region list the nodes which form the innerBoundaries
         int sizeOffset = outerRing.size();
         m_innerBoundariesList.clear();
 
-        foreach ( const GeoDataLinearRing ring, innerRings ) {
+        foreach ( const GeoDataLinearRing &ring, innerRings ) {
             for ( int i = 0; i < ring.size(); ++i ) {
-                QRegion newRegion = painter->regionFromEllipse( ring.at(i), 20, 20 );
+                QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
 
                 if ( !m_selectedNodes.contains( i + sizeOffset ) ) {
                     painter->setBrush( Oxygen::aluminumGray3 );
@@ -147,12 +146,15 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     QList<QRegion> regionList = regions();
     qreal lon, lat;
-    // There is no need to check whether the coordinates are on the globe because
-    // this is already checked by the caller function (AnnotatePlugin::eventFilter).
-    m_viewport->geoCoordinates( event->pos().x(),
-                                event->pos().y(),
-                                lon, lat,
-                                GeoDataCoordinates::Radian );
+
+    bool isOnGlobe = m_viewport->geoCoordinates( event->pos().x(),
+                                                 event->pos().y(),
+                                                 lon, lat,
+                                                 GeoDataCoordinates::Radian );
+    if ( !isOnGlobe ) {
+        return false;
+    }
+
     GeoDataCoordinates const coords( lon, lat );
 
     // This means one of the nodes has been clicked. The clicked node can be on the outer
@@ -169,11 +171,11 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                 QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
                 for ( int i = 0; i < innerRings.size(); ++i ) {
-                    if ( newIndex - innerRings.at(i).size() < 0 ) {
-                        innerRings[i].at(newIndex) = coords;
+                    if ( newIndex - innerRings[i].size() < 0 ) {
+                        innerRings[i][newIndex] = coords;
                         break;
                     } else {
-                        newIndex -= innerRings.at(i).size();
+                        newIndex -= innerRings[i].size();
                     }
                 }
             } else {
@@ -188,31 +190,39 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     // This means the interior of the polygon has been clicked (excepting its "holes" - its
     // inner boundaries) and here we handle the move of the entire polygon.
     Q_ASSERT( m_movedNodeIndex == regionList.size() - 1 );
-    qreal bearing = coords.bearing( m_movedPointCoords );
+    qreal bearing = m_movedPointCoords.bearing( coords );
     qreal distance = distanceSphere( coords, m_movedPointCoords );
 
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
 
         GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-        GeoDataLinearRing outerRing( poly->outerBoundary() );
-        QVector<GeoDataLinearRing> innerRings( poly->innerBoundaries() );
+        GeoDataLinearRing outerRing = poly->outerBoundary();
+        QVector<GeoDataLinearRing> innerRings = poly->innerBoundaries();
 
         poly->outerBoundary().clear();
         poly->innerBoundaries().clear();
 
         for ( int i = 0; i < outerRing.size(); ++i ) {
-            qreal newLon = outerRing.at(i).longitude() - distance * sin( bearing );
-            qreal newLat = outerRing.at(i).latitude() - distance * cos( bearing );
+            qreal newLat = asin( sin(outerRing.at(i).latitude()) * cos(distance) +
+                                 cos(outerRing.at(i).latitude()) * sin(distance) * cos(bearing) );
+
+            qreal newLon = outerRing.at(i).longitude() +
+                           atan2( sin(bearing) * sin(distance) * cos(outerRing.at(i).latitude()),
+                                  cos(distance) - sin(outerRing.at(i).latitude()) * sin(newLat) );
 
             GeoDataCoordinates::normalizeLonLat( newLon, newLat );
             poly->outerBoundary().append( GeoDataCoordinates( newLon, newLat ) );
         }
 
-        foreach ( GeoDataLinearRing ring, innerRings ) {
+        foreach ( const GeoDataLinearRing &ring, innerRings ) {
             GeoDataLinearRing newRing;
             for ( int i = 0; i < ring.size(); ++i ) {
-                qreal newLon = ring.at(i).longitude() - distance * sin( bearing );
-                qreal newLat = ring.at(i).latitude() - distance * cos( bearing );
+                qreal newLat = asin( sin(ring.at(i).latitude()) * cos(distance) +
+                                     cos(ring.at(i).latitude()) * sin(distance) * cos(bearing) );
+
+                qreal newLon = ring.at(i).longitude() +
+                               atan2( sin(bearing) * sin(distance) * cos(ring.at(i).latitude()),
+                                      cos(distance) - sin(ring.at(i).latitude()) * sin(newLat) );
 
                 GeoDataCoordinates::normalizeLonLat( newLon, newLat );
                 newRing.append( GeoDataCoordinates( newLon, newLat ) );
@@ -288,22 +298,21 @@ int AreaAnnotation::rightClickedNode() const
 
 bool AreaAnnotation::isInnerBoundsPoint( QPoint point ) const
 {
-    for ( int i = 0; i < m_innerBoundariesList.size(); ++i ) {
-        if ( m_innerBoundariesList.at(i).contains( point ) ) {
+    foreach ( const QRegion &innerRegion, m_innerBoundariesList ) {
+        if ( innerRegion.contains( point ) )
             return true;
-        }
     }
 
     return false;
 }
 
-bool AreaAnnotation::isValidPolygon() const
+bool AreaAnnotation::isValidPolygon()
 {
     const GeoDataPolygon *poly = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
 
-    for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
-        for ( int j = 0; j < poly->innerBoundaries()[i].size(); ++j ) {
-            if ( !poly->outerBoundary().contains( poly->innerBoundaries()[i][j] ) ) {
+    foreach ( const GeoDataLinearRing &innerRing, poly->innerBoundaries() ) {
+        for ( int i = 0; i < innerRing.size(); ++i ) {
+            if ( !poly->outerBoundary().contains( innerRing[i] ) ) {
                 return false;
             }
         }

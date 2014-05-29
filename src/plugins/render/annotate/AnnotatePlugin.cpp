@@ -252,7 +252,8 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
 
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
-    if ( !enabled && m_holedPolygon->innerBoundaries().last().size() <= 2 ) {
+    if ( !enabled && m_holedPolygon &&
+         m_holedPolygon->innerBoundaries().last().size() <= 2 ) {
         m_holedPolygon->innerBoundaries().last().clear();
     }
 
@@ -608,7 +609,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                     poly->innerBoundaries().append( GeoDataLinearRing() );
                 } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
                     // Ignore clicks on other polygons if the polygon has already been initialized or
-                    // if the clicked position is contained in one of the polygon's holes.
+                    // if the even position is contained by one of the polygon's holes.
                     break;
                 }
 
@@ -616,9 +617,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 return true;
 
             // We call sceneEvent only if event type is other than MouseEvent. That is because we however
-            // deal with the mouse move event outside this loop as well as due to the fact that here the
-            // event is caught only on the surface of the graphic item whilst outside (see above) it is
-            // caught on every mouse move caught by the marble widget and is applied to the selected item.
+            // deal with the mouse move event outside this loop and it never got here.
             } else if ( mouseEvent->type() != QEvent::MouseMove && item->sceneEvent( mouseEvent ) ) {
                 if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
                     m_selectedItem = item;
@@ -1026,8 +1025,8 @@ void AnnotatePlugin::deleteSelectedNodes()
         poly->outerBoundary() = outerBound;
 
         QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted"),
-                              QString( "Cannot delete the selected nodes!" ) );
+                              QString( "Operation not permitted" ),
+                              QString( "Cannot delete the selected nodes" ) );
     } else {
         selectedNodes.clear();
     }

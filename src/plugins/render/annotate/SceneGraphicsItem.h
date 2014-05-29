@@ -65,8 +65,8 @@ public:
 
     /**
      * @brief It is used for downcasting a SceneGraphicItem. It returns a const char
-     * which is the name of the element's class and is defined within the SceneGraphicTypes
-     * namespace.
+     * which is the name of the element's class and is defined within the
+     * SceneGraphicsTypes namespace.
      */
     virtual const char *graphicType() const = 0;
 
