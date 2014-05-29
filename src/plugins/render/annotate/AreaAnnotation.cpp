@@ -20,8 +20,6 @@
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
 
-#include <QDebug>
-
 
 namespace Marble
 {
@@ -168,11 +166,11 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                 QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
                 for ( int i = 0; i < innerRings.size(); ++i ) {
-                    if ( newIndex - innerRings[i].size() < 0 ) {
-                        innerRings[i][newIndex] = coords;
+                    if ( newIndex - innerRings.at(i).size() < 0 ) {
+                        innerRings[i].at(newIndex) = coords;
                         break;
                     } else {
-                        newIndex -= innerRings[i].size();
+                        newIndex -= innerRings.at(i).size();
                     }
                 }
             } else {
@@ -260,7 +258,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return true;
     }
 
-    // Only loop untill size - 1 because we only want to mark nodes
+    // Only loop until size - 1 because we only want to mark nodes
     // as selected, and not the entire polygon.
     for ( int i = 0; i < regionList.size() - 1; ++i ) {
         if ( regionList.at(i).contains( event->pos()) ) {
@@ -293,7 +291,7 @@ int AreaAnnotation::rightClickedNode() const
     return m_rightClickedNode;
 }
 
-bool AreaAnnotation::isInnerBoundsPoint( QPoint point ) const
+bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point ) const
 {
     foreach ( const QRegion &innerRegion, m_innerBoundariesList ) {
         if ( innerRegion.contains( point ) )
@@ -309,8 +307,7 @@ bool AreaAnnotation::isValidPolygon() const
 
     foreach ( const GeoDataLinearRing &innerRing, poly->innerBoundaries() ) {
         for ( int i = 0; i < innerRing.size(); ++i ) {
-            if ( !poly->outerBoundary().contains( innerRing[i] ) ) {
-                qDebug() << "Debug: " << innerRing[i].latitude() << ", " << innerRing[i].longitude() << "\n";
+            if ( !poly->outerBoundary().contains( innerRing.at(i) ) ) {
                 return false;
             }
         }

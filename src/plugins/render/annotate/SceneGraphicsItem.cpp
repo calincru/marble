@@ -38,7 +38,12 @@ void SceneGraphicsItem::setRegions( const QList<QRegion> &regions )
     m_regions = regions;
 }
 
-GeoDataPlacemark *SceneGraphicsItem::placemark() const
+const GeoDataPlacemark *SceneGraphicsItem::placemark() const
+{
+    return m_placemark;
+}
+
+GeoDataPlacemark *SceneGraphicsItem::placemark()
 {
     return m_placemark;
 }

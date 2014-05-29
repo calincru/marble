@@ -257,6 +257,7 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
     if ( !enabled && m_holedPolygon &&
+         m_holedPolygon->innerBoundaries().isEmpty() &&
          m_holedPolygon->innerBoundaries().last().size() <= 2 ) {
         m_holedPolygon->innerBoundaries().last().clear();
     }
@@ -482,7 +483,6 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                                                      mouseEvent->pos().y(),
                                                      lon, lat,
                                                      GeoDataCoordinates::Radian );
-
     if ( !isOnGlobe ) {
         if ( m_selectedItem ) {
             m_selectedItem = 0;
@@ -493,7 +493,6 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 
     // On Globe coordinates.
     GeoDataCoordinates const coords( lon, lat );
-    qDebug() << lon << ", " << lat << "\n";
 
     // Deal with adding a placemark.
     if ( mouseEvent->button() == Qt::LeftButton && m_addingPlacemark ) {
@@ -813,8 +812,8 @@ void AnnotatePlugin::setupOverlayRmbMenu()
 
 void AnnotatePlugin::setupPolygonRmbMenu()
 {
-    QAction *unselectNodes = new QAction( tr( "Unselect all nodes" ), m_polygonRmbMenu );
-    QAction *deleteAllSelected = new QAction( tr( "Delete all selected nodes" ), m_polygonRmbMenu );
+    QAction *unselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
+    QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
     QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
 
     m_polygonRmbMenu->addAction( unselectNodes );
@@ -851,6 +850,13 @@ void AnnotatePlugin::showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x,
 void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y )
 {
     m_rmbSelectedArea = selectedArea;
+
+    if ( selectedArea->selectedNodes().isEmpty() ) {
+        m_polygonRmbMenu->actions().at(1)->setEnabled( false );
+    } else {
+        m_polygonRmbMenu->actions().at(1)->setEnabled( true );
+    }
+
     m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
@@ -859,7 +865,7 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
     // Check whether the node is already selected; we change the text of the
     // action accordingly.
     if ( area->selectedNodes().contains( area->rightClickedNode() ) ) {
-        m_nodeRmbMenu->actions().at(0)->setText( tr("Unselect Node") );
+        m_nodeRmbMenu->actions().at(0)->setText( tr("Deselect Node") );
     } else {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
     }
@@ -972,7 +978,7 @@ void AnnotatePlugin::deleteSelectedNodes()
     // QVector::remove works.
     // Sorting and iterating backwards is, therefore, faster than iterating through the list and at
     // each iteration, iterate one more time through the list in order to decrement the above
-    // mentioned nodes (O(N * logN) > O(N ^ 2) in terms of complexity).
+    // mentioned nodes (O(N * logN) < O(N ^ 2) in terms of complexity).
     qSort( selectedNodes.begin(), selectedNodes.end() );
 
     QListIterator<int> it( selectedNodes );
@@ -989,18 +995,18 @@ void AnnotatePlugin::deleteSelectedNodes()
 
         nodeIndex -= poly->outerBoundary().size();
         for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
-            if ( nodeIndex - poly->innerBoundaries()[i].size() < 0 ) {
+            if ( nodeIndex - poly->innerBoundaries().at(i).size() < 0 ) {
                 poly->innerBoundaries()[i].remove( nodeIndex );
                 break;
             } else {
-                nodeIndex -= poly->innerBoundaries()[i].size();
+                nodeIndex -= poly->innerBoundaries().at(i).size();
             }
         }
     }
     // If one of the polygon's inner boundaries has 0, 1 or 2 nodes remained after
     // removing the selected ones, remove this entire inner boundary.
     for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
-        if ( poly->innerBoundaries()[i].size() <= 2 ) {
+        if ( poly->innerBoundaries().at(i).size() <= 2 ) {
             poly->innerBoundaries()[i].clear();
         }
     }
@@ -1062,7 +1068,7 @@ void AnnotatePlugin::deleteNode()
             // inner boundary.
             if ( index - innerRings.at(i).size() < 0 ) {
                 innerRings[i].remove( index );
-                if ( innerRings[i].size() <= 2 ) {
+                if ( innerRings.at(i).size() <= 2 ) {
                     innerRings[i].clear();
                 }
 

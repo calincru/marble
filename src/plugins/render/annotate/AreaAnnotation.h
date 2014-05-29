@@ -41,7 +41,7 @@ public:
      * @brief Checks whether the point parameter is contained by one of its inner
      * boundaries.
      */
-    bool isInnerBoundsPoint( QPoint point ) const;
+    bool isInnerBoundsPoint( const QPoint &point ) const;
 
     /**
      * @brief Checks if the polygon has a valid shape; an invalid shape would be, for
