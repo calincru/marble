@@ -53,7 +53,7 @@ public:
      * element.
      * @return The pointer to the placemark mentioned above.
      */
-    GeoDataPlacemark *placemark();
+    GeoDataPlacemark *placemark() const;
 
     /**
      * @brief This function is used to call the event distributer and makes use of

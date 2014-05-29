@@ -26,11 +26,29 @@ public:
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
+    /**
+     * @brief Returns the list of selected node indexes.
+     */
     QList<int> &selectedNodes();
 
+    /**
+     * @brief Returns the node index on which the mouse press event (with the right
+     * button) has been caught.
+     */
     int rightClickedNode() const;
 
+    /**
+     * @brief Checks whether the point parameter is contained by one of its inner
+     * boundaries.
+     */
     bool isInnerBoundsPoint( QPoint point ) const;
+
+    /**
+     * @brief Checks if the polygon has a valid shape; an invalid shape would be, for
+     * example, if one of its inner boundaries ring is intersected by its outer
+     * boundary ring.
+     */
+    bool isValidPolygon() const;
 
     virtual const char *graphicType() const;
 
@@ -38,9 +56,9 @@ private:
     QList<QRegion>     m_innerBoundariesList;
 
     int                m_movedNodeIndex;
-    GeoDataCoordinates m_movedPointCoords;
-    QList<int>         m_selectedNodes;
     int                m_rightClickedNode;
+    QList<int>         m_selectedNodes;
+    GeoDataCoordinates m_movedPointCoords;
 
     const ViewportParams *m_viewport;
 

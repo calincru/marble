@@ -45,6 +45,7 @@
 #include <QNetworkRequest>
 #include <QMessageBox>
 #include <QtAlgorithms>
+#include <QMessageBox>
 
 
 namespace Marble
@@ -849,6 +850,8 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 
 void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 {
+    // Check whether the node is already selected; we change the text of the
+    // action accordingly.
     if ( area->selectedNodes().contains( area->rightClickedNode() ) ) {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Unselect Node") );
     } else {
@@ -861,7 +864,6 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 
 void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
 {
-
     EditGroundOverlayDialog *dialog = new EditGroundOverlayDialog( overlay, m_marbleWidget->textureLayer() );
 
     connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)),
@@ -953,10 +955,60 @@ void AnnotatePlugin::deleteSelectedNodes()
     }
 
     GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
+    // Copy the current polygon's inner boundaries and outer boundary, to be able to recover them
+    // if the deletion fails (the polygon becomes invalid after deleting the selected nodes).
+    QVector<GeoDataLinearRing> innerBounds = poly->innerBoundaries();
+    GeoDataLinearRing outerBound = poly->outerBoundary();
+
+    // Sorting and iterating through the list of selected nodes backwards is important because when
+    // caling {outerBoundary,innerBoundary[i]}.remove, the indexes of the selected nodes bigger than
+    // the removed one's (in one step of the iteration) should be all decremented due to the way
+    // QVector::remove works.
+    // Sorting and iterating backwards is, therefore, faster than iterating through the list and at
+    // each iteration, iterate one more time through the list in order to decrement the above
+    // mentioned nodes (O(N * logN) > O(N ^ 2) in terms of complexity).
+    qSort( selectedNodes.begin(), selectedNodes.end() );
+
+    QListIterator<int> it( selectedNodes );
+    it.toBack();
+
+    // Deal with removing the selected nodes from the polygon's inner boundaries.
+    while ( it.hasPrevious() ) {
+        int nodeIndex = it.previous();
+
+        if ( nodeIndex < poly->outerBoundary().size() ) {
+            it.next();
+            break;
+        }
+
+        nodeIndex -= poly->outerBoundary().size();
+        for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
+            if ( nodeIndex - poly->innerBoundaries()[i].size() < 0 ) {
+                poly->innerBoundaries()[i].remove( nodeIndex );
+                break;
+            } else {
+                nodeIndex -= poly->innerBoundaries()[i].size();
+            }
+        }
+    }
+    // If one of the polygon's inner boundaries has 0, 1 or 2 nodes remained after
+    // removing the selected ones, remove this entire inner boundary.
+    for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
+        if ( poly->innerBoundaries()[i].size() <= 2 ) {
+            poly->innerBoundaries()[i].clear();
+        }
+    }
+
+
+
+    // Deal with removing the selected nodes from the polygon's outer boundaries.
+    while ( it.hasPrevious() ) {
+        poly->outerBoundary().remove( it.previous() );
+    }
 
     // If the number of nodes remained after deleting the selected ones is 0, 1 or 2, we remove the
     // entire polygon.
-    if ( poly->outerBoundary().size() - selectedNodes.size() < 3 ) {
+    if ( poly->outerBoundary().size() <= 2 ) {
         selectedNodes.clear();
 
         m_graphicsItems.removeAll( m_rmbSelectedArea );
@@ -967,43 +1019,83 @@ void AnnotatePlugin::deleteSelectedNodes()
         return;
     }
 
-    // Sorting and iterating through the list of selected nodes backwards is important because when
-    // caling outerBoundary.remove, the indexes of the selected nodes bigger than the removed one's
-    // (in one step of the iteration) should be all decremented due to the way QVector::remove works.
-    // Sorting and iterating backwards is, therefore, faster than iterating through the list and at
-    // each iteration, iterate one more time through the list in order to decrement the above
-    // mentioned nodes (O(N * logN) > O(N ^ 2) in terms of complexity).
-    qSort( selectedNodes.begin(), selectedNodes.end() );
+    // If the polygon is no longer valid (e.g. its outer boundary ring itersects one of its inner
+    // boundaries ring), recover it to the last valid shape and popup a warning.
+    if ( !m_rmbSelectedArea->isValidPolygon() ) {
+        poly->innerBoundaries() = innerBounds;
+        poly->outerBoundary() = outerBound;
 
-    QListIterator<int> it( selectedNodes );
-    it.toBack();
-
-    while ( it.hasPrevious() ) {
-        poly->outerBoundary().remove( it.previous() );
+        QMessageBox::warning( m_marbleWidget,
+                              QString( "Operation not permitted"),
+                              QString( "Cannot delete the selected nodes!" ) );
+    } else {
+        selectedNodes.clear();
     }
-
-    selectedNodes.clear();
 }
 
 void AnnotatePlugin::deleteNode()
 {
     GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
-    poly->outerBoundary().remove( m_rmbSelectedArea->rightClickedNode() );
 
-    // If the node is selected, remove it from the selected list of nodes as well.
-    m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
+    // Copy the current polygon's inner boundaries and outer boundary, to be able to recover them
+    // if the deletion fails (the polygon becomes invalid after deleting the selected nodes).
+    QVector<GeoDataLinearRing> innerBounds = poly->innerBoundaries();
+    GeoDataLinearRing outerBound = poly->outerBoundary();
 
-    // If the polygon has only 2 nodes, we remove it all.
-    if ( m_rmbSelectedArea->regions().size() <= 4 ) {
-        m_rmbSelectedArea->selectedNodes().clear();
+    int index = m_rmbSelectedArea->rightClickedNode();
 
-        m_graphicsItems.removeAll( m_rmbSelectedArea );
-        m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
-        delete m_rmbSelectedArea->feature();
-        delete m_rmbSelectedArea;
+    // If the right clicked node is one of those nodes which form one of the inner boundaries
+    // of the polygon.
+    if ( index - poly->outerBoundary().size() >= 0 ) {
+        QVector<GeoDataLinearRing> &innerRings = poly->innerBoundaries();
+
+        index -= poly->outerBoundary().size();
+        for ( int i = 0; i < innerRings.size(); ++i ) {
+            // If we've found the inner boundary it is a part of, we remove it; also, if the
+            // linear ring has only 2 nodes remained after deletion, we remove the entire
+            // inner boundary.
+            if ( index - innerRings.at(i).size() < 0 ) {
+                innerRings[i].remove( index );
+                if ( innerRings[i].size() <= 2 ) {
+                    innerRings[i].clear();
+                }
+
+                break;
+            } else {
+                index -= innerRings.at(i).size();
+            }
+        }
+    } else {
+        poly->outerBoundary().remove( index );
+
+        // If the polygon has only 2 nodes, we remove it all.
+        if ( poly->outerBoundary().size() <= 2 ) {
+             m_rmbSelectedArea->selectedNodes().clear();
+
+            m_graphicsItems.removeAll( m_rmbSelectedArea );
+            m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
+            delete m_rmbSelectedArea->feature();
+            delete m_rmbSelectedArea;
+
+            return;
+        }
+    }
+
+    // If the polygon is no longer valid (e.g. its outer boundary ring itersects one of its inner
+    // boundaries ring), recover it to the last valid shape and popup a warning.
+    if ( !m_rmbSelectedArea->isValidPolygon() ) {
+        poly->innerBoundaries() = innerBounds;
+        poly->outerBoundary() = outerBound;
+
+        QMessageBox::warning( m_marbleWidget,
+                              QString( "Operation not permitted"),
+                              QString( "Cannot delete the selected node" ) );
 
         return;
     }
+
+    // If the node is selected, remove it from the selected list of nodes as well.
+    m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
 
     QList<int>::iterator itBegin = m_rmbSelectedArea->selectedNodes().begin();
     QList<int>::const_iterator itEnd = m_rmbSelectedArea->selectedNodes().constEnd();

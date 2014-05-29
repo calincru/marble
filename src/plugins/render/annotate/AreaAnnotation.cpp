@@ -297,6 +297,21 @@ bool AreaAnnotation::isInnerBoundsPoint( QPoint point ) const
     return false;
 }
 
+bool AreaAnnotation::isValidPolygon() const
+{
+    const GeoDataPolygon *poly = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
+
+    for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
+        for ( int j = 0; j < poly->innerBoundaries()[i].size(); ++j ) {
+            if ( !poly->outerBoundary().contains( poly->innerBoundaries()[i][j] ) ) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 const char *AreaAnnotation::graphicType() const
 {
     return SceneGraphicTypes::SceneGraphicAreaAnnotation;
