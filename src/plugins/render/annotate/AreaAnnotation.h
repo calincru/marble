@@ -48,7 +48,7 @@ public:
      * example, if one of its inner boundaries ring is intersected by its outer
      * boundary ring.
      */
-    bool isValidPolygon();
+    bool isValidPolygon() const;
 
     virtual const char *graphicType() const;
 

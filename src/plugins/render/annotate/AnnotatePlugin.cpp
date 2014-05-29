@@ -230,7 +230,11 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
     m_drawingPolygon = enabled;
     if ( enabled ) {
         m_polygonPlacemark = new GeoDataPlacemark;
-        m_polygonPlacemark->setGeometry( new GeoDataPolygon( Tessellate ) );
+
+        GeoDataPolygon *polygon = new GeoDataPolygon( Tessellate );
+        polygon->outerBoundary().setTessellate( true );
+        m_polygonPlacemark->setGeometry( polygon );
+
         m_polygonPlacemark->setParent( m_annotationDocument );
         m_polygonPlacemark->setStyleUrl( "#polygon" );
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
@@ -489,7 +493,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 
     // On Globe coordinates.
     GeoDataCoordinates const coords( lon, lat );
-
+    qDebug() << lon << ", " << lat << "\n";
 
     // Deal with adding a placemark.
     if ( mouseEvent->button() == Qt::LeftButton && m_addingPlacemark ) {
@@ -606,7 +610,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 // a hole of the polygon, we initialize the polygon on which we want to draw a hole.
                 if ( !m_holedPolygon && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
                     m_holedPolygon = poly;
-                    poly->innerBoundaries().append( GeoDataLinearRing() );
+                    poly->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
                 } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
                     // Ignore clicks on other polygons if the polygon has already been initialized or
                     // if the even position is contained by one of the polygon's holes.
@@ -614,6 +618,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 }
 
                 m_holedPolygon->innerBoundaries().last().append( coords );
+                m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
                 return true;
 
             // We call sceneEvent only if event type is other than MouseEvent. That is because we however
@@ -649,6 +654,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                         break;
                     }
 
+
+                    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
                     return true;
                 }
             }

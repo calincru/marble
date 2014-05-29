@@ -147,13 +147,10 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     QList<QRegion> regionList = regions();
     qreal lon, lat;
 
-    bool isOnGlobe = m_viewport->geoCoordinates( event->pos().x(),
-                                                 event->pos().y(),
-                                                 lon, lat,
-                                                 GeoDataCoordinates::Radian );
-    if ( !isOnGlobe ) {
-        return false;
-    }
+    m_viewport->geoCoordinates( event->pos().x(),
+                                event->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
 
     GeoDataCoordinates const coords( lon, lat );
 
@@ -215,7 +212,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         }
 
         foreach ( const GeoDataLinearRing &ring, innerRings ) {
-            GeoDataLinearRing newRing;
+            GeoDataLinearRing newRing( Tessellate );
             for ( int i = 0; i < ring.size(); ++i ) {
                 qreal newLat = asin( sin(ring.at(i).latitude()) * cos(distance) +
                                      cos(ring.at(i).latitude()) * sin(distance) * cos(bearing) );
@@ -306,13 +303,14 @@ bool AreaAnnotation::isInnerBoundsPoint( QPoint point ) const
     return false;
 }
 
-bool AreaAnnotation::isValidPolygon()
+bool AreaAnnotation::isValidPolygon() const
 {
     const GeoDataPolygon *poly = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
 
     foreach ( const GeoDataLinearRing &innerRing, poly->innerBoundaries() ) {
         for ( int i = 0; i < innerRing.size(); ++i ) {
             if ( !poly->outerBoundary().contains( innerRing[i] ) ) {
+                qDebug() << "Debug: " << innerRing[i].latitude() << ", " << innerRing[i].longitude() << "\n";
                 return false;
             }
         }
