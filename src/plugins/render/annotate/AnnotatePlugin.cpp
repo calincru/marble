@@ -257,7 +257,7 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
     if ( !enabled && m_holedPolygon &&
-         m_holedPolygon->innerBoundaries().isEmpty() &&
+         !m_holedPolygon->innerBoundaries().isEmpty() &&
          m_holedPolygon->innerBoundaries().last().size() <= 2 ) {
         m_holedPolygon->innerBoundaries().last().clear();
     }
@@ -853,8 +853,10 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 
     if ( selectedArea->selectedNodes().isEmpty() ) {
         m_polygonRmbMenu->actions().at(1)->setEnabled( false );
+        m_polygonRmbMenu->actions().at(0)->setEnabled( false );
     } else {
         m_polygonRmbMenu->actions().at(1)->setEnabled( true );
+        m_polygonRmbMenu->actions().at(0)->setEnabled( true );
     }
 
     m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );

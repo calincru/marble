@@ -198,29 +198,29 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         poly->innerBoundaries().clear();
 
         for ( int i = 0; i < outerRing.size(); ++i ) {
-            qreal newLat = asin( sin(outerRing.at(i).latitude()) * cos(distance) +
-                                 cos(outerRing.at(i).latitude()) * sin(distance) * cos(bearing) );
+            GeoDataCoordinates movedPoint = outerRing.at(i).moveByBearing( bearing, distance );
+            qreal lon = movedPoint.longitude();
+            qreal lat = movedPoint.latitude();
 
-            qreal newLon = outerRing.at(i).longitude() +
-                           atan2( sin(bearing) * sin(distance) * cos(outerRing.at(i).latitude()),
-                                  cos(distance) - sin(outerRing.at(i).latitude()) * sin(newLat) );
+            GeoDataCoordinates::normalizeLonLat( lon, lat );
+            movedPoint.setLongitude( lon );
+            movedPoint.setLatitude( lat );
 
-            GeoDataCoordinates::normalizeLonLat( newLon, newLat );
-            poly->outerBoundary().append( GeoDataCoordinates( newLon, newLat ) );
+            poly->outerBoundary().append( movedPoint );
         }
 
         foreach ( const GeoDataLinearRing &ring, innerRings ) {
             GeoDataLinearRing newRing( Tessellate );
             for ( int i = 0; i < ring.size(); ++i ) {
-                qreal newLat = asin( sin(ring.at(i).latitude()) * cos(distance) +
-                                     cos(ring.at(i).latitude()) * sin(distance) * cos(bearing) );
+                GeoDataCoordinates movedPoint = ring.at(i).moveByBearing( bearing, distance );
+                qreal lon = movedPoint.longitude();
+                qreal lat = movedPoint.latitude();
 
-                qreal newLon = ring.at(i).longitude() +
-                               atan2( sin(bearing) * sin(distance) * cos(ring.at(i).latitude()),
-                                      cos(distance) - sin(ring.at(i).latitude()) * sin(newLat) );
+                GeoDataCoordinates::normalizeLonLat( lon, lat );
+                movedPoint.setLongitude( lon );
+                movedPoint.setLatitude( lat );
 
-                GeoDataCoordinates::normalizeLonLat( newLon, newLat );
-                newRing.append( GeoDataCoordinates( newLon, newLat ) );
+                newRing.append( movedPoint );
             }
             poly->innerBoundaries().append( newRing );
         }
@@ -245,16 +245,13 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     m_movedNodeIndex = -1;
     m_rightClickedNode = -2;
 
-    qreal lon, lat;
-    m_viewport->geoCoordinates( event->pos().x(),
-                                event->pos().y(),
-                                lon, lat,
-                                GeoDataCoordinates::Radian );
+    qreal x, y;
+    m_viewport->screenCoordinates( m_movedPointCoords.longitude(), m_movedPointCoords.latitude(), x, y );
 
     // The node gets selected only if it is clicked and not moved.
     // Is this value ok in order to avoid this?
-    if ( qFabs(lon - m_movedPointCoords.longitude()) > 0.001 ||
-         qFabs(lat - m_movedPointCoords.latitude()) > 0.001 ) {
+    if ( qFabs(event->pos().x() - x) > 1 ||
+         qFabs(event->pos().y() - y) > 1 ) {
         return true;
     }
 
