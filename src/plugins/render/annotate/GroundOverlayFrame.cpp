@@ -16,7 +16,6 @@
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 
-#include <QDebug>
 
 namespace Marble
 {
