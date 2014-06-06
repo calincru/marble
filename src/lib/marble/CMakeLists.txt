@@ -68,10 +68,15 @@ endif (QTONLY)
 # link_directories (${QT_LIBRARY_DIR})
 ########### next target ###############
 
+if( NOT QT4_FOUND )
+    set(marblequick_SRCS MarbleQuickItem.cpp)
+endif()
+
 set(marblewidget_SRCS
     ${geodata_SRCS}
     ${graphicsview_SRCS}
     ${layers_SRCS}
+    ${marblequick_SRCS}
     blendings/Blending.cpp
     blendings/BlendingAlgorithms.cpp
     blendings/BlendingFactory.cpp
@@ -80,6 +85,7 @@ set(marblewidget_SRCS
     DownloadRegionDialog.cpp
     LatLonBoxWidget.cpp
     MarbleWidget.cpp
+    MarbleAbstractPresenter.cpp
     MarbleWebView.cpp
     MarbleModel.cpp
     MarbleMap.cpp
@@ -94,6 +100,7 @@ set(marblewidget_SRCS
     MarbleNavigator.cpp
     MarbleLegendBrowser.cpp
     MarbleAboutDialog.cpp
+    MarbleInputHandler.cpp
     MarbleWidgetInputHandler.cpp
     MarbleWidgetPopupMenu.cpp
     MarblePlacemarkModel.cpp
@@ -389,8 +396,13 @@ endif(WIN32 AND QTONLY)
 
 ########### install files ###############
 
+if( NOT QT4_FOUND )
+    set(marblequick_HDRS MarbleQuickItem.h)
+endif()
+
 install( FILES
     ${graphicsview_HDRS}
+    ${marblequick_HDRS}
     AutoNavigation.h
     BookmarkManager.h
     DownloadRegion.h
@@ -412,6 +424,7 @@ install( FILES
     AbstractFloatItem.h
     MapThemeManager.h
     MarbleAboutDialog.h
+    MarbleInputHandler.h
     MarbleWidgetInputHandler.h
     MarbleWidgetPopupMenu.h
     TileId.h

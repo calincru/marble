@@ -17,6 +17,7 @@
 #include "GeoDataTypes.h"
 #include "GeoDataFlyTo.h"
 #include "GeoDataWait.h"
+#include "GeoDataCamera.h"
 #include "GeoDataTourControl.h"
 #include "GeoDataSoundCue.h"
 #include "GeoWriter.h"
@@ -34,29 +35,17 @@
 #include <QStyledItemDelegate>
 #include <QAbstractTextDocumentLayout>
 #include <QPainter>
-
+#include <QListView>
+#include <QApplication>
+#include <QLabel>
+#include <QDoubleSpinBox>
+#include <QRadioButton>
+#include <QHBoxLayout>
+#include <QToolButton>
+#include <QLineEdit>
 
 namespace Marble
 {
-
-class TourItemDelegate : public QStyledItemDelegate
-{
-public:
-    TourItemDelegate();
-    void paint( QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const;
-    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const;
-
-    enum Element {
-        GeoDataElementIcon,
-        Label,
-        EditButton,
-        ActionButton
-    };
-
-private:
-
-    static QRect position(Element element, const QStyleOptionViewItem &option );
-};
 
 class TourWidgetPrivate
 {
@@ -94,13 +83,15 @@ public:
     Ui::TourWidget  m_tourUi;
     GeoDataTreeModel m_model;
     TourPlayback m_playback;
+    TourItemDelegate *m_delegate;
 };
 
 TourWidgetPrivate::TourWidgetPrivate( TourWidget *parent )
     : m_isChanged( false ),
       q( parent ),
       m_widget( 0 ),
-      m_playback( 0 )
+      m_playback( 0 ),
+      m_delegate( 0 )
 {
     m_tourUi.setupUi( parent );
     m_tourUi.m_listView->setModel( &m_model );
@@ -134,12 +125,13 @@ TourWidget::TourWidget( QWidget *parent, Qt::WindowFlags flags )
             this, SLOT(stopPlaying()));
 
     d->m_tourUi.m_toolBarPlayback->setDisabled(true);
-    d->m_tourUi.m_listView->setItemDelegate(new TourItemDelegate());
 }
 
-TourItemDelegate::TourItemDelegate()
+TourItemDelegate::TourItemDelegate( QListView* view, MarbleWidget* widget ):
+                    m_listView( view ), m_widget( widget )
 {
-    // nothing to do
+    QObject::connect( this, SIGNAL( editingChanged( QModelIndex ) ), m_listView, SLOT( update( QModelIndex ) ) );
+    m_listView->setEditTriggers( QAbstractItemView::NoEditTriggers );
 }
 
 void TourItemDelegate::paint( QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const
@@ -169,45 +161,72 @@ void TourItemDelegate::paint( QPainter *painter, const QStyleOptionViewItem &opt
     QRect const iconRect = position( GeoDataElementIcon, option );
 
     GeoDataObject *object = qvariant_cast<GeoDataObject*>(index.data( MarblePlacemarkModel::ObjectPointerRole ) );
-    if ( object->nodeType() == GeoDataTypes::GeoDataTourControlType ) {
+    if ( object->nodeType() == GeoDataTypes::GeoDataTourControlType && !m_editingIndices.contains( index ) ) {
         GeoDataTourControl *tourControl = static_cast<GeoDataTourControl*> ( object );
         GeoDataTourControl::PlayMode const playMode = tourControl->playMode();
 
         if ( playMode == GeoDataTourControl::Play ) {
-            label.setHtml( tr("Pause the tour") );
-        } else if ( playMode == GeoDataTourControl::Pause ) {
             label.setHtml( tr("Play the tour") );
+        } else if ( playMode == GeoDataTourControl::Pause ) {
+            label.setHtml( tr("Pause the tour") );
         }
-
+        painter->save();
+        painter->translate( labelRect.topLeft() );
+        painter->setClipRect( 0, 0, labelRect.width(), labelRect.height() );
+        label.documentLayout()->draw( painter, paintContext );
+        painter->restore();
         button.icon = QIcon( ":/marble/document-edit.png" );
+
         QRect const buttonRect = position( EditButton, option );;
         button.rect = buttonRect;
 
         QIcon const icon = QIcon( ":/marble/media-playback-pause.png" );
         painter->drawPixmap( iconRect, icon.pixmap( iconRect.size() ) );
-    } else if ( object->nodeType() == GeoDataTypes::GeoDataFlyToType ) {
+
+    } else if ( object->nodeType() == GeoDataTypes::GeoDataFlyToType && !m_editingIndices.contains( index ) ) {
         GeoDataCoordinates const flyToCoords = index.data( MarblePlacemarkModel::CoordinateRole ).value<GeoDataCoordinates>();
         label.setHtml( flyToCoords.toString() );
-
         button.icon = QIcon( ":/marble/document-edit.png" );
-        QRect const buttonRect = position( EditButton, option );;
+
+        painter->save();
+        painter->translate( labelRect.topLeft() );
+        painter->setClipRect( 0, 0, labelRect.width(), labelRect.height() );
+        label.documentLayout()->draw( painter, paintContext );
+        painter->restore();
+
+        QRect const buttonRect = position( EditButton, option );
         button.rect = buttonRect;
 
         QIcon const icon = QIcon( ":/marble/flag.png" );
         painter->drawPixmap( iconRect, icon.pixmap( iconRect.size() ) );
-    } else if ( object->nodeType() == GeoDataTypes::GeoDataWaitType ) {
+
+    } else if ( object->nodeType() == GeoDataTypes::GeoDataWaitType && !m_editingIndices.contains( index ) ) {
         GeoDataWait *wait = static_cast<GeoDataWait*> ( object );
-        label.setHtml( tr("Wait for %1 seconds").arg( QString::number(wait->duration()) ) );
+        label.setHtml( tr("Wait for %1 seconds").arg( QString::number( wait->duration() ) ) );
+
+        painter->save();
+        painter->translate( labelRect.topLeft() );
+        painter->setClipRect( 0, 0, labelRect.width(), labelRect.height() );
+        label.documentLayout()->draw( painter, paintContext );
+        painter->restore();
 
         button.icon = QIcon( ":/marble/document-edit.png" );
-        QRect const buttonRect = position( EditButton, option );;
+
+        QRect const buttonRect = position( EditButton, option );
         button.rect = buttonRect;
 
         QIcon const icon = QIcon( ":/marble/player-time.png" );
         painter->drawPixmap( iconRect, icon.pixmap( iconRect.size() ) );
-    } else if ( object->nodeType() == GeoDataTypes::GeoDataSoundCueType ) {
+
+    } else if ( object->nodeType() == GeoDataTypes::GeoDataSoundCueType && !m_editingIndices.contains( index ) ) {
         GeoDataSoundCue *soundCue = static_cast<GeoDataSoundCue*>( object );
         label.setHtml( soundCue->href().section("/", -1) );
+
+        painter->save();
+        painter->translate( labelRect.topLeft() );
+        painter->setClipRect( 0, 0, labelRect.width(), labelRect.height() );
+        label.documentLayout()->draw( painter, paintContext );
+        painter->restore();
 
         QStyleOptionButton playButton = button;
 
@@ -224,12 +243,6 @@ void TourItemDelegate::paint( QPainter *painter, const QStyleOptionViewItem &opt
         painter->drawPixmap( iconRect, icon.pixmap( iconRect.size() ) );
     }
     QApplication::style()->drawControl( QStyle::CE_PushButton, &button, painter );
-
-    painter->save();
-    painter->translate( labelRect.topLeft() );
-    painter->setClipRect( 0, 0, labelRect.width(), labelRect.height() );
-    label.documentLayout()->draw( painter, paintContext );
-    painter->restore();
 }
 
 QRect TourItemDelegate::position(Element element, const QStyleOptionViewItem &option )
@@ -255,11 +268,68 @@ QRect TourItemDelegate::position(Element element, const QStyleOptionViewItem &op
     return QRect();
 }
 
+
 QSize TourItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     Q_UNUSED( option );
     Q_UNUSED( index );
     return QSize(290,50);
+}
+
+QWidget* TourItemDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const
+{
+    Q_UNUSED( option );
+    GeoDataObject *object = qvariant_cast<GeoDataObject*>(index.data( MarblePlacemarkModel::ObjectPointerRole ) );
+    if ( object->nodeType() == GeoDataTypes::GeoDataFlyToType ) {
+        FlyToEditWidget* widget = new FlyToEditWidget(index, m_widget, parent);
+        connect(widget, SIGNAL(editingDone(QModelIndex)), this, SLOT(closeEditor(QModelIndex)));
+        return widget;
+
+    } else if ( object->nodeType() == GeoDataTypes::GeoDataTourControlType ) {
+        TourControlEditWidget* widget = new TourControlEditWidget(index, parent);
+        connect(widget, SIGNAL(editingDone(QModelIndex)), this, SLOT(closeEditor(QModelIndex)));
+        return widget;
+
+    } else if ( object->nodeType() == GeoDataTypes::GeoDataWaitType ) {
+        WaitEditWidget* widget = new WaitEditWidget(index, parent);
+        connect(widget, SIGNAL(editingDone(QModelIndex)), this, SLOT(closeEditor(QModelIndex)));
+        return widget;
+
+    } else if ( object->nodeType() == GeoDataTypes::GeoDataSoundCueType ) {
+        SoundCueEditWidget* widget = new SoundCueEditWidget(index, parent);
+        connect(widget, SIGNAL(editingDone(QModelIndex)), this, SLOT(closeEditor(QModelIndex)));
+        return widget;
+
+    }
+    return 0;
+}
+
+bool TourItemDelegate::editorEvent( QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index )
+{
+    Q_UNUSED( model );
+    if ( ( event->type() == QEvent::MouseButtonRelease ) ) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>( event );
+        QRect editRect = position( EditButton, option );
+        if ( editRect.contains( mouseEvent->pos() ) ) {
+            if( m_editingIndices.contains( index ) ) {
+                m_editingIndices.removeOne( index );
+                emit editingChanged( index );
+                return true;
+            }else{
+                m_editingIndices.append( index );
+                m_listView->openPersistentEditor( index );
+            }
+            emit editingChanged( index );
+            return true;
+        }
+    }
+    return false;
+}
+
+void TourItemDelegate::closeEditor( const QModelIndex &index )
+{
+    m_listView->closePersistentEditor( index );
+    m_editingIndices.removeOne( index );
 }
 
 TourWidget::~TourWidget()
@@ -278,6 +348,8 @@ void TourWidget::setMarbleWidget( MarbleWidget *widget )
     if (d->m_widget) {
         connect(&d->m_playback, SIGNAL(centerOn(GeoDataCoordinates)), d->m_widget, SLOT(centerOn(GeoDataCoordinates)));
     }
+    d->m_delegate = new TourItemDelegate( d->m_tourUi.m_listView, d->m_widget );
+    d->m_tourUi.m_listView->setItemDelegate( d->m_delegate );
 }
 
 void TourWidget::startPlaying()
@@ -648,6 +720,186 @@ bool TourWidgetPrivate::overrideModifications()
 bool TourWidget::openTour( const QString &filename)
 {
     return d->openFile( filename );
+}
+
+FlyToEditWidget::FlyToEditWidget( const QModelIndex &index, MarbleWidget* widget, QWidget *parent ) :
+    QWidget( parent ),
+    m_widget( widget ),
+    m_index( index )
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->setSpacing( 5 );
+
+    QLabel* iconLabel = new QLabel;
+    iconLabel->setPixmap( QPixmap( ":/marble/flag.png" ) );
+    layout->addWidget( iconLabel );
+
+    QLabel* flyToLabel = new QLabel;
+    flyToLabel->setText( tr( "Current map center" ) );
+    layout->addWidget( flyToLabel );
+
+    QToolButton *button = new QToolButton;
+    button->setIcon( QIcon( ":/marble/document-save.png" ) );
+    connect(button, SIGNAL(clicked()), this, SLOT(save()));
+    layout->addWidget( button );
+
+    setLayout( layout );
+}
+
+void FlyToEditWidget::save()
+{
+    if(flyToElement()->view()!=0){
+        GeoDataCoordinates coords = m_widget->focusPoint();
+        if ( flyToElement()->view()->nodeType() == GeoDataTypes::GeoDataCameraType ) {
+            GeoDataCamera* camera = dynamic_cast<GeoDataCamera*>( flyToElement()->view() );
+            camera->setCoordinates( coords );
+        }else if ( flyToElement()->view()->nodeType() == GeoDataTypes::GeoDataLookAtType ) {
+            GeoDataLookAt* lookAt = dynamic_cast<GeoDataLookAt*>( flyToElement()->view() );
+            lookAt->setCoordinates( coords );
+        }else{
+            GeoDataLookAt* lookAt = new GeoDataLookAt;
+            lookAt->setCoordinates( coords );
+            flyToElement()->setView( lookAt );
+        }
+    }
+    emit editingDone(m_index);
+}
+
+GeoDataFlyTo* FlyToEditWidget::flyToElement()
+{
+    GeoDataObject *object = qvariant_cast<GeoDataObject*>(m_index.data( MarblePlacemarkModel::ObjectPointerRole ) );
+    Q_ASSERT( object );
+    Q_ASSERT( object->nodeType() == GeoDataTypes::GeoDataFlyToType );
+    return static_cast<GeoDataFlyTo*>( object );
+}
+
+TourControlEditWidget::TourControlEditWidget( const QModelIndex &index, QWidget *parent ) :
+    QWidget( parent ),
+    m_index( index ),
+    m_radio_play( new QRadioButton ),
+    m_radio_pause( new QRadioButton )
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->setSpacing( 5 );
+
+    QLabel* iconLabel = new QLabel;
+    iconLabel->setPixmap( QPixmap( ":/marble/media-playback-pause.png" ) );
+    layout->addWidget( iconLabel );
+
+    layout->addWidget( m_radio_play );
+    m_radio_play->setText( tr( "Play" ) );
+
+    layout->addWidget( m_radio_pause );
+    m_radio_pause->setText( tr( "Pause" ) );
+
+    if( tourControlElement()->playMode() == GeoDataTourControl::Play ){
+        m_radio_play->setChecked( true );
+    }else{
+        m_radio_pause->setChecked( true );
+    }
+
+    QToolButton *button = new QToolButton;
+    button->setIcon( QIcon( ":/marble/document-save.png" ) );
+    connect(button, SIGNAL(clicked()), this, SLOT(save()));
+    layout->addWidget( button );
+
+    setLayout( layout );
+}
+
+void TourControlEditWidget::save()
+{
+    if( m_radio_play->isChecked() ){
+        tourControlElement()->setPlayMode( GeoDataTourControl::Play );
+    }else{
+        tourControlElement()->setPlayMode( GeoDataTourControl::Pause );
+    }
+    emit editingDone(m_index);
+}
+
+GeoDataTourControl* TourControlEditWidget::tourControlElement()
+{
+    GeoDataObject *object = qvariant_cast<GeoDataObject*>(m_index.data( MarblePlacemarkModel::ObjectPointerRole ) );
+    Q_ASSERT( object );
+    Q_ASSERT( object->nodeType() == GeoDataTypes::GeoDataTourControlType );
+    return static_cast<GeoDataTourControl*>( object );
+}
+
+WaitEditWidget::WaitEditWidget( const QModelIndex &index, QWidget *parent ) :
+    QWidget( parent ),
+    m_index( index ),
+    m_spinBox( new QDoubleSpinBox )
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->setSpacing( 5 );
+
+    QLabel* iconLabel = new QLabel;
+    iconLabel->setPixmap( QPixmap( ":/marble/audio-x-generic.png" ) );
+    layout->addWidget( iconLabel );
+
+    QLabel *waitLabel = new QLabel;
+    waitLabel->setText( tr( "Wait duration:" ) );
+    layout->addWidget( waitLabel );
+
+    layout->addWidget( m_spinBox );
+    m_spinBox->setValue( waitElement()->duration() );
+
+    QToolButton *button = new QToolButton;
+    button->setIcon( QIcon( ":/marble/document-save.png" ) );
+    connect(button, SIGNAL(clicked()), this, SLOT(save()));
+    layout->addWidget( button );
+
+    setLayout( layout );
+}
+
+void WaitEditWidget::save()
+{
+    waitElement()->setDuration( m_spinBox->value() );
+    emit editingDone(m_index);
+}
+
+GeoDataWait* WaitEditWidget::waitElement()
+{
+    GeoDataObject *object = qvariant_cast<GeoDataObject*>(m_index.data( MarblePlacemarkModel::ObjectPointerRole ) );
+    Q_ASSERT( object );
+    Q_ASSERT( object->nodeType() == GeoDataTypes::GeoDataWaitType );
+    return static_cast<GeoDataWait*>( object );
+}
+
+SoundCueEditWidget::SoundCueEditWidget( const QModelIndex &index, QWidget *parent ) :
+    QWidget( parent ),
+    m_index( index ),
+    m_lineEdit( new QLineEdit )
+{
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->setSpacing( 5 );
+
+    QLabel* iconLabel = new QLabel;
+    iconLabel->setPixmap( QPixmap( ":/marble/playback-play.png" ) );
+    layout->addWidget( iconLabel );
+
+    m_lineEdit->setPlaceholderText( "Audio location" );
+    layout->addWidget( m_lineEdit );
+
+    QToolButton *button = new QToolButton;
+    button->setIcon( QIcon( ":/marble/document-save.png" ) );
+    connect(button, SIGNAL(clicked()), this, SLOT(save()));
+    layout->addWidget( button );
+
+    setLayout( layout );
+}
+
+void SoundCueEditWidget::save()
+{
+    soundCueElement()->setHref( m_lineEdit->text() );
+    emit editingDone(m_index);
+}
+
+GeoDataSoundCue* SoundCueEditWidget::soundCueElement()
+{
+    GeoDataObject *object = qvariant_cast<GeoDataObject*>(m_index.data( MarblePlacemarkModel::ObjectPointerRole ) );
+    Q_ASSERT( object );
+    Q_ASSERT( object->nodeType() == GeoDataTypes::GeoDataSoundCueType );
+    return static_cast<GeoDataSoundCue*>( object );
 }
 
 }
