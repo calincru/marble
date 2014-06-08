@@ -150,7 +150,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
 
-    const GeoDataCoordinates coords( lon, lat );
+    GeoDataCoordinates const coords( lon, lat );
 
     // This means one of the nodes has been clicked. The clicked node can be on the outer
     // boundary of the polygon as well as on its inner boundary.
@@ -158,6 +158,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
             GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
             GeoDataLinearRing &outerRing = polygon->outerBoundary();
+
             // This means the clicked node is one of the nodes which form one of the
             // polygon's inner boundaries.
             if ( m_movedNodeIndex >= outerRing.size() ) {
@@ -166,29 +167,15 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
                 for ( int i = 0; i < innerRings.size(); ++i ) {
                     if ( newIndex - innerRings.at(i).size() < 0 ) {
-                        const GeoDataCoordinates oldCoords = innerRings.at(i).at(newIndex);
                         innerRings[i].at(newIndex) = coords;
-
-                        if ( !isValidPolygon() ) {
-                            innerRings[i].at(newIndex) = oldCoords;
-                            m_movedNodeIndex = -1;
-                        }
-
                         break;
                     } else {
                         newIndex -= innerRings.at(i).size();
                     }
                 }
             } else {
-                const GeoDataCoordinates oldCoords = outerRing[m_movedNodeIndex];
                 outerRing[m_movedNodeIndex] = coords;
-
-                if ( !isValidPolygon() ) {
-                    outerRing[m_movedNodeIndex] = oldCoords;
-                    m_movedNodeIndex = -1;
-                }
             }
-
             return true;
         } else {
             return false;
