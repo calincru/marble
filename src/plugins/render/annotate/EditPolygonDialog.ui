@@ -250,7 +250,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="m_areaColorButton">
+            <widget class="QPushButton" name="m_polyColorButton">
              <property name="maximumSize">
               <size>
                <width>24</width>
@@ -303,7 +303,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="m_areaOpacity">
+            <widget class="QSpinBox" name="m_polyOpacity">
              <property name="maximum">
               <number>100</number>
              </property>

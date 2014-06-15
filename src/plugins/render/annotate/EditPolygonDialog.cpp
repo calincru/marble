@@ -58,7 +58,7 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 
     d->m_linesWidth->setRange( 0.1, 5.0 );
     d->m_linesOpacity->setRange( 0, 100 );
-    d->m_areaOpacity->setRange( 0, 100 );
+    d->m_polyOpacity->setRange( 0, 100 );
 
     // Get the current style properties.
     const GeoDataLineStyle lineStyle = placemark->style()->lineStyle();
@@ -74,16 +74,16 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 
     // Set the current opacity by using its QColor's alpha component.
     d->m_linesOpacity->setValue( lineStyle.color().alpha() * 100 / 255 + 1);
-    d->m_areaOpacity->setValue( polyStyle.color().alpha() * 100 / 255 + 1);
+    d->m_polyOpacity->setValue( polyStyle.color().alpha() * 100 / 255 + 1);
 
     // Adjust the color buttons' icons to the current lines and polygon colors.
     QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(), d->m_linesColorButton->iconSize().height() );
     linesPixmap.fill( lineStyle.color() );
     d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
 
-    QPixmap polyPixmap( d->m_areaColorButton->iconSize().width(), d->m_areaColorButton->iconSize().height() );
+    QPixmap polyPixmap( d->m_polyColorButton->iconSize().width(), d->m_polyColorButton->iconSize().height() );
     polyPixmap.fill( polyStyle.color() );
-    d->m_areaColorButton->setIcon( QIcon( polyPixmap ) );
+    d->m_polyColorButton->setIcon( QIcon( polyPixmap ) );
 
     // Setup the color dialogs.
     d->m_linesDialog = new QColorDialog( lineStyle.color(), this );
@@ -91,7 +91,7 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 
     connect( d->m_linesColorButton, SIGNAL(clicked()), d->m_linesDialog, SLOT(exec()) );
     connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateDialog(QColor)) );
-    connect( d->m_areaColorButton, SIGNAL(clicked()), d->m_polyDialog, SLOT(exec()) );
+    connect( d->m_polyColorButton, SIGNAL(clicked()), d->m_polyDialog, SLOT(exec()) );
     connect( d->m_polyDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateDialog(QColor)) );
     connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updatePolygon()) );
 }
@@ -118,7 +118,7 @@ void EditPolygonDialog::updatePolygon()
     QColor polyColor = d->m_polyDialog->currentColor();
 
     lineColor.setAlpha( d->m_linesOpacity->value() * 255 / 100 );
-    polyColor.setAlpha( d->m_areaOpacity->value() * 255 / 100 );
+    polyColor.setAlpha( d->m_polyOpacity->value() * 255 / 100 );
 
     style->lineStyle().setColor( lineColor );
     style->polyStyle().setColor( polyColor );
@@ -139,10 +139,10 @@ void EditPolygonDialog::updateDialog( QColor color )
         linesPixmap.fill( color );
         d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
     } else {
-        QPixmap polyPixmap( d->m_areaColorButton->iconSize().width(),
-                            d->m_areaColorButton->iconSize().height() );
+        QPixmap polyPixmap( d->m_polyColorButton->iconSize().width(),
+                            d->m_polyColorButton->iconSize().height() );
         polyPixmap.fill( color );
-        d->m_areaColorButton->setIcon( QIcon( polyPixmap ) );
+        d->m_polyColorButton->setIcon( QIcon( polyPixmap ) );
     }
 }
 

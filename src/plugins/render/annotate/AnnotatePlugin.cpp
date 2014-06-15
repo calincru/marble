@@ -899,6 +899,8 @@ void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
 
     connect( dialog, SIGNAL(polygonUpdated()), this, SIGNAL(repaintNeeded()) );
     dialog->exec();
+
+    m_marbleWidget->model()->treeModel()->updateFeature( placemark );
 }
 
 void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
