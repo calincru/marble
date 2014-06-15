@@ -137,7 +137,7 @@
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>48</width>
+               <width>28</width>
                <height>20</height>
               </size>
              </property>
@@ -173,7 +173,7 @@
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>13</width>
+               <width>28</width>
                <height>20</height>
               </size>
              </property>
@@ -236,7 +236,7 @@
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>40</width>
+               <width>38</width>
                <height>20</height>
               </size>
              </property>
@@ -314,6 +314,19 @@
               <number>50</number>
              </property>
             </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_6">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>38</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
