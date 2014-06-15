@@ -47,7 +47,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
         // First paint and add to the region list the nodes which form the outerBoundary, as
         // well as the entire outer polygon.
         for ( int i = 0; i < outerRing.size(); ++i ) {
-            QRegion newRegion = painter->regionFromRect( outerRing.at(i), 15, 15 );
+            QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
             if ( !m_selectedNodes.contains( i ) ) {
                 painter->setBrush( Oxygen::aluminumGray3);
@@ -55,7 +55,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                 painter->setBrush( Oxygen::aluminumGray6 );
             }
 
-            painter->drawRect( outerRing.at(i) , 10, 10 );
+            painter->drawEllipse( outerRing.at(i) , 10, 10 );
             regionList.append( newRegion );
         }
 
@@ -65,7 +65,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
 
         foreach ( const GeoDataLinearRing &ring, innerRings ) {
             for ( int i = 0; i < ring.size(); ++i ) {
-                QRegion newRegion = painter->regionFromRect( ring.at(i), 15, 15 );
+                QRegion newRegion = painter->regionFromEllipse( ring.at(i), 15, 15 );
 
                 if ( !m_selectedNodes.contains( i + sizeOffset ) ) {
                     painter->setBrush( Oxygen::aluminumGray3 );
@@ -73,7 +73,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                     painter->setBrush( Oxygen::aluminumGray6 );
                 }
 
-                painter->drawRect( ring.at(i), 10, 10 );
+                painter->drawEllipse( ring.at(i), 10, 10 );
                 regionList.append( newRegion );
             }
             sizeOffset += ring.size();
