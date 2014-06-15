@@ -90,6 +90,8 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
     d->m_linesDialog = new QColorDialog( lineStyle.color(), this );
     d->m_polyDialog = new QColorDialog( polyStyle.color(), this );
 
+    d->buttonBox->button( QDialogButtonBox::Ok )->setDefault( true );
+
     connect( d->m_linesColorButton, SIGNAL(clicked()), d->m_linesDialog, SLOT(exec()) );
     connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateLinesDialog(const QColor&)) );
     connect( d->m_polyColorButton, SIGNAL(clicked()), d->m_polyDialog, SLOT(exec()) );
