@@ -827,7 +827,7 @@ void AnnotatePlugin::setupPolygonRmbMenu()
 
     m_polygonRmbMenu->addSeparator();
 
-    QAction *showEditDialog = new QAction( tr( "Customize Polygon" ), m_polygonRmbMenu );
+    QAction *showEditDialog = new QAction( tr( "Properties" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( showEditDialog );
     connect( showEditDialog, SIGNAL(triggered()), this, SLOT(editPolygon()) );
 }

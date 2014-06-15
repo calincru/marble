@@ -35,14 +35,15 @@ public:
 
 private slots:
     void updatePolygon();
-    void updateDialog( QColor color );
+    void updateLinesDialog( const QColor &color );
+    void updatePolyDialog( const QColor &color );
 
 signals:
     void polygonUpdated();
 
 private:
     class Private;
-    Private *d;
+    Private * const d;
 };
 
 }

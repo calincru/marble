@@ -72,8 +72,8 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
     }
 
     // Set the current opacity by using its QColor's alpha component.
-    d->m_linesOpacity->setValue( lineStyle.color().alpha() * 100 / 255 + 1);
-    d->m_polyOpacity->setValue( polyStyle.color().alpha() * 100 / 255 + 1);
+    d->m_linesOpacity->setValue( qRound( lineStyle.color().alpha() / 2.55) );
+    d->m_polyOpacity->setValue( qRound( polyStyle.color().alpha() / 2.55) );
 
     // Adjust the color buttons' icons to the current lines and polygon colors.
     QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
@@ -91,9 +91,9 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
     d->m_polyDialog = new QColorDialog( polyStyle.color(), this );
 
     connect( d->m_linesColorButton, SIGNAL(clicked()), d->m_linesDialog, SLOT(exec()) );
-    connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateDialog(QColor)) );
+    connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateLinesDialog(const QColor&)) );
     connect( d->m_polyColorButton, SIGNAL(clicked()), d->m_polyDialog, SLOT(exec()) );
-    connect( d->m_polyDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateDialog(QColor)) );
+    connect( d->m_polyDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updatePolyDialog(const QColor&)) );
     connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updatePolygon()) );
 }
 
@@ -120,8 +120,8 @@ void EditPolygonDialog::updatePolygon()
     QColor lineColor = d->m_linesDialog->currentColor();
     QColor polyColor = d->m_polyDialog->currentColor();
 
-    lineColor.setAlpha( d->m_linesOpacity->value() * 255 / 100 );
-    polyColor.setAlpha( d->m_polyOpacity->value() * 255 / 100 );
+    lineColor.setAlpha( qRound( d->m_linesOpacity->value() * 2.55 ) );
+    polyColor.setAlpha( qRound( d->m_polyOpacity->value() * 2.55 ) );
 
     style->lineStyle().setColor( lineColor );
     style->polyStyle().setColor( polyColor );
@@ -131,24 +131,20 @@ void EditPolygonDialog::updatePolygon()
     emit polygonUpdated();
 }
 
-void EditPolygonDialog::updateDialog( QColor color )
+void EditPolygonDialog::updateLinesDialog( const QColor &color )
 {
-    // First get the sender of the signal, as there are two possible senders,
-    // the two QColorDialog's used.
-    QColorDialog *dialogSender = qobject_cast<QColorDialog*>( sender() );
-    Q_ASSERT( dialogSender == d->m_linesDialog || dialogSender == d->m_polyDialog );
+    QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
+                         d->m_linesColorButton->iconSize().height() );
+    linesPixmap.fill( color );
+    d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
+}
 
-    if ( dialogSender == d->m_linesDialog ) {
-        QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
-                             d->m_linesColorButton->iconSize().height() );
-        linesPixmap.fill( color );
-        d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
-    } else {
-        QPixmap polyPixmap( d->m_polyColorButton->iconSize().width(),
-                            d->m_polyColorButton->iconSize().height() );
-        polyPixmap.fill( color );
-        d->m_polyColorButton->setIcon( QIcon( polyPixmap ) );
-    }
+void EditPolygonDialog::updatePolyDialog( const QColor &color )
+{
+    QPixmap polyPixmap( d->m_polyColorButton->iconSize().width(),
+                        d->m_polyColorButton->iconSize().height() );
+    polyPixmap.fill( color );
+    d->m_polyColorButton->setIcon( QIcon( polyPixmap ) );
 }
 
 }
