@@ -22,7 +22,6 @@ namespace Marble {
 
 class EditPolygonDialog::Private : public Ui::UiEditPolygonDialog
 {
-
 public:
     Private( GeoDataPlacemark *placemark );
     ~Private();
@@ -77,11 +76,13 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
     d->m_polyOpacity->setValue( polyStyle.color().alpha() * 100 / 255 + 1);
 
     // Adjust the color buttons' icons to the current lines and polygon colors.
-    QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(), d->m_linesColorButton->iconSize().height() );
+    QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
+                         d->m_linesColorButton->iconSize().height() );
     linesPixmap.fill( lineStyle.color() );
     d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
 
-    QPixmap polyPixmap( d->m_polyColorButton->iconSize().width(), d->m_polyColorButton->iconSize().height() );
+    QPixmap polyPixmap( d->m_polyColorButton->iconSize().width(),
+                        d->m_polyColorButton->iconSize().height() );
     polyPixmap.fill( polyStyle.color() );
     d->m_polyColorButton->setIcon( QIcon( polyPixmap ) );
 
@@ -114,6 +115,8 @@ void EditPolygonDialog::updatePolygon()
 
 
     // Adjust the lines/polygon colors.
+    // QColorDialog::currentColor() also works even if the color dialog
+    // has not been exec'ed, while QColorDialog::selectedColor() does not.
     QColor lineColor = d->m_linesDialog->currentColor();
     QColor polyColor = d->m_polyDialog->currentColor();
 
@@ -130,6 +133,8 @@ void EditPolygonDialog::updatePolygon()
 
 void EditPolygonDialog::updateDialog( QColor color )
 {
+    // First get the sender of the signal, as there are two possible senders,
+    // the two QColorDialog's used.
     QColorDialog *dialogSender = qobject_cast<QColorDialog*>( sender() );
     Q_ASSERT( dialogSender == d->m_linesDialog || dialogSender == d->m_polyDialog );
 

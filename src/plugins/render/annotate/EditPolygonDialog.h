@@ -20,6 +20,11 @@
 
 namespace Marble {
 
+/**
+ * @brief As it name says by itself, this class is used to show a couple of
+ * editing options for a polygon. So far there are only a few customization
+ * options, such as lines width, lines/area color, lines/area opacity.
+ */
 class MARBLE_EXPORT EditPolygonDialog : public QDialog
 {
     Q_OBJECT
