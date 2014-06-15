@@ -1,0 +1,151 @@
+//
+// This file is part of the Marble Virtual Globe.
+//
+// This program is free software licensed under the GNU LGPL. You can
+// find a copy of this license in LICENSE.txt in the top directory of
+// the source code.
+//
+// Copyright 2014      Calin-Cristian Cruceru <crucerucalincristian@gmail.com>
+//
+
+// Self
+#include "EditPolygonDialog.h"
+#include "ui_EditPolygonDialog.h"
+
+// Marble
+#include "GeoDataStyle.h"
+
+// Qt
+#include <QColorDialog>
+
+namespace Marble {
+
+class EditPolygonDialog::Private : public Ui::UiEditPolygonDialog
+{
+
+public:
+    Private( GeoDataPlacemark *placemark );
+    ~Private();
+
+    GeoDataPlacemark *m_placemark;
+
+    QColorDialog *m_linesDialog;
+    QColorDialog *m_polyDialog;
+};
+
+EditPolygonDialog::Private::Private( GeoDataPlacemark *placemark ) :
+    Ui::UiEditPolygonDialog(),
+    m_placemark( placemark ),
+    m_linesDialog( 0 ),
+    m_polyDialog( 0 )
+{
+    // nothing to do
+}
+
+EditPolygonDialog::Private::~Private()
+{
+    // nothig to do
+}
+
+EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *parent ) :
+    QDialog( parent ),
+    d( new Private( placemark ) )
+{
+    d->setupUi( this );
+
+    d->m_name->setText( placemark->name() );
+    d->m_description->setText( placemark->description() );
+
+    d->m_linesWidth->setRange( 0.1, 5.0 );
+    d->m_linesOpacity->setRange( 0, 100 );
+    d->m_areaOpacity->setRange( 0, 100 );
+
+    // Get the current style properties.
+    const GeoDataLineStyle lineStyle = placemark->style()->lineStyle();
+    const GeoDataPolyStyle polyStyle = placemark->style()->polyStyle();
+
+    // Adjust the "Filled"/"Not Filled" option according to its fill.
+    d->m_linesWidth->setValue( lineStyle.width() );
+    if ( polyStyle.fill() ) {
+        d->m_filledColor->setCurrentIndex( 0 );
+    } else {
+        d->m_filledColor->setCurrentIndex( 1 );
+    }
+
+    // Set the current opacity by using its QColor's alpha component.
+    d->m_linesOpacity->setValue( lineStyle.color().alpha() * 100 / 255 + 1);
+    d->m_areaOpacity->setValue( polyStyle.color().alpha() * 100 / 255 + 1);
+
+    // Adjust the color buttons' icons to the current lines and polygon colors.
+    QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(), d->m_linesColorButton->iconSize().height() );
+    linesPixmap.fill( lineStyle.color() );
+    d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
+
+    QPixmap polyPixmap( d->m_areaColorButton->iconSize().width(), d->m_areaColorButton->iconSize().height() );
+    polyPixmap.fill( polyStyle.color() );
+    d->m_areaColorButton->setIcon( QIcon( polyPixmap ) );
+
+    // Setup the color dialogs.
+    d->m_linesDialog = new QColorDialog( lineStyle.color(), this );
+    d->m_polyDialog = new QColorDialog( polyStyle.color(), this );
+
+    connect( d->m_linesColorButton, SIGNAL(clicked()), d->m_linesDialog, SLOT(exec()) );
+    connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateDialog(QColor)) );
+    connect( d->m_areaColorButton, SIGNAL(clicked()), d->m_polyDialog, SLOT(exec()) );
+    connect( d->m_polyDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateDialog(QColor)) );
+    connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updatePolygon()) );
+}
+
+EditPolygonDialog::~EditPolygonDialog()
+{
+    // nothing to do
+}
+
+void EditPolygonDialog::updatePolygon()
+{
+    GeoDataStyle *style = new GeoDataStyle( *d->m_placemark->style() );
+
+    d->m_placemark->setName( d->m_name->text() );
+    d->m_placemark->setDescription( d->m_description->toPlainText() );
+
+    style->lineStyle().setWidth( d->m_linesWidth->value() );
+    // 0 corresponds to "Filled" and 1 corresponds to "Not Filled".
+    style->polyStyle().setFill( !d->m_filledColor->currentIndex() );
+
+
+    // Adjust the lines/polygon colors.
+    QColor lineColor = d->m_linesDialog->currentColor();
+    QColor polyColor = d->m_polyDialog->currentColor();
+
+    lineColor.setAlpha( d->m_linesOpacity->value() * 255 / 100 );
+    polyColor.setAlpha( d->m_areaOpacity->value() * 255 / 100 );
+
+    style->lineStyle().setColor( lineColor );
+    style->polyStyle().setColor( polyColor );
+
+
+    d->m_placemark->setStyle( style );
+    emit polygonUpdated();
+}
+
+void EditPolygonDialog::updateDialog( QColor color )
+{
+    QColorDialog *dialogSender = qobject_cast<QColorDialog*>( sender() );
+    Q_ASSERT( dialogSender == d->m_linesDialog || dialogSender == d->m_polyDialog );
+
+    if ( dialogSender == d->m_linesDialog ) {
+        QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
+                             d->m_linesColorButton->iconSize().height() );
+        linesPixmap.fill( color );
+        d->m_linesColorButton->setIcon( QIcon( linesPixmap ) );
+    } else {
+        QPixmap polyPixmap( d->m_areaColorButton->iconSize().width(),
+                            d->m_areaColorButton->iconSize().height() );
+        polyPixmap.fill( color );
+        d->m_areaColorButton->setIcon( QIcon( polyPixmap ) );
+    }
+}
+
+}
+
+#include "EditPolygonDialog.moc"

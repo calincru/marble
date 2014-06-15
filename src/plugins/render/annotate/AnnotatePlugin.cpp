@@ -17,6 +17,7 @@
 #include "MarbleDebug.h"
 #include "AbstractProjection.h"
 #include "EditGroundOverlayDialog.h"
+#include "EditPolygonDialog.h"
 #include "GeoDataDocument.h"
 #include "GeoDataGroundOverlay.h"
 #include "GeoDataLatLonBox.h"
@@ -813,16 +814,20 @@ void AnnotatePlugin::setupOverlayRmbMenu()
 void AnnotatePlugin::setupPolygonRmbMenu()
 {
     QAction *unselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
-    QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
-    QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
-
     m_polygonRmbMenu->addAction( unselectNodes );
-    m_polygonRmbMenu->addAction( deleteAllSelected );
-    m_polygonRmbMenu->addAction( removePolygon );
-
     connect( unselectNodes, SIGNAL(triggered()), this, SLOT(unselectNodes()) );
+
+    QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( deleteAllSelected );
     connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
+
+    QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( removePolygon );
     connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
+
+    QAction *showEditDialog = new QAction( tr( "Customize Polygon" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( showEditDialog );
+    connect( showEditDialog, SIGNAL(triggered()), this, SLOT(editPolygon()) );
 }
 
 void AnnotatePlugin::setupNodeRmbMenu()
@@ -886,6 +891,14 @@ void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
     dialog->exec();
 }
 
+void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
+{
+    EditPolygonDialog *dialog = new EditPolygonDialog( placemark );
+
+    connect( dialog, SIGNAL(polygonUpdated()), this, SIGNAL(repaintNeeded()) );
+    dialog->exec();
+}
+
 void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
 {
     if ( !m_groundOverlayFrames.keys().contains( overlay ) ) {
@@ -929,6 +942,11 @@ void AnnotatePlugin::editOverlay()
 {
     displayOverlayFrame( m_rmbOverlay );
     displayOverlayEditDialog( m_rmbOverlay );
+}
+
+void AnnotatePlugin::editPolygon()
+{
+    displayPolygonEditDialog( m_rmbSelectedArea->placemark() );
 }
 
 void AnnotatePlugin::removeOverlay()
