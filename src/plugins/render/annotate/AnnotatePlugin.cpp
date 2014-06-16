@@ -895,12 +895,14 @@ void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
 
 void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
 {
-    EditPolygonDialog *dialog = new EditPolygonDialog( placemark );
+    EditPolygonDialog *dialog = new EditPolygonDialog( placemark, m_marbleWidget );
 
-    connect( dialog, SIGNAL(polygonUpdated()), this, SIGNAL(repaintNeeded()) );
-    dialog->exec();
+    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
+             this, SIGNAL(repaintNeeded()) );
+    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
+             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
 
-    m_marbleWidget->model()->treeModel()->updateFeature( placemark );
+    dialog->show();
 }
 
 void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )

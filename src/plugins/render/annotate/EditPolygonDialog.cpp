@@ -54,26 +54,19 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 
     d->m_name->setText( placemark->name() );
     d->m_description->setText( placemark->description() );
-
     d->m_linesWidth->setRange( 0.1, 5.0 );
-    d->m_linesOpacity->setRange( 0, 100 );
-    d->m_polyOpacity->setRange( 0, 100 );
 
     // Get the current style properties.
     const GeoDataLineStyle lineStyle = placemark->style()->lineStyle();
     const GeoDataPolyStyle polyStyle = placemark->style()->polyStyle();
 
-    // Adjust the "Filled"/"Not Filled" option according to its fill.
+    // Adjust the "Filled"/"Not Filled" option according to its current fill.
     d->m_linesWidth->setValue( lineStyle.width() );
     if ( polyStyle.fill() ) {
         d->m_filledColor->setCurrentIndex( 0 );
     } else {
         d->m_filledColor->setCurrentIndex( 1 );
     }
-
-    // Set the current opacity by using its QColor's alpha component.
-    d->m_linesOpacity->setValue( qRound( lineStyle.color().alpha() / 2.55) );
-    d->m_polyOpacity->setValue( qRound( polyStyle.color().alpha() / 2.55) );
 
     // Adjust the color buttons' icons to the current lines and polygon colors.
     QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
@@ -87,15 +80,25 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
     d->m_polyColorButton->setIcon( QIcon( polyPixmap ) );
 
     // Setup the color dialogs.
-    d->m_linesDialog = new QColorDialog( lineStyle.color(), this );
-    d->m_polyDialog = new QColorDialog( polyStyle.color(), this );
-
-    d->buttonBox->button( QDialogButtonBox::Ok )->setDefault( true );
-
+    d->m_linesDialog = new QColorDialog( this );
+    d->m_linesDialog->setOption( QColorDialog::ShowAlphaChannel );
+    d->m_linesDialog->setCurrentColor( lineStyle.color() );
     connect( d->m_linesColorButton, SIGNAL(clicked()), d->m_linesDialog, SLOT(exec()) );
     connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateLinesDialog(const QColor&)) );
+
+    d->m_polyDialog = new QColorDialog( this );
+    d->m_polyDialog->setOption( QColorDialog::ShowAlphaChannel );
+    d->m_polyDialog->setCurrentColor( polyStyle.color() );
     connect( d->m_polyColorButton, SIGNAL(clicked()), d->m_polyDialog, SLOT(exec()) );
     connect( d->m_polyDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updatePolyDialog(const QColor&)) );
+
+
+    // Promote "Apply" button to default button and connect it to updatePolygon() slot.
+    QPushButton *applyButton = d->buttonBox->button( QDialogButtonBox::Apply );
+    d->buttonBox->button( QDialogButtonBox::Apply )->setDefault( true );
+    connect( applyButton, SIGNAL(clicked()), this, SLOT(updatePolygon()) );
+
+    // Make sure pressing "OK" will also update the polygon.
     connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updatePolygon()) );
 }
 
@@ -119,18 +122,12 @@ void EditPolygonDialog::updatePolygon()
     // Adjust the lines/polygon colors.
     // QColorDialog::currentColor() also works even if the color dialog
     // has not been exec'ed, while QColorDialog::selectedColor() does not.
-    QColor lineColor = d->m_linesDialog->currentColor();
-    QColor polyColor = d->m_polyDialog->currentColor();
-
-    lineColor.setAlpha( qRound( d->m_linesOpacity->value() * 2.55 ) );
-    polyColor.setAlpha( qRound( d->m_polyOpacity->value() * 2.55 ) );
-
-    style->lineStyle().setColor( lineColor );
-    style->polyStyle().setColor( polyColor );
+    style->lineStyle().setColor( d->m_linesDialog->currentColor() );
+    style->polyStyle().setColor( d->m_polyDialog->currentColor() );
 
 
     d->m_placemark->setStyle( style );
-    emit polygonUpdated();
+    emit polygonUpdated( d->m_placemark );
 }
 
 void EditPolygonDialog::updateLinesDialog( const QColor &color )

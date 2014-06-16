@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>405</width>
-    <height>302</height>
+    <width>276</width>
+    <height>297</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_4">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
@@ -64,7 +64,7 @@
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>368</width>
+             <width>248</width>
              <height>17</height>
             </size>
            </property>
@@ -81,7 +81,7 @@
           </widget>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout">
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
             <spacer name="horizontalSpacer">
              <property name="orientation">
@@ -173,34 +173,11 @@
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>28</width>
+               <width>13</width>
                <height>20</height>
               </size>
              </property>
             </spacer>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>Opacity:</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="m_linesOpacity">
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="singleStep">
-              <number>5</number>
-             </property>
-             <property name="value">
-              <number>50</number>
-             </property>
-            </widget>
            </item>
           </layout>
          </item>
@@ -211,7 +188,7 @@
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>358</width>
+             <width>238</width>
              <height>13</height>
             </size>
            </property>
@@ -228,7 +205,7 @@
           </widget>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
            <item>
             <spacer name="horizontalSpacer_4">
              <property name="orientation">
@@ -289,40 +266,7 @@
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>28</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QLabel" name="label_8">
-             <property name="text">
-              <string>Opacity:</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="m_polyOpacity">
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="singleStep">
-              <number>5</number>
-             </property>
-             <property name="value">
-              <number>50</number>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_6">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>38</width>
+               <width>48</width>
                <height>20</height>
               </size>
              </property>
@@ -337,7 +281,7 @@
            </property>
            <property name="sizeHint" stdset="0">
             <size>
-             <width>378</width>
+             <width>248</width>
              <height>18</height>
             </size>
            </property>
@@ -355,7 +299,7 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+      <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>

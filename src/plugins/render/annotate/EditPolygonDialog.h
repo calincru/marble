@@ -25,7 +25,7 @@ namespace Marble {
  * editing options for a polygon. So far there are only a few customization
  * options, such as lines width, lines/area color, lines/area opacity.
  */
-class MARBLE_EXPORT EditPolygonDialog : public QDialog
+class EditPolygonDialog : public QDialog
 {
     Q_OBJECT
 
@@ -39,7 +39,7 @@ private slots:
     void updatePolyDialog( const QColor &color );
 
 signals:
-    void polygonUpdated();
+    void polygonUpdated( GeoDataFeature *feature );
 
 private:
     class Private;
