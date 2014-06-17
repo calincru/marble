@@ -14,18 +14,21 @@
 #include <qmath.h>
 
 #include "GeoDataPlacemark.h"
+#include "GeoDataStyle.h"
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
 
+#include <QDebug>
 
 namespace Marble
 {
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
+      m_isSelected( false ),
       m_movedNodeIndex( -1 ),
       m_rightClickedNode( -2 ),
       m_viewport( 0 )
@@ -94,39 +97,34 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
 
-
-
     m_movedPointCoords.set( lon, lat );
-    // We loop through all regions from the list, including the last one, which
-    // is the entire polygon. This will be useful in mouseMoveEvent to know
-    // whether to move a node or the whole polygon.
-    for ( int i = 0; i < regionList.size(); ++i ) {
-        if ( regionList.at(i).contains( event->pos()) ) {
+    m_mousePressCoords.set( lon, lat );
+    int i = firstIndexContains( event );
 
-            // Check if the clicked region is an inner boundary of the polygon.
-            if ( i == regionList.size() - 1 && isInnerBoundsPoint( event->pos() ) ) {
-                m_rightClickedNode = -2;
-                return false;
-            }
+    // Check if the clicked region is an inner boundary of the polygon.
+    if ( i == regionList.size() - 1 && isInnerBoundsPoint( event->pos() ) ) {
+        m_rightClickedNode = -2;
+        return false;
+    }
 
-            if ( event->button() == Qt::LeftButton ) {
-                m_movedNodeIndex = i;
-                return true;
-
-            } else if ( event->button() == Qt::RightButton ) {
-                if ( i < regionList.size() - 1 ) {
-                    m_rightClickedNode = i;
-                } else {
-                    m_rightClickedNode = -1;
-                }
-
-                // Return false because we cannot fully deal with this event within this class.
-                // We need to have access to the marble widget to show a menu of options on the
-                // screen as well as control of the object since one of the options will be
-                // "remove polygon".
-                return false;
-            }
+    if ( event->button() == Qt::LeftButton ) {
+        m_movedNodeIndex = i;
+        return true;
+    } else if ( event->button() == Qt::RightButton ) {
+        // Check whether a node or the entire polygon has been right-clicked
+        // in order to know in AnnotatePlugin::eventFilter what rmb menu to
+        // pop up;
+        if ( i < regionList.size() - 1 ) {
+            m_rightClickedNode = i;
+        } else {
+            m_rightClickedNode = -1;
         }
+
+        // Return false because we cannot fully deal with this event within this class.
+        // We need to have access to the marble widget to show a menu of options on the
+        // screen as well as control of the object since one of the options will be
+        // "remove polygon".
+        return false;
     }
 
     return false;
@@ -234,6 +232,8 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
+    static const int mouseMoveOffset = 1;
+
     // If the event is caught in one of the polygon's holes, we return false in
     // order to pass it to other potential polygons which have been drawn there.
     if ( isInnerBoundsPoint( event->pos() ) && m_movedNodeIndex == -1 ) {
@@ -246,29 +246,30 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     m_rightClickedNode = -2;
 
     qreal x, y;
-    m_viewport->screenCoordinates( m_movedPointCoords.longitude(), m_movedPointCoords.latitude(), x, y );
+    m_viewport->screenCoordinates( m_mousePressCoords.longitude(), m_mousePressCoords.latitude(), x, y );
+
+    // Get the index of the first region from the regionList which contains the event pos.
+    // This may refer to a node or, if i == regionList.size() - 1, to the whole polygon.
+    int i = firstIndexContains( event );
 
     // The node gets selected only if it is clicked and not moved.
     // Is this value ok in order to avoid this?
-    if ( qFabs(event->pos().x() - x) > 1 ||
-         qFabs(event->pos().y() - y) > 1 ) {
+    if ( qFabs(event->pos().x() - x) > mouseMoveOffset ||
+         qFabs(event->pos().y() - y) > mouseMoveOffset ) {
         return true;
     }
 
-    // Only loop until size - 1 because we only want to mark nodes
-    // as selected, and not the entire polygon.
-    for ( int i = 0; i < regionList.size() - 1; ++i ) {
-        if ( regionList.at(i).contains( event->pos()) ) {
+    // If the interior of the polygon has been clicked, select it.
+    if ( i == regionList.size() - 1 ) {
+        setSelected( !m_isSelected );
+    }
 
-            if ( event->button() == Qt::LeftButton ) {
-                if ( !m_selectedNodes.contains( i ) ) {
-                    m_selectedNodes.append( i );
-                } else {
-                    m_selectedNodes.removeAll( i );
-                }
-
-                return true;
-            }
+    // Do the same as above with the node which has been clicked.
+    if ( i >= 0 && i < regionList.size() - 1 && event->button() == Qt::LeftButton ) {
+        if ( !m_selectedNodes.contains( i ) ) {
+            m_selectedNodes.append( i );
+        } else {
+            m_selectedNodes.removeAll( i );
         }
     }
 
@@ -316,6 +317,36 @@ bool AreaAnnotation::isValidPolygon() const
 const char *AreaAnnotation::graphicType() const
 {
     return SceneGraphicTypes::SceneGraphicAreaAnnotation;
+}
+
+void AreaAnnotation::setSelected( bool enabled )
+{
+    GeoDataStyle *style = new GeoDataStyle( *placemark()->style() );
+
+    m_isSelected = enabled;
+    if ( enabled ) {
+        m_previousLineStyle = style->lineStyle();
+        style->lineStyle().setColor( QColor("black") );
+        style->lineStyle().setWidth( 5 );
+    } else {
+        style->setLineStyle( m_previousLineStyle );
+    }
+
+    placemark()->setStyle( style );
+}
+
+int AreaAnnotation::firstIndexContains( QMouseEvent *event )
+{
+    QList<QRegion> regionList = regions();
+
+    for ( int i = 0; i < regionList.size(); ++i ) {
+        if ( regionList.at(i).contains( event->pos() ) ) {
+            return i;
+        }
+    }
+
+    Q_ASSERT( 0 );
+    return -1;
 }
 
 }

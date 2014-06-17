@@ -15,6 +15,7 @@
 
 #include "SceneGraphicsItem.h"
 #include "GeoDataCoordinates.h"
+#include "GeoDataLineStyle.h"
 
 namespace Marble
 {
@@ -53,12 +54,40 @@ public:
     virtual const char *graphicType() const;
 
 private:
+    /**
+     * @brief Sets the polygon as selected/deselected according to the @p enabled, by
+     * modifying its style.
+     */
+    void setSelected( bool enabled );
+
+    /**
+     * @brief Returns the first index from the regionlist() which contains the
+     * event->pos().
+     */
+    int firstIndexContains( QMouseEvent *event );
+
     QList<QRegion>     m_innerBoundariesList;
 
+    bool               m_isSelected;
     int                m_movedNodeIndex;
     int                m_rightClickedNode;
     QList<int>         m_selectedNodes;
+
+    /**
+     * We need two coords because one (m_movedPointCoords) is used when moving the whole
+     * polygon since we need to get the bearing of the move as well as the distance in
+     * order to apply it to all nodes. The second (m_mousePressCoords) is used to get the
+     * distance between the point where the mousePressEvent has been caught and the point
+     * where the mouseReleaseEvent has been caught to decide as mouse release whether
+     * before it there had been a mouse move or a mouse press.
+     */
     GeoDataCoordinates m_movedPointCoords;
+    GeoDataCoordinates m_mousePressCoords;
+
+    /**
+     * The style of the placemark before being selected.
+     */
+    GeoDataLineStyle m_previousLineStyle;
 
     const ViewportParams *m_viewport;
 

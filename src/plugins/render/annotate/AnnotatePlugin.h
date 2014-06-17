@@ -146,6 +146,8 @@ private:
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
+    void setImplicitName( GeoDataPlacemark *placemark );
+
 
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
@@ -170,6 +172,8 @@ private:
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;
+
+    int m_polygonsCount;
 
     bool m_addingPlacemark;
     bool m_drawingPolygon;
