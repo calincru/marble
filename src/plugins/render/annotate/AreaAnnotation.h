@@ -51,15 +51,15 @@ public:
      */
     bool isValidPolygon() const;
 
-    virtual const char *graphicType() const;
-
-private:
     /**
      * @brief Sets the polygon as selected/deselected according to the @p enabled, by
      * modifying its style.
      */
     void setSelected( bool enabled );
 
+    virtual const char *graphicType() const;
+
+private:
     /**
      * @brief Returns the first index from the regionlist() which contains the
      * event->pos().

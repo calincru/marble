@@ -246,7 +246,7 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
         if ( !poly->outerBoundary().isEmpty() ) {
             AreaAnnotation *area = new AreaAnnotation( m_polygonPlacemark );
             m_polygonsCount++;
-            setImplicitName( m_polygonPlacemark );
+            setInitialName( m_polygonPlacemark );
             m_graphicsItems.append( area );
             m_marbleWidget->update();
         } else {
@@ -546,7 +546,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 }
             }
         }
-        // Do not return since the rowCount() may be 0 (when the user interacts with a polygon or placemark).
+        // Do not return since the rowCount() may be 0 (when the user interacts with a polygon
+        // or placemark).
     }
 
 
@@ -572,7 +573,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             QRegion region = it.next();
             if ( !region.contains( mouseEvent->pos() ) )
                 continue;
-            // as putea sa pun in niste functii separate chestiile astea
+
             if ( mouseEvent->button() == Qt::LeftButton &&
                  mouseEvent->type() == QEvent::MouseButtonPress &&
                  m_removingItem ) {
@@ -656,7 +657,6 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                         Q_ASSERT( area->isInnerBoundsPoint( mouseEvent->pos() ) );
                         break;
                     }
-
 
                     m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
                     return true;
@@ -1155,7 +1155,7 @@ void AnnotatePlugin::deleteNode()
     }
 }
 
-void AnnotatePlugin::setImplicitName( GeoDataPlacemark *placemark )
+void AnnotatePlugin::setInitialName( GeoDataPlacemark *placemark )
 {
     placemark->setName( QString("Polygon") );
 }

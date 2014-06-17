@@ -146,7 +146,7 @@ private:
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
-    void setImplicitName( GeoDataPlacemark *placemark );
+    void setInitialName( GeoDataPlacemark *placemark );
 
 
     bool m_widgetInitialized;

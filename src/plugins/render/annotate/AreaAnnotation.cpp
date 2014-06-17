@@ -107,6 +107,11 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
         return false;
     }
 
+    // Select the polygon irrespective of the button which has been used.
+    if ( i == regionList.size() - 1 && !m_isSelected ) {
+        setSelected( true );
+    }
+
     if ( event->button() == Qt::LeftButton ) {
         m_movedNodeIndex = i;
         return true;
@@ -257,11 +262,6 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     if ( qFabs(event->pos().x() - x) > mouseMoveOffset ||
          qFabs(event->pos().y() - y) > mouseMoveOffset ) {
         return true;
-    }
-
-    // If the interior of the polygon has been clicked, select it.
-    if ( i == regionList.size() - 1 ) {
-        setSelected( !m_isSelected );
     }
 
     // Do the same as above with the node which has been clicked.
