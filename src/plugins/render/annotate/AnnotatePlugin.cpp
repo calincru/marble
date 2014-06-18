@@ -498,9 +498,6 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
 
-    // On Globe coordinates.
-    const GeoDataCoordinates coords( lon, lat );
-
     // Deal with adding a placemark or a polygon;
     if ( ( m_addingPlacemark && dealWithAddingPlacemark( mouseEvent ) ) ||
          ( m_drawingPolygon && dealWithAddingPolygon( mouseEvent ) ) ) {
@@ -533,6 +530,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             if ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) {
                 return true;
             } else if ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) {
+                return true;
+            } else if ( m_mergingNodes && dealWithMergingNodes( mouseEvent, item ) ) {
                 return true;
             } else if ( mouseEvent->type() != QEvent::MouseMove && item->sceneEvent( mouseEvent ) ) {
                 // We call sceneEvent only if event type is other than MouseEvent. That is because we however
@@ -727,6 +726,12 @@ bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsI
 
     m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
     return true;
+}
+
+bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+{
+
+    return false;
 }
 
 bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
@@ -988,11 +993,11 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( deleteAllSelected );
     connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
-
+/*
     QAction *mergeSelected = new QAction( tr( "Merge Selected Nodes" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( mergeSelected );
     connect( mergeSelected, SIGNAL(triggered()), this, SLOT(mergeSelectedNodes()) );
-
+*/
     QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( removePolygon );
     connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
@@ -1032,6 +1037,7 @@ void AnnotatePlugin::unselectNodes()
     m_rmbSelectedArea->selectedNodes().clear();
 }
 
+/*
 void AnnotatePlugin::mergeSelectedNodes()
 {
     QList<int> &selectedNodes = m_rmbSelectedArea->selectedNodes();
@@ -1059,6 +1065,7 @@ void AnnotatePlugin::mergeSelectedNodes()
 
     emit repaintNeeded();
 }
+*/
 
 void AnnotatePlugin::deleteSelectedNodes()
 {

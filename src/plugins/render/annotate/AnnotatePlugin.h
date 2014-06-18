@@ -127,7 +127,6 @@ private slots:
     void deleteNode();
     void unselectNodes();
     void deleteSelectedNodes();
-    void mergeSelectedNodes();
 
 
 protected:
@@ -153,9 +152,10 @@ private:
     bool dealWithAddingPolygon( QMouseEvent *mouseEvent );
     bool dealWithOverlayRelease( QMouseEvent *mouseEvent );
     bool dealWithMovingSelectedItem( QMouseEvent *mouseEvent );
-    bool dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
 
     //    void readOsmFile( QIODevice* device, bool flyToFile );
