@@ -887,12 +887,16 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 
 void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
 {
-    EditGroundOverlayDialog *dialog = new EditGroundOverlayDialog( overlay, m_marbleWidget->textureLayer() );
+    QPointer<EditGroundOverlayDialog> dialog = new EditGroundOverlayDialog(
+                                                        overlay,
+                                                        m_marbleWidget->textureLayer(),
+                                                        m_marbleWidget );
 
     connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)),
              this, SLOT(updateOverlayFrame(GeoDataGroundOverlay*)) );
 
     dialog->exec();
+    delete dialog;
 }
 
 void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
@@ -905,6 +909,11 @@ void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
 
     dialog->show();
+}
+
+void AnnotatePlugin::debug()
+{
+    qDebug() << "Acum\n";
 }
 
 void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )

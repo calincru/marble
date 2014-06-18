@@ -125,7 +125,7 @@ private slots:
     void unselectNodes();
     void deleteSelectedNodes();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
-
+    void debug();
 
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
@@ -147,7 +147,6 @@ private:
     void clearOverlayFrames();
 
     void setInitialName( GeoDataPlacemark *placemark );
-
 
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;

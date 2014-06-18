@@ -100,6 +100,8 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 
     // Make sure pressing "OK" will also update the polygon.
     connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updatePolygon()) );
+
+    connect( this, SIGNAL(finished(int)), SLOT(deleteLater()) );
 }
 
 EditPolygonDialog::~EditPolygonDialog()
