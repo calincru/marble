@@ -124,6 +124,7 @@ private slots:
     void deleteNode();
     void unselectNodes();
     void deleteSelectedNodes();
+    void mergeSelectedNodes();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
 

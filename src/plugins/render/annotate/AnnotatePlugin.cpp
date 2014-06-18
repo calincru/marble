@@ -48,6 +48,7 @@
 #include <QtAlgorithms>
 #include <QMessageBox>
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -811,102 +812,22 @@ void AnnotatePlugin::setupOverlayRmbMenu()
     connect( removeOverlay, SIGNAL(triggered()), this, SLOT(removeOverlay()) );
 }
 
-void AnnotatePlugin::setupPolygonRmbMenu()
-{
-    QAction *unselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
-    m_polygonRmbMenu->addAction( unselectNodes );
-    connect( unselectNodes, SIGNAL(triggered()), this, SLOT(unselectNodes()) );
-
-    QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
-    m_polygonRmbMenu->addAction( deleteAllSelected );
-    connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
-
-    QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
-    m_polygonRmbMenu->addAction( removePolygon );
-    connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
-
-    m_polygonRmbMenu->addSeparator();
-
-    QAction *showEditDialog = new QAction( tr( "Properties" ), m_polygonRmbMenu );
-    m_polygonRmbMenu->addAction( showEditDialog );
-    connect( showEditDialog, SIGNAL(triggered()), this, SLOT(editPolygon()) );
-}
-
-void AnnotatePlugin::setupNodeRmbMenu()
-{
-    QAction *selectNode = new QAction( tr( "Select Node" ), m_nodeRmbMenu );
-    QAction *deleteNode = new QAction( tr( "Delete Node" ), m_nodeRmbMenu );
-
-    m_nodeRmbMenu->addAction( selectNode );
-    m_nodeRmbMenu->addAction( deleteNode );
-
-    connect( selectNode, SIGNAL(triggered()), this, SLOT(selectNode()) );
-    connect( deleteNode, SIGNAL(triggered()), this, SLOT(deleteNode()) );
-}
-
-//void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )
-//{
-//}
-
 void AnnotatePlugin::showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y )
 {
     m_rmbOverlay = overlay;
     m_overlayRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
-void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y )
+void AnnotatePlugin::editOverlay()
 {
-    m_rmbSelectedArea = selectedArea;
-
-    if ( selectedArea->selectedNodes().isEmpty() ) {
-        m_polygonRmbMenu->actions().at(1)->setEnabled( false );
-        m_polygonRmbMenu->actions().at(0)->setEnabled( false );
-    } else {
-        m_polygonRmbMenu->actions().at(1)->setEnabled( true );
-        m_polygonRmbMenu->actions().at(0)->setEnabled( true );
-    }
-
-    m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
+    displayOverlayFrame( m_rmbOverlay );
+    displayOverlayEditDialog( m_rmbOverlay );
 }
 
-void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
+void AnnotatePlugin::removeOverlay()
 {
-    // Check whether the node is already selected; we change the text of the
-    // action accordingly.
-    if ( area->selectedNodes().contains( area->rightClickedNode() ) ) {
-        m_nodeRmbMenu->actions().at(0)->setText( tr("Deselect Node") );
-    } else {
-        m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
-    }
-
-    m_rmbSelectedArea = area;
-    m_nodeRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
-}
-
-void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
-{
-    QPointer<EditGroundOverlayDialog> dialog = new EditGroundOverlayDialog(
-                                                        overlay,
-                                                        m_marbleWidget->textureLayer(),
-                                                        m_marbleWidget );
-
-    connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)),
-             this, SLOT(updateOverlayFrame(GeoDataGroundOverlay*)) );
-
-    dialog->exec();
-    delete dialog;
-}
-
-void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
-{
-    EditPolygonDialog *dialog = new EditPolygonDialog( placemark, m_marbleWidget );
-
-    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
-             this, SIGNAL(repaintNeeded()) );
-    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
-             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
-
-    dialog->show();
+    m_marbleWidget->model()->treeModel()->removeFeature( m_rmbOverlay );
+    clearOverlayFrames();
 }
 
 void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
@@ -925,6 +846,21 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         m_groundOverlayFrames.insert( overlay, frame );
     }
 }
+
+void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
+{
+    QPointer<EditGroundOverlayDialog> dialog = new EditGroundOverlayDialog(
+                                                        overlay,
+                                                        m_marbleWidget->textureLayer(),
+                                                        m_marbleWidget );
+
+    connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)),
+             this, SLOT(updateOverlayFrame(GeoDataGroundOverlay*)) );
+
+    dialog->exec();
+    delete dialog;
+}
+
 
 void AnnotatePlugin::updateOverlayFrame( GeoDataGroundOverlay *overlay )
 {
@@ -948,43 +884,73 @@ void AnnotatePlugin::clearOverlayFrames()
     m_groundOverlayFrames.clear();
 }
 
-void AnnotatePlugin::editOverlay()
+
+void AnnotatePlugin::setupPolygonRmbMenu()
 {
-    displayOverlayFrame( m_rmbOverlay );
-    displayOverlayEditDialog( m_rmbOverlay );
+    QAction *unselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( unselectNodes );
+    connect( unselectNodes, SIGNAL(triggered()), this, SLOT(unselectNodes()) );
+
+    QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( deleteAllSelected );
+    connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
+
+    QAction *mergeSelected = new QAction( tr( "Merge Selected Nodes" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( mergeSelected );
+    connect( mergeSelected, SIGNAL(triggered()), this, SLOT(mergeSelectedNodes()) );
+
+    QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( removePolygon );
+    connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
+
+    m_polygonRmbMenu->addSeparator();
+
+    QAction *showEditDialog = new QAction( tr( "Properties" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( showEditDialog );
+    connect( showEditDialog, SIGNAL(triggered()), this, SLOT(editPolygon()) );
 }
 
-void AnnotatePlugin::editPolygon()
-{
-    displayPolygonEditDialog( m_rmbSelectedArea->placemark() );
-}
 
-void AnnotatePlugin::removeOverlay()
+void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y )
 {
-    m_marbleWidget->model()->treeModel()->removeFeature( m_rmbOverlay );
-    clearOverlayFrames();
-}
+    m_rmbSelectedArea = selectedArea;
 
-void AnnotatePlugin::removePolygon()
-{
-    m_graphicsItems.removeAll( m_rmbSelectedArea );
-    m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
-    delete m_rmbSelectedArea->feature();
-    delete m_rmbSelectedArea;
-}
-
-void AnnotatePlugin::selectNode()
-{
-    if ( m_rmbSelectedArea->selectedNodes().contains(  m_rmbSelectedArea->rightClickedNode() ) ) {
-        m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
+    if ( selectedArea->selectedNodes().isEmpty() ) {
+        m_polygonRmbMenu->actions().at(1)->setEnabled( false );
+        m_polygonRmbMenu->actions().at(0)->setEnabled( false );
     } else {
-        m_rmbSelectedArea->selectedNodes().append( m_rmbSelectedArea->rightClickedNode() );
+        m_polygonRmbMenu->actions().at(1)->setEnabled( true );
+        m_polygonRmbMenu->actions().at(0)->setEnabled( true );
     }
+
+    m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
+
 
 void AnnotatePlugin::unselectNodes()
 {
     m_rmbSelectedArea->selectedNodes().clear();
+}
+
+void AnnotatePlugin::mergeSelectedNodes()
+{
+    QList<int> &selectedNodes = m_rmbSelectedArea->selectedNodes();
+
+    if ( !selectedNodes.size() || selectedNodes.size() == 1 ) {
+        return;
+    }
+
+    int first = selectedNodes.at(0);
+    int second = selectedNodes.at(1);
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
+    GeoDataLinearRing &outerBoundary = poly->outerBoundary();
+
+    outerBoundary[second] = GeoDataCoordinates ( (outerBoundary.at(first).longitude() + outerBoundary.at(second).longitude())/2,
+                                                 (outerBoundary.at(first).latitude() + outerBoundary.at(second).latitude())/2 );
+    outerBoundary.remove( first );
+
+    selectedNodes.clear();
+    emit repaintNeeded();
 }
 
 void AnnotatePlugin::deleteSelectedNodes()
@@ -1075,6 +1041,67 @@ void AnnotatePlugin::deleteSelectedNodes()
     }
 }
 
+void AnnotatePlugin::removePolygon()
+{
+    m_graphicsItems.removeAll( m_rmbSelectedArea );
+    m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
+    delete m_rmbSelectedArea->feature();
+    delete m_rmbSelectedArea;
+}
+
+void AnnotatePlugin::editPolygon()
+{
+    displayPolygonEditDialog( m_rmbSelectedArea->placemark() );
+}
+
+void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
+{
+    EditPolygonDialog *dialog = new EditPolygonDialog( placemark, m_marbleWidget );
+
+    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
+             this, SIGNAL(repaintNeeded()) );
+    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
+             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
+
+    dialog->show();
+}
+
+void AnnotatePlugin::setupNodeRmbMenu()
+{
+    QAction *selectNode = new QAction( tr( "Select Node" ), m_nodeRmbMenu );
+    QAction *deleteNode = new QAction( tr( "Delete Node" ), m_nodeRmbMenu );
+
+    m_nodeRmbMenu->addAction( selectNode );
+    m_nodeRmbMenu->addAction( deleteNode );
+
+    connect( selectNode, SIGNAL(triggered()), this, SLOT(selectNode()) );
+    connect( deleteNode, SIGNAL(triggered()), this, SLOT(deleteNode()) );
+}
+
+void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
+{
+    // Check whether the node is already selected; we change the text of the
+    // action accordingly.
+    if ( area->selectedNodes().contains( area->rightClickedNode() ) ) {
+        m_nodeRmbMenu->actions().at(0)->setText( tr("Deselect Node") );
+    } else {
+        m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
+    }
+
+    m_rmbSelectedArea = area;
+    m_nodeRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
+}
+
+void AnnotatePlugin::selectNode()
+{
+    if ( m_rmbSelectedArea->selectedNodes().contains(  m_rmbSelectedArea->rightClickedNode() ) ) {
+        m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
+    } else {
+        m_rmbSelectedArea->selectedNodes().append( m_rmbSelectedArea->rightClickedNode() );
+    }
+}
+
+
 void AnnotatePlugin::deleteNode()
 {
     GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
@@ -1150,6 +1177,10 @@ void AnnotatePlugin::deleteNode()
         }
     }
 }
+
+//void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )
+//{
+//}
 
 }
 
