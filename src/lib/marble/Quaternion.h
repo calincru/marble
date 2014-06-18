@@ -8,6 +8,7 @@
 // Copyright 2004-2007 Torsten Rahn <tackat@kde.org>
 // Copyright 2007      Inge Wallin  <ingwa@kde.org>
 // Copyright 2011      Bernhard Beschow <bbeschow@cs.tu-berlin.de>
+// Copyright 2014      Dennis Nienhüser <earthwings@gentoo.org>
 //
 
 //
@@ -23,9 +24,6 @@
 
 namespace Marble
 {
-
-using std::cos;
-using std::sin;
 
 enum
 {
@@ -59,6 +57,7 @@ class MARBLE_EXPORT Quaternion
 
     // Operators
     Quaternion  operator*(const Quaternion &q) const;
+    Quaternion  operator+(const Quaternion &q) const;
     Quaternion  operator*(qreal factor) const;
     bool        operator==(const Quaternion &q) const;
     Quaternion& operator*=(const Quaternion &q);
@@ -71,6 +70,8 @@ class MARBLE_EXPORT Quaternion
     qreal       length() const;
 
     Quaternion  inverse() const;
+    Quaternion  log() const;
+    Quaternion  exp() const;
 
     qreal       pitch() const;
     qreal       yaw() const;

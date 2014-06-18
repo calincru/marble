@@ -1,4 +1,4 @@
-SET (TARGET animation-video)
+SET (TARGET squad-interpolation)
 PROJECT (${TARGET})
 
 include_directories(
@@ -10,14 +10,16 @@ if( QT4_FOUND )
   include( ${QT_USE_FILE} )
 endif()
 
-set( ${TARGET}_SRC main.cpp)
+set( ${TARGET}_SRC squad-interpolation.cpp)
+marble_qt4_automoc( ${${TARGET}_SRC} )
 add_executable( ${TARGET} ${${TARGET}_SRC} )
 
-target_link_libraries( ${TARGET} ${OpenCV_LIBS} marblewidget )
+target_link_libraries( ${TARGET} marblewidget )
 if (QT4_FOUND)
   target_link_libraries( ${TARGET} ${QT_QTCORE_LIBRARY} ${QT_QTMAIN_LIBRARY} )
 else()
   target_link_libraries( ${TARGET} ${Qt5Core_LIBRARIES} )
 endif()
 
-install( TARGETS ${TARGET} RUNTIME DESTINATION bin )
+install( TARGETS ${TARGET} RUNTIME DESTINATION ${MARBLE_EXAMPLES_INSTALL_DIR}/${TARGET} )
+install( FILES ${${TARGET}_SRC} DESTINATION ${MARBLE_EXAMPLES_INSTALL_DIR}/${TARGET} )

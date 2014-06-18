@@ -82,6 +82,11 @@ qreal PopupLayer::zValue() const
     return 4711.23;
 }
 
+RenderState PopupLayer::renderState() const
+{
+    return RenderState( "Popup Window" );
+}
+
 bool PopupLayer::visible() const
 {
     return m_popupItem->visible();
@@ -117,9 +122,9 @@ void PopupLayer::setUrl( const QUrl &url )
     m_popupItem->setUrl( url );
 }
 
-void PopupLayer::setContent( const QString &html )
+void PopupLayer::setContent( const QString &html, const QUrl &baseUrl )
 {
-    m_popupItem->setContent( html );
+    m_popupItem->setContent( html, baseUrl );
     emit repaintNeeded();
 }
 
@@ -165,7 +170,9 @@ void PopupLayer::setPlacemark( const GeoDataPlacemark *placemark )
         // @TODO: implement the line calculation, so that snippet().maxLines actually has effect.
         content = content.replace("$[snippet]", placemark->snippet().text(), Qt::CaseInsensitive);
         content = content.replace("$[id]", placemark->id(), Qt::CaseInsensitive);
-        m_popupItem->setContent(content);
+        QString const basePath = placemark->resolvePath(".");
+        QUrl const baseUrl = basePath != "." ? QUrl::fromLocalFile( basePath + "/" ) : QUrl();
+        m_popupItem->setContent(content, baseUrl );
     }
     m_popupItem->setBackgroundColor(placemark->style()->balloonStyle().backgroundColor());
     m_popupItem->setTextColor(placemark->style()->balloonStyle().textColor());
