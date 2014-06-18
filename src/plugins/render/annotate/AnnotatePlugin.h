@@ -102,6 +102,7 @@ public slots:
     void setAddingPlacemark( bool );
     void setDrawingPolygon( bool );
     void setAddingPolygonHole( bool );
+    void setMergingNodes( bool );
     void setAddingOverlay( bool );
     void setRemovingItems( bool );
 
@@ -117,15 +118,16 @@ public slots:
 
 private slots:
     void editOverlay();
-    void editPolygon();
     void removeOverlay();
+    void updateOverlayFrame( GeoDataGroundOverlay *overlay );
+
+    void editPolygon();
     void removePolygon();
     void selectNode();
     void deleteNode();
     void unselectNodes();
     void deleteSelectedNodes();
     void mergeSelectedNodes();
-    void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
 
 protected:
@@ -133,20 +135,30 @@ protected:
 
 private:
     void setupActions( MarbleWidget *marbleWidget );
+
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
-    void setupPolygonRmbMenu();
-    void setupNodeRmbMenu();
-    //    void readOsmFile( QIODevice* device, bool flyToFile );
-
     void showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y );
-    void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
-    void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
     void displayOverlayEditDialog( GeoDataGroundOverlay *overlay );
     void displayPolygonEditDialog( GeoDataPlacemark *placemark );
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
+    void setupPolygonRmbMenu();
+    void setupNodeRmbMenu();
+    void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
+    void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
+
+    bool dealWithAddingPlacemark( QMouseEvent *mouseEvent );
+    bool dealWithAddingPolygon( QMouseEvent *mouseEvent );
+    bool dealWithOverlayRelease( QMouseEvent *mouseEvent );
+    bool dealWithMovingSelectedItem( QMouseEvent *mouseEvent );
+    bool dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+
+
+    //    void readOsmFile( QIODevice* device, bool flyToFile );
 
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
@@ -175,6 +187,7 @@ private:
     bool m_addingPlacemark;
     bool m_drawingPolygon;
     bool m_addingPolygonHole;
+    bool m_mergingNodes;
     bool m_addingOverlay;
     bool m_removingItem;
     bool m_isInitialized;

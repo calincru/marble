@@ -275,6 +275,11 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 	m_addingOverlay = enabled;
 }
 
+void AnnotatePlugin::setMergingNodes( bool enabled )
+{
+    m_mergingNodes = enabled;
+}
+
 void AnnotatePlugin::setRemovingItems( bool enabled )
 {
     m_removingItem = enabled;
@@ -494,71 +499,25 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     // On Globe coordinates.
-    GeoDataCoordinates const coords( lon, lat );
+    const GeoDataCoordinates coords( lon, lat );
 
-    // Deal with adding a placemark.
-    if ( mouseEvent->button() == Qt::LeftButton && m_addingPlacemark ) {
-
-        GeoDataPlacemark *placemark = new GeoDataPlacemark;
-        placemark->setCoordinate( coords );
-        PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
-        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
-        m_graphicsItems.append( textAnnotation );
-
-        emit placemarkAdded();
+    // Deal with adding a placemark or a polygon;
+    if ( ( m_addingPlacemark && dealWithAddingPlacemark( mouseEvent ) ) ||
+         ( m_drawingPolygon && dealWithAddingPolygon( mouseEvent ) ) ) {
         return true;
     }
 
-    // Deal with drawing a polygon.
-    if ( mouseEvent->button() == Qt::LeftButton &&
-         mouseEvent->type() == QEvent::MouseButtonPress &&
-         m_drawingPolygon ) {
-
-        m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
-        GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
-        poly->outerBoundary().append( coords );
-        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
-
-        return true;
+    // It is important to deal with Ground Overlay mouse release event here because, in order to
+    // make the rendering more efficient, it uses the texture layer.
+    if ( m_groundOverlayModel.rowCount() ) {
+        dealWithOverlayRelease( mouseEvent );
     }
 
-
-
-    // Events caught by ground overlays at mouse release. So far we have: displaying the overlay frame
-    // (marking it as selected), removing it and showing a rmb menu with options.
-    if ( event->type() == QEvent::MouseButtonRelease ) {
-        for ( int i = 0; i < m_groundOverlayModel.rowCount(); ++i ) {
-            QModelIndex index = m_groundOverlayModel.index( i, 0 );
-            GeoDataGroundOverlay *overlay = dynamic_cast<GeoDataGroundOverlay*>(
-                        qvariant_cast<GeoDataObject*>( index.data( MarblePlacemarkModel::ObjectPointerRole ) ) );
-
-            if ( overlay->latLonBox().contains( coords ) ) {
-                if ( mouseEvent->button() == Qt::LeftButton ) {
-                    if ( m_removingItem ) {
-                        m_marbleWidget->model()->treeModel()->removeFeature( overlay );
-                    } else {
-                        displayOverlayFrame( overlay );
-                    }
-                } else if ( mouseEvent->button() == Qt::RightButton ) {
-                    showOverlayRmbMenu( overlay, mouseEvent->x(), mouseEvent->y() );
-                }
-            }
-        }
-        // Do not return since the rowCount() may be 0 (when the user interacts with a polygon or placemark).
-    }
-
-
-    // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
-    // handler and updating the placemark geometry.
-    //
     // It is important to deal with the MouseMove event here because it changes the state of the selected
     // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
     // globe, which is treated above).
-    if ( mouseEvent->type() == QEvent::MouseMove && m_selectedItem ) {
-        if ( m_selectedItem->sceneEvent( mouseEvent ) ) {
-            m_marbleWidget->model()->treeModel()->updateFeature( m_selectedItem->placemark() );
-            return true;
-        }
+    if ( m_selectedItem && dealWithMovingSelectedItem( mouseEvent ) ) {
+        return true;
     }
 
 
@@ -571,60 +530,13 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             if ( !region.contains( mouseEvent->pos() ) )
                 continue;
 
-            if ( mouseEvent->button() == Qt::LeftButton &&
-                 mouseEvent->type() == QEvent::MouseButtonPress &&
-                 m_removingItem ) {
-
-                const int result = QMessageBox::question( m_marbleWidget,
-                                                          QObject::tr( "Remove current item" ),
-                                                          QObject::tr( "Are you sure you want to remove the current item?" ),
-                                                          QMessageBox::Yes | QMessageBox::No );
-
-                if ( result == QMessageBox::Yes ) {
-                    m_selectedItem = 0;
-                    m_graphicsItems.removeAll( item );
-                    m_marbleWidget->model()->treeModel()->removeFeature( item->feature() );
-                    delete item->feature();
-                    delete item;
-                    emit itemRemoved();
-                }
+            if ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) {
                 return true;
-
-            } else if ( mouseEvent->button() == Qt::LeftButton &&
-                        mouseEvent->type() == QEvent::MouseButtonPress &&
-                        m_addingPolygonHole ) {
-
-                // Ignore if someone by mistake clicks another scene graphic element while having
-                // checked "Add Polygon Hole".
-                if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-                    break;
-                }
-
-                // We can now be sure that the scene graphic item is an area annotation and its
-                // geometry is a polygon.
-                AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-                GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
-                Q_ASSERT( area );
-                Q_ASSERT( poly );
-
-                // If it is the first click in the interior of a polygon and the event position is not
-                // a hole of the polygon, we initialize the polygon on which we want to draw a hole.
-                if ( !m_holedPolygon && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
-                    m_holedPolygon = poly;
-                    poly->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
-                } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
-                    // Ignore clicks on other polygons if the polygon has already been initialized or
-                    // if the even position is contained by one of the polygon's holes.
-                    break;
-                }
-
-                m_holedPolygon->innerBoundaries().last().append( coords );
-                m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+            } else if ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) {
                 return true;
-
-            // We call sceneEvent only if event type is other than MouseEvent. That is because we however
-            // deal with the mouse move event outside this loop and it never got here.
             } else if ( mouseEvent->type() != QEvent::MouseMove && item->sceneEvent( mouseEvent ) ) {
+                // We call sceneEvent only if event type is other than MouseEvent. That is because we however
+                // deal with the mouse move event outside this loop and it never got here.
                 if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
                     m_selectedItem = item;
                     if ( !m_groundOverlayFrames.values().contains( item ) ) {
@@ -636,29 +548,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 
                 m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
                 return true;
-            } else if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
-                // We get here when mousePressEvent returns false.
-                if ( item->graphicType() == SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-                    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-                    Q_ASSERT( area );
-
-                    if ( area->rightClickedNode() == -1 ) {
-                        showPolygonRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
-                    } else if ( area->rightClickedNode() >= 0 ){
-                        showNodeRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
-                    } else {
-                        // If the region clicked is the interior of an innerBoundary of a polygon,
-                        // we pass the event handling further. This guarantees that the events are
-                        // caught by imbricated polygons irrespective of their number (e.g. we can
-                        // have polygon within polygon within polygon, etc ).
-                        Q_ASSERT( area->isInnerBoundsPoint( mouseEvent->pos() ) );
-                        break;
-                    }
-
-
-                    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-                    return true;
-                }
+            } else if ( dealWithShowingRmbMenus( mouseEvent, item ) ) {
+                return true;
             }
         }
     }
@@ -668,6 +559,202 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     return false;
+}
+
+bool AnnotatePlugin::dealWithAddingPlacemark( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+    qreal lon, lat;
+    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                    mouseEvent->pos().y(),
+                                    lon, lat,
+                                    GeoDataCoordinates::Radian );
+    const GeoDataCoordinates coords( lon, lat );
+
+
+    GeoDataPlacemark *placemark = new GeoDataPlacemark;
+    placemark->setCoordinate( coords );
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
+
+    PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
+    m_graphicsItems.append( textAnnotation );
+
+    emit placemarkAdded();
+    return true;
+}
+
+bool AnnotatePlugin::dealWithAddingPolygon( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->button() != Qt::LeftButton ||
+         mouseEvent->type() != QEvent::MouseButtonPress ) {
+        return false;
+    }
+
+    qreal lon, lat;
+    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                    mouseEvent->pos().y(),
+                                    lon, lat,
+                                    GeoDataCoordinates::Radian );
+    const GeoDataCoordinates coords( lon, lat );
+
+
+    m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
+    poly->outerBoundary().append( coords );
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
+
+    return true;
+}
+
+bool AnnotatePlugin::dealWithOverlayRelease( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->type() != QEvent::MouseButtonRelease ) {
+        return false;
+    }
+
+    qreal lon, lat;
+    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                    mouseEvent->pos().y(),
+                                    lon, lat,
+                                    GeoDataCoordinates::Radian );
+    const GeoDataCoordinates coords( lon, lat );
+
+    // Events caught by ground overlays at mouse release. So far we have: displaying the overlay frame
+    // (marking it as selected), removing it and showing a rmb menu with options.
+    for ( int i = 0; i < m_groundOverlayModel.rowCount(); ++i ) {
+        QModelIndex index = m_groundOverlayModel.index( i, 0 );
+        GeoDataGroundOverlay *overlay = dynamic_cast<GeoDataGroundOverlay*>(
+           qvariant_cast<GeoDataObject*>( index.data( MarblePlacemarkModel::ObjectPointerRole ) ) );
+
+        if ( overlay->latLonBox().contains( coords ) ) {
+            if ( mouseEvent->button() == Qt::LeftButton ) {
+                if ( m_removingItem ) {
+                    m_marbleWidget->model()->treeModel()->removeFeature( overlay );
+                    emit itemRemoved();
+                } else {
+                    displayOverlayFrame( overlay );
+                }
+            } else if ( mouseEvent->button() == Qt::RightButton ) {
+                showOverlayRmbMenu( overlay, mouseEvent->x(), mouseEvent->y() );
+            }
+        }
+    }
+
+    return true;
+}
+
+bool AnnotatePlugin::dealWithMovingSelectedItem( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->type() != QEvent::MouseMove ) {
+        return false;
+    }
+
+    // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
+    // handler and updating the placemark geometry.
+    if ( m_selectedItem->sceneEvent( mouseEvent ) ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_selectedItem->placemark() );
+        return true;
+    }
+
+    return false;
+}
+
+bool AnnotatePlugin::dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+{
+    if ( mouseEvent->type() != QEvent::MouseButtonPress ||
+         mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+    const int result = QMessageBox::question( m_marbleWidget,
+                                              QObject::tr( "Remove current item" ),
+                                              QObject::tr( "Are you sure you want to remove the current item?" ),
+                                              QMessageBox::Yes | QMessageBox::No );
+
+    if ( result == QMessageBox::Yes ) {
+        m_selectedItem = 0;
+        m_graphicsItems.removeAll( item );
+        m_marbleWidget->model()->treeModel()->removeFeature( item->feature() );
+        delete item->feature();
+        delete item;
+        emit itemRemoved();
+    }
+
+    return true;
+}
+
+bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+{
+    if ( mouseEvent->type() != QEvent::MouseButtonPress ||
+         mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+    qreal lon, lat;
+    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                    mouseEvent->pos().y(),
+                                    lon, lat,
+                                    GeoDataCoordinates::Radian );
+    const GeoDataCoordinates coords( lon, lat );
+
+    // Ignore if someone by mistake clicks another scene graphic element while having
+    // checked "Add Polygon Hole".
+    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
+        return false;
+    }
+
+    // We can now be sure that the scene graphic item is an area annotation and its
+    // geometry is a polygon.
+    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
+    Q_ASSERT( area );
+    Q_ASSERT( poly );
+
+    // If it is the first click in the interior of a polygon and the event position is not
+    // a hole of the polygon, we initialize the polygon on which we want to draw a hole.
+    if ( !m_holedPolygon && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+        m_holedPolygon = poly;
+        poly->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
+    } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+        // Ignore clicks on other polygons if the polygon has already been initialized or
+        // if the even position is contained by one of the polygon's holes.
+        return false;
+    }
+    m_holedPolygon->innerBoundaries().last().append( coords );
+
+    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+    return true;
+}
+
+bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+{
+    // We get here when mousePressEvent returns false.
+    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ||
+         mouseEvent->type() != QEvent::MouseButtonPress ) {
+        return false;
+    }
+
+    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
+    Q_ASSERT( area );
+
+    if ( area->rightClickedNode() == -1 ) {
+        showPolygonRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
+    } else if ( area->rightClickedNode() >= 0 ){
+        showNodeRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
+    } else {
+        // If the region clicked is the interior of an innerBoundary of a polygon,
+        // we pass the event handling further. This guarantees that the events are
+        // caught by imbricated polygons irrespective of their number (e.g. we can
+        // have polygon within polygon within polygon, etc ).
+        Q_ASSERT( area->isInnerBoundsPoint( mouseEvent->pos() ) );
+        return false;
+    }
+
+    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+    return true;
 }
 
 void AnnotatePlugin::setupActions(MarbleWidget *widget)
@@ -714,6 +801,13 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         addHole->setCheckable( true );
         connect( addHole, SIGNAL(toggled(bool)),
                  this, SLOT(setAddingPolygonHole(bool)) );
+
+        QAction *mergeNodes = new QAction( this );
+        mergeNodes->setText( tr("Merge Nodes") );
+        // TODO: est icon
+        mergeNodes->setCheckable( true );
+        connect( mergeNodes, SIGNAL(toggled(bool)),
+                 this, SLOT(setMergingNodes(bool)) );
 
         QAction *addOverlay = new QAction( this );
         addOverlay->setText( tr("Add Ground Overlay") );
@@ -945,11 +1039,12 @@ void AnnotatePlugin::mergeSelectedNodes()
     int first = selectedNodes.at(0);
     int second = selectedNodes.at(1);
 
-    if ( selectedNodes.size() > 2 || fabs( first - second ) > 1 ) {
+    qDebug() << first << ", " << second << ", " << m_rmbSelectedArea->regions().size() << "\n";
+    if ( selectedNodes.size() > 2 ) {
         QMessageBox::warning( m_marbleWidget,
                               QString( "Operation not permitted!" ),
-                              QString( "Merging other nodes than two neighbour nodes is not"
-                                       " available at the moment!" ) );
+                              QString( "Merging more than two nodes is not available at the"
+                                       " moment!" ) );
         return;
     }
 
