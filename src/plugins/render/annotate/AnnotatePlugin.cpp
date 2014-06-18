@@ -923,6 +923,12 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
         m_polygonRmbMenu->actions().at(0)->setEnabled( true );
     }
 
+    if ( selectedArea->selectedNodes().isEmpty() || selectedArea->selectedNodes().size() == 1 ) {
+        m_polygonRmbMenu->actions().at(2)->setEnabled( false );
+    } else {
+        m_polygonRmbMenu->actions().at(2)->setEnabled( true );
+    }
+
     m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
@@ -936,20 +942,26 @@ void AnnotatePlugin::mergeSelectedNodes()
 {
     QList<int> &selectedNodes = m_rmbSelectedArea->selectedNodes();
 
-    if ( !selectedNodes.size() || selectedNodes.size() == 1 ) {
+    int first = selectedNodes.at(0);
+    int second = selectedNodes.at(1);
+
+    if ( selectedNodes.size() > 2 || fabs( first - second ) > 1 ) {
+        QMessageBox::warning( m_marbleWidget,
+                              QString( "Operation not permitted!" ),
+                              QString( "Merging other nodes than two neighbour nodes is not"
+                                       " available at the moment!" ) );
         return;
     }
 
-    int first = selectedNodes.at(0);
-    int second = selectedNodes.at(1);
     GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
     GeoDataLinearRing &outerBoundary = poly->outerBoundary();
 
-    outerBoundary[second] = GeoDataCoordinates ( (outerBoundary.at(first).longitude() + outerBoundary.at(second).longitude())/2,
-                                                 (outerBoundary.at(first).latitude() + outerBoundary.at(second).latitude())/2 );
+    outerBoundary[second] = outerBoundary.at( first ).interpolate( outerBoundary.at( second ), 0.5 );
     outerBoundary.remove( first );
 
-    selectedNodes.clear();
+    selectedNodes.removeAll( first );
+    selectedNodes.removeAll( second );
+
     emit repaintNeeded();
 }
 
