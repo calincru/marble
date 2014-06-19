@@ -40,8 +40,13 @@ public:
     /**
      * @brief Checks whether the point parameter is contained by one of its inner
      * boundaries.
+     * @p exclusive If this parameter is set to false, only check if one of its
+     * inner boundaries contains the point (using GeoDataLinerRing::contains). In
+     * addition tot this, when exclusive is set to true, also check that none of
+     * the polygon's regions (its nodes) contain the point (yes, these regions may
+     * 'intersect' due to the way nodes are represented).
      */
-    bool isInnerBoundsPoint( const QPoint &point ) const;
+    bool isInnerBoundsPoint( const QPoint &point, bool exclusive = false ) const;
 
     /**
      * @brief Checks if the polygon has a valid shape; an invalid shape would be, for
@@ -50,16 +55,26 @@ public:
      */
     bool isValidPolygon() const;
 
+    /**
+     * @brief Returns the index (from the region() list, including the nodes which
+     * form polygon's inner boundaries) of the node which contained the position of
+     * last mousePressEvent.
+     */
     int lastClickedNode() const;
 
-    void setMergingState( bool merging );
+    /**
+     * @brief Controls whether the nodes get marked as selected (painted with different
+     * color) or no. Implicitly they get, but there are situations when we need to
+     * disable this behaviour from outside the object (e.g. merging nodes).
+     */
+    void setMarkingSelectedNodes( bool marking );
 
     virtual const char *graphicType() const;
 
 private:
     QList<QRegion>     m_innerBoundariesList;
 
-    bool               m_mergingState;
+    bool               m_markingNodes;
     int                m_movedNodeIndex;
     int                m_rightClickedNode;
     QList<int>         m_selectedNodes;

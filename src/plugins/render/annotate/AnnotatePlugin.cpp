@@ -278,8 +278,9 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
-    if ( !enabled ) {
-        m_mergedArea->setMergingState( false );
+    if ( !enabled && m_mergedArea ) {
+        // Restore this AreaAnnotation to be able to mark selected nodes by clicking.
+        m_mergedArea->setMarkingSelectedNodes( true );
     }
 
     m_mergingNodes = enabled;
@@ -699,15 +700,7 @@ bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGr
     // graphically the item gets deselected (for example, for ground overlays, the ground overlay frame
     // is not deleted). It means that the item got "released" and will not be moved anymore.
     m_movedItem = 0;
-/*
-    if ( item->graphicType() == SceneGraphicTypes::SceneGraphicAreaAnnotation &&
-         m_mergingNodes && m_mergedNodeIndex != -1 ) {
-        AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-        Q_ASSERT( area );
 
-        area->selectedNodes().removeAll( m_mergedNodeIndex );
-    }
-*/
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
     return true;
 }
@@ -767,7 +760,7 @@ bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsI
         poly->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
     } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
         // Ignore clicks on other polygons if the polygon has already been initialized or
-        // if the even position is contained by one of the polygon's holes.
+        // if the event position is contained by one of the polygon's holes.
         return false;
     }
     m_holedPolygon->innerBoundaries().last().append( coords );
@@ -789,15 +782,23 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
     Q_ASSERT( area );
 
-    if ( !m_mergedArea && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+    if ( m_mergedArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
+        // If the polygon has been initialized but it is different than the previously selected one,
+        // disable marking nodes as selected for this one and enable for the older one. This makes
+        // possible to merge nodes in different polygons without unchecking and checking again "Merge
+        // Nodes".
+        if ( m_mergedArea ) {
+            m_mergedArea->setMarkingSelectedNodes( true );
+        }
+        area->setMarkingSelectedNodes( false );
         m_mergedArea = area;
-        area->setMergingState( true );
-    } else if ( m_mergedArea != area || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
-        // Ignore clicks on other polygons if the polygon has already been initialized or
-        // if the even position is contained by one of the polygon's holes.
+        m_mergedNodeIndex = -1;
+    } else if ( area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
+        // Ignore clicks on polygon's inner boundaries.
         return false;
     }
 
+    // We can now be sure that mousePressEvent in AreaAnnotation will return true.
     Q_ASSERT( area->sceneEvent( mouseEvent) );
     int clickedNode = area->lastClickedNode();
 
@@ -806,28 +807,78 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         return false;
     }
 
+    // If this is the first node selected to be merged, store its index and wait for clicking its
+    // pair.
     if ( m_mergedNodeIndex == -1 ) {
         m_mergedNodeIndex = clickedNode;
         return true;
     }
 
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
-    Q_ASSERT( poly );
-
-    // The merging is done by removing the first selected node and changing the coordinates
-    // of the second one.
-    GeoDataLinearRing &outer = poly->outerBoundary();
-
+    // Store in clickedNode the higher index.
     if ( clickedNode < m_mergedNodeIndex ) {
         qSwap<int>( clickedNode, m_mergedNodeIndex );
     }
-    outer[clickedNode] = outer.at(clickedNode).interpolate( outer.at(m_mergedNodeIndex), 0.5 );
-    outer.remove( m_mergedNodeIndex );
 
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( area->placemark()->geometry() );
+    Q_ASSERT( poly );
+
+    GeoDataLinearRing &outer = poly->outerBoundary();
+
+    if ( ( clickedNode >= outer.size() && m_mergedNodeIndex < outer.size() ) ||
+         ( clickedNode < outer.size() && m_mergedNodeIndex >= outer.size() ) ) {
+        QMessageBox::warning( m_marbleWidget,
+                              QString( "Operation not permitted"),
+                              QString( "Cannot merge a node from polygon's outer boundary with"
+                                       " a node from one of its inner boundaries!" ) );
+        m_mergedNodeIndex = -1;
+        // Made the user aware of the impossibility of merging those nodes and return true so that
+        // the event do not propagate.
+        return true;
+    }
+
+    // If the selected nodes ar part of one of the polygon's inner boundary.
+    if ( clickedNode - outer.size() >= 0 ) {
+        QVector<GeoDataLinearRing> &inners = poly->innerBoundaries();
+
+        clickedNode -= outer.size();
+        m_mergedNodeIndex -= outer.size();
+
+        // The merging is done by removing the first selected node and changing the coordinates
+        // of the second one.
+        for ( int i = 0; i < inners.size(); ++i ) {
+            if ( clickedNode - inners.at(i).size() < 0 ) {
+                inners[i].at(clickedNode) = inners.at(i).at(clickedNode).interpolate(
+                                            inners.at(i).at(m_mergedNodeIndex), 0.5 );
+                inners[i].remove( m_mergedNodeIndex );
+                // If this inner boundary has only two remaining nodes, remove it all.
+                if ( inners.at(i).size() <= 2 ) {
+                    inners[i].clear();
+                }
+            } else {
+                clickedNode -= inners.at(i).size();
+                m_mergedNodeIndex -= inners.at(i).size();
+            }
+        }
+    } else {
+        outer.at(clickedNode) = outer.at(clickedNode).interpolate( outer.at(m_mergedNodeIndex), 0.5 );
+        outer.remove( m_mergedNodeIndex );
+
+        // If the polygon's outer boundary has only two nodes remained after merging, remove it all.
+        if ( outer.size() <= 2 ) {
+            m_graphicsItems.removeAll( area );
+            m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
+            delete area->feature();
+            delete area;
+
+            m_mergedNodeIndex = -1;
+            return true;
+        }
+
+    }
 
     QList<int> &selectedNodes = m_mergedArea->selectedNodes();
     // When having one of the two merged nodes marked as selected, the resulting node will also be
-    // selected (I used the fact that clickedNode is the node with higher index, due to the swap
+    // selected (uses the fact that clickedNode is the node with higher index, due to the swap
     // from above).
     if ( selectedNodes.contains( clickedNode ) || selectedNodes.contains( m_mergedNodeIndex ) ) {
         selectedNodes.removeAll( clickedNode );
@@ -1131,11 +1182,7 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( deleteAllSelected );
     connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
-/*
-    QAction *mergeSelected = new QAction( tr( "Merge Selected Nodes" ), m_polygonRmbMenu );
-    m_polygonRmbMenu->addAction( mergeSelected );
-    connect( mergeSelected, SIGNAL(triggered()), this, SLOT(mergeSelectedNodes()) );
-*/
+
     QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( removePolygon );
     connect( removePolygon, SIGNAL(triggered()), this, SLOT(removePolygon()) );
@@ -1159,13 +1206,7 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
         m_polygonRmbMenu->actions().at(1)->setEnabled( true );
         m_polygonRmbMenu->actions().at(0)->setEnabled( true );
     }
-/*
-    if ( selectedArea->selectedNodes().isEmpty() || selectedArea->selectedNodes().size() == 1 ) {
-        m_polygonRmbMenu->actions().at(2)->setEnabled( false );
-    } else {
-        m_polygonRmbMenu->actions().at(2)->setEnabled( true );
-    }
-*/
+
     m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
@@ -1174,36 +1215,6 @@ void AnnotatePlugin::unselectNodes()
 {
     m_rmbSelectedArea->selectedNodes().clear();
 }
-
-/*
-void AnnotatePlugin::mergeSelectedNodes()
-{
-    QList<int> &selectedNodes = m_rmbSelectedArea->selectedNodes();
-
-    int first = selectedNodes.at(0);
-    int second = selectedNodes.at(1);
-
-    qDebug() << first << ", " << second << ", " << m_rmbSelectedArea->regions().size() << "\n";
-    if ( selectedNodes.size() > 2 ) {
-        QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted!" ),
-                              QString( "Merging more than two nodes is not available at the"
-                                       " moment!" ) );
-        return;
-    }
-
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
-    GeoDataLinearRing &outerBoundary = poly->outerBoundary();
-
-    outerBoundary[second] = outerBoundary.at( first ).interpolate( outerBoundary.at( second ), 0.5 );
-    outerBoundary.remove( first );
-
-    selectedNodes.removeAll( first );
-    selectedNodes.removeAll( second );
-
-    emit repaintNeeded();
-}
-*/
 
 void AnnotatePlugin::deleteSelectedNodes()
 {

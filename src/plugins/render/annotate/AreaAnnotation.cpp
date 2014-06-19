@@ -26,7 +26,7 @@ namespace Marble
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
-      m_mergingState( false ),
+      m_markingNodes( true ),
       m_movedNodeIndex( -1 ),
       m_rightClickedNode( -2 ),
       m_viewport( 0 )
@@ -256,7 +256,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return true;
     }
 
-    if ( m_mergingState ) {
+    if ( !m_markingNodes ) {
         return true;
     }
 
@@ -293,11 +293,24 @@ int AreaAnnotation::rightClickedNode() const
     return m_rightClickedNode;
 }
 
-bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point ) const
+bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point, bool exclusive ) const
 {
     foreach ( const QRegion &innerRegion, m_innerBoundariesList ) {
-        if ( innerRegion.contains( point ) )
-            return true;
+        if ( innerRegion.contains( point ) ) {
+            if ( exclusive ) {
+                QList<QRegion> regionList = regions();
+
+                for ( int i = 0; i < regionList.size() - 1; ++i ) {
+                    if ( regionList.at( i ).contains( point ) ) {
+                        return false;
+                    }
+                }
+
+                return true;
+            } else {
+                return true;
+            }
+        }
     }
 
     return false;
@@ -323,9 +336,9 @@ int AreaAnnotation::lastClickedNode() const
     return m_movedNodeIndex;
 }
 
-void AreaAnnotation::setMergingState( bool merging )
+void AreaAnnotation::setMarkingSelectedNodes( bool marking )
 {
-    m_mergingState = merging;
+    m_markingNodes = marking;
 }
 
 const char *AreaAnnotation::graphicType() const
