@@ -40,13 +40,13 @@ public:
     /**
      * @brief Checks whether the point parameter is contained by one of its inner
      * boundaries.
-     * @p exclusive If this parameter is set to false, only check if one of its
+     * @p restrictive If this parameter is set to false, only check if one of its
      * inner boundaries contains the point (using GeoDataLinerRing::contains). In
-     * addition tot this, when exclusive is set to true, also check that none of
+     * addition to this, when restrictive is set to true, also check that none of
      * the polygon's regions (its nodes) contain the point (yes, these regions may
      * 'intersect' due to the way nodes are represented).
      */
-    bool isInnerBoundsPoint( const QPoint &point, bool exclusive = false ) const;
+    bool isInnerBoundsPoint( const QPoint &point, bool restrictive = false ) const;
 
     /**
      * @brief Checks if the polygon has a valid shape; an invalid shape would be, for

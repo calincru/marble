@@ -279,7 +279,7 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
     if ( !enabled && m_mergedArea ) {
-        // Restore this AreaAnnotation to be able to mark selected nodes by clicking.
+        // Restore this AreaAnnotation to be able to mark selected nodes.
         m_mergedArea->setMarkingSelectedNodes( true );
     }
 
@@ -570,7 +570,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
-    // If the events gets here, it most probably means it is a map interaction event, or something
+    // If the events get here, it most probably means it is a map interaction event, or something
     // that has nothing to do with the annotate plugin items. We "deal" with this situation because,
     // for example, we may need to deselect some selected items.
     dealWithUncaughtEvents( mouseEvent );

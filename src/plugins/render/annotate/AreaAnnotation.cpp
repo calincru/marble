@@ -9,16 +9,20 @@
 // Copyright 2013      Thibaut Gridel           <tgridel@free.fr>
 // Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com
 //
+
+// Self
 #include "AreaAnnotation.h"
 
-#include <qmath.h>
-
+// Marble
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
+
+// Qt
+#include <qmath.h>
 
 
 namespace Marble
@@ -144,14 +148,14 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     }
 
     QList<QRegion> regionList = regions();
-    qreal lon, lat;
 
+    qreal lon, lat;
     m_viewport->geoCoordinates( event->pos().x(),
                                 event->pos().y(),
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
-
     const GeoDataCoordinates coords( lon, lat );
+
     // This means one of the nodes has been clicked. The clicked node can be on the outer
     // boundary of the polygon as well as on its inner boundary.
     if ( m_movedNodeIndex >= 0 && m_movedNodeIndex < regionList.size() - 1 ) {
@@ -256,6 +260,8 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return true;
     }
 
+    // If m_markingNodes is set to false, then the clicked node should not get into the selectedNodes
+    // list.
     if ( !m_markingNodes ) {
         return true;
     }
@@ -293,15 +299,15 @@ int AreaAnnotation::rightClickedNode() const
     return m_rightClickedNode;
 }
 
-bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point, bool exclusive ) const
+bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point, bool restrictive ) const
 {
     foreach ( const QRegion &innerRegion, m_innerBoundariesList ) {
         if ( innerRegion.contains( point ) ) {
-            if ( exclusive ) {
+            if ( restrictive ) {
                 QList<QRegion> regionList = regions();
 
                 for ( int i = 0; i < regionList.size() - 1; ++i ) {
-                    if ( regionList.at( i ).contains( point ) ) {
+                    if ( regionList.at(i).contains( point ) ) {
                         return false;
                     }
                 }
