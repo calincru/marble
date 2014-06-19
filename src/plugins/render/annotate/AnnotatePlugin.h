@@ -148,10 +148,15 @@ private:
     void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
     void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
 
+
+    void dealWithOverlayRelease( QMouseEvent *mouseEvent );
     bool dealWithAddingPlacemark( QMouseEvent *mouseEvent );
     bool dealWithAddingPolygon( QMouseEvent *mouseEvent );
-    bool dealWithOverlayRelease( QMouseEvent *mouseEvent );
     bool dealWithMovingSelectedItem( QMouseEvent *mouseEvent );
+
+    bool dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+
     bool dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
@@ -176,7 +181,7 @@ private:
     QList<SceneGraphicsItem*> m_graphicsItems;
 
     GeoDataPlacemark     *m_polygonPlacemark;
-    SceneGraphicsItem    *m_selectedItem;
+    SceneGraphicsItem    *m_movedItem;
     GeoDataGroundOverlay *m_rmbOverlay;
     AreaAnnotation       *m_rmbSelectedArea;
     GeoDataPolygon       *m_holedPolygon;
