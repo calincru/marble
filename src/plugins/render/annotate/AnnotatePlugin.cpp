@@ -463,13 +463,16 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         MarbleWidget *marbleWidget = qobject_cast<MarbleWidget*>( watched );
         if ( marbleWidget ) {
             m_marbleWidget = marbleWidget;
+
             setupGroundOverlayModel();
             setupOverlayRmbMenu();
             setupPolygonRmbMenu();
             setupNodeRmbMenu();
             setupActions( marbleWidget );
+
             m_marbleWidget->model()->treeModel()->addDocument( m_annotationDocument );
             m_widgetInitialized = true;
+
             return true;
         }
         return false;
@@ -485,6 +488,7 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     QMouseEvent *mouseEvent = dynamic_cast<QMouseEvent*>( event );
     Q_ASSERT( mouseEvent );
 
+    // Get the geocoordinates from mouse pos screen coordinates.
     qreal lon, lat;
     bool isOnGlobe = m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
                                                      mouseEvent->pos().y(),
@@ -507,13 +511,14 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     // It is important to deal with Ground Overlay mouse release event here because it texture layer
     // in order to make the rendering more efficient.
     if ( mouseEvent->type() == QEvent::MouseButtonRelease && m_groundOverlayModel.rowCount() ) {
-        dealWithOverlayRelease( mouseEvent );
+        dealWithReleaseOverlay( mouseEvent );
     }
 
     // It is important to deal with the MouseMove event here because it changes the state of the selected
     // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
     // globe, which is treated above).
-    if ( QEvent::MouseMove && m_movedItem && dealWithMovingSelectedItem( mouseEvent ) ) {
+    if ( mouseEvent->type() == QEvent::MouseMove && m_movedItem &&
+         dealWithMovingSelectedItem( mouseEvent ) ) {
         return true;
     }
 
@@ -527,35 +532,40 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             if ( !region.contains( mouseEvent->pos() ) )
                 continue;
 
-            if ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) {
-                return true;
-            } else if ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) {
-                return true;
-            //} else if ( m_mergingNodes && dealWithMergingNodes( mouseEvent, item ) ) {
-            //    return true;
-            } else if ( mouseEvent->type() != QEvent::MouseMove && item->sceneEvent( mouseEvent ) ) {
-                // We call sceneEvent only if event type is other than MouseEvent. That is because we however
-                // deal with the mouse move event outside this loop and it never got here.
-                if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
-                    m_movedItem = item;
-                    if ( !m_groundOverlayFrames.values().contains( item ) ) {
-                        clearOverlayFrames();
-                    }
-                } else {
-                    m_movedItem = 0;
-                }
+            // The flow here is as it follows: first check if there is anything we may want to do
+            // before the item itself handles the event (which is done via dealWithMousePressEvent
+            // and dealWithMouseReleaseEvent). For example, we don't want the item to handle the
+            // event when having selected "Removing item"; instead, we want to remove the item in
+            // this situation; the same applies for adding polygon holes and merging nodes, so far.
+            // Then, if there is nothing to do before the item handles the event, let it handle the
+            // event. The third step is after the item handled the event: we get after it when the
+            // item event handler returns false, so there is the section where we had collected some
+            // information about the event and taking into consideration this information, we can
+            // handle other situations; as an example for this, so far we have showing rmb menus for
+            // polygons/nodes, and the information we collect from the previous step in this case is
+            // the node which had been right clicked.
+            if ( ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) ||
 
-                m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
-                return true;
-            } else if ( dealWithShowingRmbMenus( mouseEvent, item ) ) {
+                 ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) ||
+
+                 ( m_mergingNodes && dealWithMergingNodes( mouseEvent, item ) ) ||
+
+                 ( mouseEvent->type() == QEvent::MouseButtonPress &&
+                   dealWithMousePressEvent( mouseEvent, item ) ) ||
+
+                 ( mouseEvent->type() == QEvent::MouseButtonRelease &&
+                   dealWithMouseReleaseEvent( mouseEvent, item ) ) ||
+
+                 ( dealWithShowingRmbMenus( mouseEvent, item ) ) ) {
                 return true;
             }
         }
     }
 
-    if ( mouseEvent->type() != QEvent::MouseMove && mouseEvent->type() != QEvent::MouseButtonRelease ) {
-        clearOverlayFrames();
-    }
+    // If the events gets here, it most probably means it is a map interaction event, or something
+    // that has nothing to do with the annotate plugin items. We "deal" with this situation because,
+    // for example, we may need to deselect some selected items.
+    dealWithUncaughtEvents( mouseEvent );
 
     return false;
 }
@@ -608,7 +618,7 @@ bool AnnotatePlugin::dealWithAddingPolygon( QMouseEvent *mouseEvent )
     return true;
 }
 
-void AnnotatePlugin::dealWithOverlayRelease( QMouseEvent *mouseEvent )
+void AnnotatePlugin::dealWithReleaseOverlay( QMouseEvent *mouseEvent )
 {
     qreal lon, lat;
     m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
@@ -653,15 +663,15 @@ bool AnnotatePlugin::dealWithMovingSelectedItem( QMouseEvent *mouseEvent )
 
 bool AnnotatePlugin::dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
-    // Return false if the event is other the mouse press or the mouse press event handler of the
-    // item returns false.
-    if ( mouseEvent->type() != QEvent::MouseButtonPress || item->sceneEvent( mouseEvent ) ) {
+    // Return false if the mouse press event handler of the item returns false.
+    if ( !item->sceneEvent( mouseEvent ) ) {
         return false;
     }
 
     // The item gets selected at each mouse press event.
     m_movedItem = item;
-    // For ground overlays, if the current item is not contained by m_groundOverlayFrames, clear
+
+    // For ground overlays, if the current item is not contained in m_groundOverlayFrames, clear
     // all frames, which means the overlay gets deselected.
     if ( !m_groundOverlayFrames.values().contains( item ) ) {
         clearOverlayFrames();
@@ -673,17 +683,14 @@ bool AnnotatePlugin::dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGrap
 
 bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
-    // Return false if the event is other the mouse release or the mouse release event handler of the
-    // item returns false.
-    if ( mouseEvent->type() != QEvent::MouseButtonRelease || item->sceneEvent( mouseEvent ) ) {
+    // Return false if the mouse release event handler of the item returns false.
+    if ( !item->sceneEvent( mouseEvent ) ) {
         return false;
     }
 
     // The selected item gets deselected at mouse release event. Be aware that this does not mean that
     // graphically the item gets deselected (for example, for ground overlays, the ground overlay frame
     // is not deleted). It means that the item got "released" and will not be moved anymore.
-    //
-    // FIXME: Consider changing this variable name since this may be confusing. Maybe m_movedItem?
     m_movedItem = 0;
 
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
@@ -716,8 +723,11 @@ bool AnnotatePlugin::dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphic
 
 bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
+    // Ignore if it is not a LMB press or if someone by mistake clicks another scene graphic
+    // element while having checked "Add Polygon Hole".
     if ( mouseEvent->type() != QEvent::MouseButtonPress ||
-         mouseEvent->button() != Qt::LeftButton ) {
+         mouseEvent->button() != Qt::LeftButton ||
+         item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
         return false;
     }
 
@@ -727,12 +737,6 @@ bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsI
                                     lon, lat,
                                     GeoDataCoordinates::Radian );
     const GeoDataCoordinates coords( lon, lat );
-
-    // Ignore if someone by mistake clicks another scene graphic element while having
-    // checked "Add Polygon Hole".
-    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-        return false;
-    }
 
     // We can now be sure that the scene graphic item is an area annotation and its
     // geometry is a polygon.
@@ -789,6 +793,18 @@ bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGrap
 
     m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
     return true;
+}
+
+void AnnotatePlugin::dealWithUncaughtEvents( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+
+    // If the event is not caught by any of the annotate plugin specific items, clear the frames
+    // (which have the meaning of deselecting the overlay).
+    if ( !m_groundOverlayFrames.isEmpty() &&
+         mouseEvent->type() != QEvent::MouseMove && mouseEvent->type() != QEvent::MouseButtonRelease ) {
+        clearOverlayFrames();
+    }
 }
 
 void AnnotatePlugin::setupActions(MarbleWidget *widget)
