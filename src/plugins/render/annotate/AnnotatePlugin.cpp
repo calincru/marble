@@ -836,17 +836,21 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         return true;
     }
 
-    // If the selected nodes ar part of one of the polygon's inner boundary.
-    if ( clickedNode - outer.size() >= 0 ) {
+
+    int sizeOffset = 0;
+
+    // If the selected nodes are part of one of the polygon's inner boundary.
+    if ( clickedNode - outer.size() >= 0 && m_mergedNodeIndex - outer.size() >= 0 ) {
         QVector<GeoDataLinearRing> &inners = poly->innerBoundaries();
 
         clickedNode -= outer.size();
         m_mergedNodeIndex -= outer.size();
+        sizeOffset += outer.size();
 
         // The merging is done by removing the first selected node and changing the coordinates
         // of the second one.
         for ( int i = 0; i < inners.size(); ++i ) {
-            if ( clickedNode - inners.at(i).size() < 0 ) {
+            if ( clickedNode - inners.at(i).size() < 0 && m_mergedNodeIndex - inners.at(i).size() < 0 ) {
                 inners[i].at(clickedNode) = inners.at(i).at(clickedNode).interpolate(
                                             inners.at(i).at(m_mergedNodeIndex), 0.5 );
                 inners[i].remove( m_mergedNodeIndex );
@@ -854,9 +858,19 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
                 if ( inners.at(i).size() <= 2 ) {
                     inners[i].clear();
                 }
+
+                break;
+            } else if ( clickedNode - inners.at(i).size() < 0 || m_mergedNodeIndex - inners.at(i).size() < 0 ) {
+                QMessageBox::warning( m_marbleWidget,
+                                      QString( "Operation not permitted"),
+                                      QString( "Cannot merge two nodes from two different"
+                                               " inner boundaries!") );
+                m_mergedNodeIndex = -1;
+                return true;
             } else {
                 clickedNode -= inners.at(i).size();
                 m_mergedNodeIndex -= inners.at(i).size();
+                sizeOffset += inners.at(i).size();
             }
         }
     } else {
@@ -875,6 +889,11 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         }
 
     }
+
+
+    // Reconstruct clicked nodes to resemble the indexes stored in selectedNodes list.
+    clickedNode += sizeOffset;
+    m_mergedNodeIndex += sizeOffset;
 
     QList<int> &selectedNodes = m_mergedArea->selectedNodes();
     // When having one of the two merged nodes marked as selected, the resulting node will also be
