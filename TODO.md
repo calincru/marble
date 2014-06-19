@@ -7,8 +7,8 @@ To FIX:
 
 
 To ADD:
-- merging nodes - showing error when trying to merge two nodes from two
-  different inner boundaries;
+- merging nodes - showing error when the polygon becomes invalid (regarding
+  its inner boundaries).
 - adding nodes;
 - a more friendly user interface;
 - redesigning the whole event filter in AnnotatePlugin: find a why to keep the
