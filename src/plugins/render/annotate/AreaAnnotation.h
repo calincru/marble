@@ -50,11 +50,16 @@ public:
      */
     bool isValidPolygon() const;
 
+    int lastClickedNode() const;
+
+    void setMergingState( bool merging );
+
     virtual const char *graphicType() const;
 
 private:
     QList<QRegion>     m_innerBoundariesList;
 
+    bool               m_mergingState;
     int                m_movedNodeIndex;
     int                m_rightClickedNode;
     QList<int>         m_selectedNodes;

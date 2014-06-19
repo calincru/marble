@@ -26,6 +26,7 @@ namespace Marble
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
+      m_mergingState( false ),
       m_movedNodeIndex( -1 ),
       m_rightClickedNode( -2 ),
       m_viewport( 0 )
@@ -255,6 +256,10 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return true;
     }
 
+    if ( m_mergingState ) {
+        return true;
+    }
+
     // Only loop until size - 1 because we only want to mark nodes
     // as selected, and not the entire polygon.
     for ( int i = 0; i < regionList.size() - 1; ++i ) {
@@ -311,6 +316,16 @@ bool AreaAnnotation::isValidPolygon() const
     }
 
     return true;
+}
+
+int AreaAnnotation::lastClickedNode() const
+{
+    return m_movedNodeIndex;
+}
+
+void AreaAnnotation::setMergingState( bool merging )
+{
+    m_mergingState = merging;
 }
 
 const char *AreaAnnotation::graphicType() const

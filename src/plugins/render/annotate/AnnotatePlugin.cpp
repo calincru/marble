@@ -63,6 +63,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_annotationDocument( new GeoDataDocument ),
       m_polygonPlacemark( 0 ),
       m_movedItem( 0 ),
+      m_mergedNodeIndex( -1 ),
       m_addingPlacemark( false ),
       m_drawingPolygon( false ),
       m_addingPolygonHole( false ),
@@ -277,7 +278,13 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
+    if ( !enabled ) {
+        m_mergedArea->setMergingState( false );
+    }
+
     m_mergingNodes = enabled;
+    m_mergedArea = 0;
+    m_mergedNodeIndex = -1;
 }
 
 void AnnotatePlugin::setRemovingItems( bool enabled )
@@ -692,7 +699,15 @@ bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGr
     // graphically the item gets deselected (for example, for ground overlays, the ground overlay frame
     // is not deleted). It means that the item got "released" and will not be moved anymore.
     m_movedItem = 0;
+/*
+    if ( item->graphicType() == SceneGraphicTypes::SceneGraphicAreaAnnotation &&
+         m_mergingNodes && m_mergedNodeIndex != -1 ) {
+        AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
+        Q_ASSERT( area );
 
+        area->selectedNodes().removeAll( m_mergedNodeIndex );
+    }
+*/
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
     return true;
 }
@@ -763,8 +778,76 @@ bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsI
 
 bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
+    if ( mouseEvent->type() != QEvent::MouseButtonPress ||
+         mouseEvent->button() != Qt::LeftButton ||
+         item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
+        return false;
+    }
 
-    return false;
+    // We can now be sure that the scene graphic item is an area annotation and its
+    // geometry is a polygon.
+    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
+    Q_ASSERT( area );
+
+    if ( !m_mergedArea && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+        m_mergedArea = area;
+        area->setMergingState( true );
+    } else if ( m_mergedArea != area || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+        // Ignore clicks on other polygons if the polygon has already been initialized or
+        // if the even position is contained by one of the polygon's holes.
+        return false;
+    }
+
+    Q_ASSERT( area->sceneEvent( mouseEvent) );
+    int clickedNode = area->lastClickedNode();
+
+    // Ignore if the interior of the polygon has been clicked.
+    if ( clickedNode == area->regions().size() - 1 ) {
+        return false;
+    }
+
+    if ( m_mergedNodeIndex == -1 ) {
+        m_mergedNodeIndex = clickedNode;
+        return true;
+    }
+
+    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
+    Q_ASSERT( poly );
+
+    // The merging is done by removing the first selected node and changing the coordinates
+    // of the second one.
+    GeoDataLinearRing &outer = poly->outerBoundary();
+
+    if ( clickedNode < m_mergedNodeIndex ) {
+        qSwap<int>( clickedNode, m_mergedNodeIndex );
+    }
+    outer[clickedNode] = outer.at(clickedNode).interpolate( outer.at(m_mergedNodeIndex), 0.5 );
+    outer.remove( m_mergedNodeIndex );
+
+
+    QList<int> &selectedNodes = m_mergedArea->selectedNodes();
+    // When having one of the two merged nodes marked as selected, the resulting node will also be
+    // selected (I used the fact that clickedNode is the node with higher index, due to the swap
+    // from above).
+    if ( selectedNodes.contains( clickedNode ) || selectedNodes.contains( m_mergedNodeIndex ) ) {
+        selectedNodes.removeAll( clickedNode );
+        selectedNodes.removeAll( m_mergedNodeIndex );
+        selectedNodes.append( clickedNode );
+    }
+
+    QList<int>::iterator itBegin = selectedNodes.begin();
+    QList<int>::const_iterator itEnd = selectedNodes.constEnd();
+
+    // Decrement the indexes of the selected nodes which have bigger indexes than the
+    // node with a smaller index.
+    for ( ; itBegin != itEnd; ++itBegin ) {
+        if ( *itBegin > m_mergedNodeIndex ) {
+            (*itBegin)--;
+        }
+    }
+
+    m_mergedNodeIndex = -1;
+    return true;
 }
 
 bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
@@ -829,15 +912,6 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         connect( enableInputAction, SIGNAL(toggled(bool)),
                  widget, SLOT(setInputEnabled(bool)) );
 
-        QAction *addPlacemark= new QAction(this);
-        addPlacemark->setText( tr("Add Placemark") );
-        addPlacemark->setCheckable( true );
-        addPlacemark->setIcon( QIcon( ":/icons/draw-placemark.png") );
-        connect( addPlacemark, SIGNAL(toggled(bool)),
-                 this, SLOT(setAddingPlacemark(bool)) );
-        connect( this, SIGNAL(placemarkAdded()) ,
-                 addPlacemark, SLOT(toggle()) );
-
         QAction *drawPolygon = new QAction( this );
         drawPolygon->setText( tr("Add Polygon") );
         drawPolygon->setCheckable( true );
@@ -858,6 +932,15 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         mergeNodes->setCheckable( true );
         connect( mergeNodes, SIGNAL(toggled(bool)),
                  this, SLOT(setMergingNodes(bool)) );
+
+        QAction *addPlacemark= new QAction(this);
+        addPlacemark->setText( tr("Add Placemark") );
+        addPlacemark->setCheckable( true );
+        addPlacemark->setIcon( QIcon( ":/icons/draw-placemark.png") );
+        connect( addPlacemark, SIGNAL(toggled(bool)),
+                 this, SLOT(setAddingPlacemark(bool)) );
+        connect( this, SIGNAL(placemarkAdded()) ,
+                 addPlacemark, SLOT(toggle()) );
 
         QAction *addOverlay = new QAction( this );
         addOverlay->setText( tr("Add Ground Overlay") );
@@ -901,6 +984,12 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
 
         QAction *beginSeparator = new QAction( this );
         beginSeparator->setSeparator( true );
+        QAction *polygonEndSeparator = new QAction( this );
+        polygonEndSeparator->setSeparator( true );
+        QAction *removeItemBeginSeparator = new QAction( this );
+        removeItemBeginSeparator->setSeparator( true );
+        QAction *removeItemEndSeparator = new QAction( this );
+        removeItemEndSeparator->setSeparator( true );
         QAction *endSeparator = new QAction ( this );
         endSeparator->setSeparator( true );
 
@@ -914,11 +1003,15 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
 
         group->addAction( enableInputAction );
         group->addAction( beginSeparator );
-        group->addAction( addPlacemark );
         group->addAction( drawPolygon );
         group->addAction( addHole );
+        group->addAction( mergeNodes );
+        group->addAction( polygonEndSeparator );
+        group->addAction( addPlacemark );
         group->addAction( addOverlay );
+        group->addAction( removeItemBeginSeparator );
         group->addAction( removeItem );
+        group->addAction( removeItemEndSeparator );
         group->addAction( loadAnnotationFile );
         group->addAction( saveAnnotationFile );
         group->addAction( clearAnnotations );

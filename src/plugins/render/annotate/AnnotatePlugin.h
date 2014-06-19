@@ -193,6 +193,9 @@ private:
     AreaAnnotation       *m_rmbSelectedArea;
     GeoDataPolygon       *m_holedPolygon;
 
+    AreaAnnotation       *m_mergedArea;
+    int                   m_mergedNodeIndex;
+
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;
 
