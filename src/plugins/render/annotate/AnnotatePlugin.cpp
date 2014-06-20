@@ -823,7 +823,6 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     Q_ASSERT( poly );
 
     GeoDataLinearRing &outer = poly->outerBoundary();
-
     if ( ( clickedNode >= outer.size() && m_mergedNodeIndex < outer.size() ) ||
          ( clickedNode < outer.size() && m_mergedNodeIndex >= outer.size() ) ) {
         QMessageBox::warning( m_marbleWidget,
@@ -836,7 +835,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         return true;
     }
 
-
+    QList<int> &selectedNodes = m_mergedArea->selectedNodes();
     int sizeOffset = 0;
 
     // If the selected nodes are part of one of the polygon's inner boundary.
@@ -857,6 +856,26 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
                 // If this inner boundary has only two remaining nodes, remove it all.
                 if ( inners.at(i).size() <= 2 ) {
                     inners[i].clear();
+
+                    // Remove any of these three nodes (including the earlier removed one) from the
+                    // selectedNodes list.
+                    selectedNodes.removeAll( sizeOffset );
+                    selectedNodes.removeAll( sizeOffset + 1 );
+                    selectedNodes.removeAll( sizeOffset + 2 );
+
+                    // Decrement the indexes of selected nodes from other inner boundaries which have
+                    // been drawn after this one (this is when there are higher indexes than this').
+                    QList<int>::iterator itBegin = selectedNodes.begin();
+                    QList<int>::const_iterator itEnd = selectedNodes.constEnd();
+
+                    for ( ; itBegin != itEnd; ++itBegin ) {
+                        if ( *itBegin > sizeOffset + 2 ) {
+                            *itBegin -= 3;
+                        }
+                    }
+
+                    m_mergedNodeIndex = -1;
+                    return true;
                 }
 
                 break;
@@ -895,7 +914,6 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     clickedNode += sizeOffset;
     m_mergedNodeIndex += sizeOffset;
 
-    QList<int> &selectedNodes = m_mergedArea->selectedNodes();
     // When having one of the two merged nodes marked as selected, the resulting node will also be
     // selected (uses the fact that clickedNode is the node with higher index, due to the swap
     // from above).
