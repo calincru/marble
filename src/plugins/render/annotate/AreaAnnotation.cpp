@@ -60,6 +60,7 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                 painter->setBrush( Oxygen::aluminumGray6 );
             }
 
+            // If we are in the MergingNodes state paint with a different color the node.
             if ( ( i == m_mergedNodes.first && m_state == MergingNodes ) ||
                  ( i == m_mergedNodes.second && m_state == MergingNodes ) ) {
                 painter->setBrush( Oxygen::emeraldGreen6 );
@@ -126,6 +127,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
             if ( event->button() == Qt::LeftButton ) {
                 m_movedNodeIndex = i;
+                // If we are in the merging state store the clicked nodes.
                 if ( m_state == MergingNodes && i < regionList.size() - 1 ) {
                     if ( m_mergedNodes.first != -1 && m_mergedNodes.second != -1 ) {
                         m_mergedNodes = QPair<int, int>( -1, -1 );

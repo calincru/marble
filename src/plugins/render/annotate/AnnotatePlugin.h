@@ -155,8 +155,8 @@ private:
      * that the event is directed to something else, for example the MarbleMap.
      */
     void dealWithUncaughtEvents( QMouseEvent *mouseEvent );
-
     void dealWithReleaseOverlay( QMouseEvent *mouseEvent );
+
     bool dealWithAddingPlacemark( QMouseEvent *mouseEvent );
     bool dealWithAddingPolygon( QMouseEvent *mouseEvent );
     bool dealWithMovingSelectedItem( QMouseEvent *mouseEvent );

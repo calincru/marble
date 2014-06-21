@@ -29,13 +29,20 @@ public:
     enum ActionState {
         Normal,
         MergingNodes,
-        AddingNodes
+        AddingNodes // TODO
     };
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
+    /**
+     * @brief Sets the state of the object. It will deal with more things, but so far
+     * is is used to paint with different color the nodes.
+     */
     void setState( ActionState state );
 
+    /**
+     * @brief Getter for the state.
+     */
     ActionState state() const;
 
     /**
@@ -67,8 +74,14 @@ public:
      */
     bool isValidPolygon() const;
 
+    /**
+     * @brief Sets the nodes to be merged.
+     */
     void setMergedNodes( const QPair<int, int> &nodes );
 
+    /**
+     * @brief Getters for the nodes to be merged.
+     */
     QPair<int, int> &mergedNodes();
 
     const QPair<int, int> &mergedNodes() const;

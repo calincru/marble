@@ -49,7 +49,6 @@
 #include <QMessageBox>
 #include <QPair>
 
-#include <QDebug>
 
 namespace Marble
 {
@@ -279,7 +278,7 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
     if ( !enabled && m_mergedArea ) {
-        // Restore this AreaAnnotation to be able to mark selected nodes.
+        // Restore the normal state.
         m_mergedArea->setState( AreaAnnotation::Normal );
     }
 
@@ -509,14 +508,14 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
         return false;
     }
 
-    // Deal with adding a placemark or a polygon;
+    // Deal with adding placemarks and polygons;
     if ( ( m_addingPlacemark && dealWithAddingPlacemark( mouseEvent ) ) ||
          ( m_drawingPolygon && dealWithAddingPolygon( mouseEvent ) ) ) {
         return true;
     }
 
-    // It is important to deal with Ground Overlay mouse release event here because it texture layer
-    // in order to make the rendering more efficient.
+    // It is important to deal with Ground Overlay mouse release event here because it uses the
+    // texture layer in order to make the rendering more efficient.
     if ( mouseEvent->type() == QEvent::MouseButtonRelease && m_groundOverlayModel.rowCount() ) {
         dealWithReleaseOverlay( mouseEvent );
     }
@@ -540,17 +539,16 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
                 continue;
 
             // The flow here is as it follows: first check if there is anything we may want to do
-            // before the item itself handles the event (which is done via dealWithMousePressEvent
-            // and dealWithMouseReleaseEvent). For example, we don't want the item to handle the
-            // event when having selected "Removing item"; instead, we want to remove the item in
+            // before the item itself handles the event. For example, we don't want the item to handle
+            // the event when having selected "Removing item"; instead, we want to remove the item in
             // this situation; the same applies for adding polygon holes and merging nodes, so far.
             // Then, if there is nothing to do before the item handles the event, let it handle the
-            // event. The third step is after the item handled the event: we get after it when the
-            // item event handler returns false, so there is the section where we had collected some
+            // event. The third step is after the item handled the event: we get there when the item
+            // event handler returns false, so there is the section where we had collected some
             // information about the event and taking into consideration this information, we can
             // handle other situations; as an example for this, so far we have showing rmb menus for
-            // polygons/nodes, and the information we collect from the previous step in this case is
-            // the node which had been right clicked.
+            // polygons/nodes (the information we collect from the previous step in this case is the
+            // node which had been right clicked.
             if ( ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) ||
 
                  ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) ||
@@ -670,7 +668,7 @@ bool AnnotatePlugin::dealWithMovingSelectedItem( QMouseEvent *mouseEvent )
 
 bool AnnotatePlugin::dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
-    // Return false if the mouse press event handler of the item returns false.
+    // Return false if the item's mouse press event handler returns false.
     if ( !item->sceneEvent( mouseEvent ) ) {
         return false;
     }
@@ -679,7 +677,7 @@ bool AnnotatePlugin::dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGrap
     m_movedItem = item;
 
     // For ground overlays, if the current item is not contained in m_groundOverlayFrames, clear
-    // all frames, which means the overlay gets deselected.
+    // all frames, which means the overlay gets deselected on each "extern" click.
     if ( !m_groundOverlayFrames.values().contains( item ) ) {
         clearOverlayFrames();
     }
@@ -695,9 +693,7 @@ bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGr
         return false;
     }
 
-    // The selected item gets deselected at mouse release event. Be aware that this does not mean that
-    // graphically the item gets deselected (for example, for ground overlays, the ground overlay frame
-    // is not deleted). It means that the item got "released" and will not be moved anymore.
+    // The moved item gets deselected at mouse release event.
     m_movedItem = 0;
 
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
@@ -783,7 +779,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
 
     if ( m_mergedArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
         // If the polygon has been initialized but it is different than the previously selected one,
-        // disable marking nodes as selected for this one and enable for the older one. This makes
+        // change the state of the older one to Normal and to MergingNodes to the new one. This makes
         // possible merging nodes in different polygons without unchecking and checking again "Merge
         // Nodes".
         if ( m_mergedArea ) {
@@ -800,13 +796,13 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     Q_ASSERT( area->sceneEvent( mouseEvent) );
     QPair<int, int> &mergedNodes = area->mergedNodes();
 
-    // Ignore if the interior of the polygon has been clicked.
+    // Ignore event if the first node to be merged is set to -1. This means that actually no node
+    // has been clicked (so far this happens when clicking the interior of the polygon).
     if ( mergedNodes.first == -1 ) {
         return false;
     }
 
-    // If this is the first node selected to be merged, store its index and wait for clicking its
-    // pair.
+    // If only one node has been clicked wait for the second one to be clicked.
     if ( mergedNodes.second == -1 ) {
         return true;
     } else if ( mergedNodes.second == mergedNodes.first ) {
@@ -816,7 +812,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         return true;
     }
 
-    // Store in clickedNode the higher index.
+    // Keep the two nodes sorted.
     if ( mergedNodes.first > mergedNodes.second ) {
         qSwap<int>( mergedNodes.first, mergedNodes.second );
     }
@@ -889,7 +885,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
                 break;
             } else if ( mergedNodes.first - inners.at(i).size() < 0 ||
                         mergedNodes.second - inners.at(i).size() < 0 ) {
-                // Even though they are set to (-1, -1) below, before the warning takes the focus the
+                // Even though they are set to (-1, -1) below, before the warning takes the focus, the
                 // paint methods are called so we make sure the correct nodes are painted, so that the
                 // user knows which nodes he tried to merge.
                 mergedNodes.first += sizeOffset;
@@ -943,8 +939,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     mergedNodes.second += sizeOffset;
 
     // When having one of the two merged nodes marked as selected, the resulting node will also be
-    // selected (uses the fact that clickedNode is the node with higher index, due to the swap
-    // from above).
+    // selected.
     if ( selectedNodes.contains( mergedNodes.first ) || selectedNodes.contains( mergedNodes.second ) ) {
         selectedNodes.removeAll( mergedNodes.first );
         selectedNodes.removeAll( mergedNodes.second );
@@ -1012,17 +1007,17 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
     m_actions.clear();
     m_toolbarActions.clear();
 
-    if( widget ) {
-        QActionGroup *group = new QActionGroup(0);
+    if ( widget ) {
+        QActionGroup *group = new QActionGroup( 0 );
         group->setExclusive( false );
 
         // QActionGroup *nonExclusiveGroup = new QActionGroup(0);
         // nonExclusiveGroup->setExclusive( false );
 
 
-        QAction *enableInputAction = new QAction(this);
+        QAction *enableInputAction = new QAction( this );
         enableInputAction->setText( tr("Enable Moving Map") );
-        enableInputAction->setCheckable(true);
+        enableInputAction->setCheckable( true );
         enableInputAction->setChecked( true );
         enableInputAction->setIcon( QIcon( ":/icons/hand.png") );
         connect( enableInputAction, SIGNAL(toggled(bool)),
@@ -1049,7 +1044,7 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         connect( mergeNodes, SIGNAL(toggled(bool)),
                  this, SLOT(setMergingNodes(bool)) );
 
-        QAction *addPlacemark= new QAction(this);
+        QAction *addPlacemark= new QAction( this );
         addPlacemark->setText( tr("Add Placemark") );
         addPlacemark->setCheckable( true );
         addPlacemark->setIcon( QIcon( ":/icons/draw-placemark.png") );
