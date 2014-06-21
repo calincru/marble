@@ -16,6 +16,8 @@
 #include "SceneGraphicsItem.h"
 #include "GeoDataCoordinates.h"
 
+#include <QPair>
+
 namespace Marble
 {
 
@@ -24,7 +26,17 @@ class AreaAnnotation : public SceneGraphicsItem
 public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
 
+    enum ActionState {
+        Normal,
+        MergingNodes,
+        AddingNodes
+    };
+
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
+
+    void setState( ActionState state );
+
+    ActionState state() const;
 
     /**
      * @brief Returns the list of selected node indexes.
@@ -55,26 +67,20 @@ public:
      */
     bool isValidPolygon() const;
 
-    /**
-     * @brief Returns the index (from the region() list, including the nodes which
-     * form polygon's inner boundaries) of the node which contained the position of
-     * last mousePressEvent.
-     */
-    int lastClickedNode() const;
+    void setMergedNodes( const QPair<int, int> &nodes );
 
-    /**
-     * @brief Controls whether the nodes get marked as selected (painted with different
-     * color) or no. Implicitly they get, but there are situations when we need to
-     * disable this behaviour from outside the object (e.g. merging nodes).
-     */
-    void setMarkingSelectedNodes( bool marking );
+    QPair<int, int> &mergedNodes();
+
+    const QPair<int, int> &mergedNodes() const;
 
     virtual const char *graphicType() const;
 
 private:
     QList<QRegion>     m_innerBoundariesList;
+    ActionState        m_state;
 
-    bool               m_markingNodes;
+    QPair<int, int>    m_mergedNodes;
+
     int                m_movedNodeIndex;
     int                m_rightClickedNode;
     QList<int>         m_selectedNodes;

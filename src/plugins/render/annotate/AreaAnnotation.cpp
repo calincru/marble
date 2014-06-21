@@ -30,7 +30,7 @@ namespace Marble
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
-      m_markingNodes( true ),
+      m_state( Normal ),
       m_movedNodeIndex( -1 ),
       m_rightClickedNode( -2 ),
       m_viewport( 0 )
@@ -60,6 +60,11 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                 painter->setBrush( Oxygen::aluminumGray6 );
             }
 
+            if ( ( i == m_mergedNodes.first && m_state == MergingNodes ) ||
+                 ( i == m_mergedNodes.second && m_state == MergingNodes ) ) {
+                painter->setBrush( Oxygen::emeraldGreen6 );
+            }
+
             painter->drawEllipse( outerRing.at(i) , 10, 10 );
             regionList.append( newRegion );
         }
@@ -76,6 +81,11 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                     painter->setBrush( Oxygen::aluminumGray3 );
                 } else {
                     painter->setBrush( Oxygen::aluminumGray6 );
+                }
+
+                if ( ( i + sizeOffset == m_mergedNodes.first && m_state == MergingNodes ) ||
+                     ( i + sizeOffset == m_mergedNodes.second && m_state == MergingNodes ) ) {
+                    painter->setBrush( Oxygen::emeraldGreen6 );
                 }
 
                 painter->drawEllipse( ring.at(i), 10, 10 );
@@ -116,6 +126,16 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
             if ( event->button() == Qt::LeftButton ) {
                 m_movedNodeIndex = i;
+                if ( m_state == MergingNodes && i < regionList.size() - 1 ) {
+                    if ( m_mergedNodes.first != -1 && m_mergedNodes.second != -1 ) {
+                        m_mergedNodes = QPair<int, int>( -1, -1 );
+                    } else if ( m_mergedNodes.first == -1 ) {
+                        m_mergedNodes.first = i;
+                    } else {
+                        m_mergedNodes.second = i;
+                    }
+                }
+
                 return true;
 
             } else if ( event->button() == Qt::RightButton ) {
@@ -260,9 +280,9 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return true;
     }
 
-    // If m_markingNodes is set to false, then the clicked node should not get into the selectedNodes
-    // list.
-    if ( !m_markingNodes ) {
+    // If the action state is set to MergingNodes then the clicked node should not get into the
+    // selectedNodes list.
+    if ( m_state == MergingNodes ) {
         return true;
     }
 
@@ -288,6 +308,22 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     // anything else than release it, so we tell caller that we handled the event.
     return true;
 }
+
+void AreaAnnotation::setState( ActionState state )
+{
+    m_state = state;
+
+    // Also do the initializations.
+    if ( state == MergingNodes ) {
+        m_mergedNodes = QPair<int, int>( -1, -1 );
+    }
+}
+
+AreaAnnotation::ActionState AreaAnnotation::state() const
+{
+    return m_state;
+}
+
 
 QList<int> &AreaAnnotation::selectedNodes()
 {
@@ -337,14 +373,14 @@ bool AreaAnnotation::isValidPolygon() const
     return true;
 }
 
-int AreaAnnotation::lastClickedNode() const
+void AreaAnnotation::setMergedNodes( const QPair<int, int> &nodes )
 {
-    return m_movedNodeIndex;
+    m_mergedNodes = nodes;
 }
 
-void AreaAnnotation::setMarkingSelectedNodes( bool marking )
+QPair<int, int> &AreaAnnotation::mergedNodes()
 {
-    m_markingNodes = marking;
+    return m_mergedNodes;
 }
 
 const char *AreaAnnotation::graphicType() const
