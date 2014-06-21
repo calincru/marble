@@ -812,6 +812,10 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     if ( m_mergedNodeIndex == -1 ) {
         m_mergedNodeIndex = clickedNode;
         return true;
+    } else if ( m_mergedNodeIndex == clickedNode ) {
+        // Do not allow merging a node with itself. Without dealing with this case, the node got
+        // removed and maybe this is not one might want.
+        return true;
     }
 
     // Store in clickedNode the higher index.
@@ -821,6 +825,9 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
 
     GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( area->placemark()->geometry() );
     Q_ASSERT( poly );
+
+    GeoDataLinearRing initialOuterBoundary = poly->outerBoundary();
+    QVector<GeoDataLinearRing> initialInnerBoundaries = poly->innerBoundaries();
 
     GeoDataLinearRing &outer = poly->outerBoundary();
     if ( ( clickedNode >= outer.size() && m_mergedNodeIndex < outer.size() ) ||
@@ -851,7 +858,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         for ( int i = 0; i < inners.size(); ++i ) {
             if ( clickedNode - inners.at(i).size() < 0 && m_mergedNodeIndex - inners.at(i).size() < 0 ) {
                 inners[i].at(clickedNode) = inners.at(i).at(clickedNode).interpolate(
-                                            inners.at(i).at(m_mergedNodeIndex), 0.5 );
+                                                    inners.at(i).at(m_mergedNodeIndex), 0.5 );
                 inners[i].remove( m_mergedNodeIndex );
                 // If this inner boundary has only two remaining nodes, remove it all.
                 if ( inners.at(i).size() <= 2 ) {
@@ -907,6 +914,19 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
             return true;
         }
 
+        // When merging two nodes from polygon's outer boundary, check if the polygon is still valid.
+        if ( !area->isValidPolygon() ) {
+            poly->outerBoundary() = initialOuterBoundary;
+            poly->innerBoundaries() = initialInnerBoundaries;
+
+            QMessageBox::warning( m_marbleWidget,
+                                  QString( "Operation not permitted"),
+                                  QString( "The polygon would have an invalid shape after this"
+                                           " operation (e.g. its outerboundary would not contain"
+                                           " all its inner boundaries).") );
+            m_mergedNodeIndex = -1;
+            return true;
+        }
     }
 
 
