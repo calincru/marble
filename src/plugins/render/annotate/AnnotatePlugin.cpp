@@ -543,12 +543,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             // the event when having selected "Removing item"; instead, we want to remove the item in
             // this situation; the same applies for adding polygon holes and merging nodes, so far.
             // Then, if there is nothing to do before the item handles the event, let it handle the
-            // event. The third step is after the item handled the event: we get there when the item
-            // event handler returns false, so there is the section where we had collected some
-            // information about the event and taking into consideration this information, we can
-            // handle other situations; as an example for this, so far we have showing rmb menus for
-            // polygons/nodes (the information we collect from the previous step in this case is the
-            // node which had been right clicked.
+            // event.
+            // TODO: Sa adaug pentru rmb menus ceva gen adding holes si merging nodes.
             if ( ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) ||
 
                  ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) ||
