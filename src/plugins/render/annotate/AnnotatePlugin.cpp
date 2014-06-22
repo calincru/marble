@@ -541,29 +541,28 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             // The flow here is as it follows: first check if there is anything we may want to do
             // before the item itself handles the event. For example, we don't want the item to handle
             // the event when having selected "Removing item"; instead, we want to remove the item in
-            // this situation; the same applies for adding polygon holes and merging nodes, so far.
-            // Then, if there is nothing to do before the item handles the event, let it handle the
-            // event.
-            // TODO: Sa adaug pentru rmb menus ceva gen adding holes si merging nodes.
+            // this situation; the same applies for adding polygon holes, merging nodes and showing rmb
+            // menus so far. Then, if there is nothing to do before the item handles the event, let it
+            // handle the event.
             if ( ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) ||
 
                  ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) ||
 
                  ( m_mergingNodes && dealWithMergingNodes( mouseEvent, item ) ) ||
 
+                 ( dealWithShowingRmbMenus( mouseEvent, item ) ) ||
+
                  ( mouseEvent->type() == QEvent::MouseButtonPress &&
                    dealWithMousePressEvent( mouseEvent, item ) ) ||
 
                  ( mouseEvent->type() == QEvent::MouseButtonRelease &&
-                   dealWithMouseReleaseEvent( mouseEvent, item ) ) ||
-
-                 ( dealWithShowingRmbMenus( mouseEvent, item ) ) ) {
+                   dealWithMouseReleaseEvent( mouseEvent, item ) ) ) {
                 return true;
             }
         }
     }
 
-    // If the events get here, it most probably means it is a map interaction event, or something
+    // If the event gets here, it most probably means it is a map interaction event, or something
     // that has nothing to do with the annotate plugin items. We "deal" with this situation because,
     // for example, we may need to deselect some selected items.
     dealWithUncaughtEvents( mouseEvent );
@@ -961,12 +960,17 @@ bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGrap
 {
     // We get here when mousePressEvent returns false.
     if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ||
-         mouseEvent->type() != QEvent::MouseButtonPress ) {
+         mouseEvent->type() != QEvent::MouseButtonPress ||
+         mouseEvent->button() != Qt::RightButton ) {
         return false;
     }
 
     AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
     Q_ASSERT( area );
+
+    // Call AreaAnnotation::mousePressEvent in order to get the node index which has been
+    // right-clicked.
+    area->sceneEvent( mouseEvent );
 
     if ( area->rightClickedNode() == -1 ) {
         showPolygonRmbMenu( area, mouseEvent->x(), mouseEvent->y() );

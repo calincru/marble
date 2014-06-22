@@ -149,11 +149,6 @@ private:
     void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
 
 
-    /**
-     * @brief dealWithUncaughtEvents contains all actions performed on all annotate plugin items,
-     * including overlays, placemarks, polygons, when none of them handle the event, which means
-     * that the event is directed to something else, for example the MarbleMap.
-     */
     void dealWithUncaughtEvents( QMouseEvent *mouseEvent );
     void dealWithReleaseOverlay( QMouseEvent *mouseEvent );
 

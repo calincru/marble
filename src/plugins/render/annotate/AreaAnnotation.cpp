@@ -147,11 +147,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                     m_rightClickedNode = -1;
                 }
 
-                // Return false because we cannot fully deal with this event within this class.
-                // We need to have access to the marble widget to show a menu of options on the
-                // screen as well as control of the object since one of the options will be
-                // "remove polygon".
-                return false;
+                return true;
             }
         }
     }
