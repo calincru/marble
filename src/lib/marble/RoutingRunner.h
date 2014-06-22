@@ -14,15 +14,15 @@
 
 #include <QObject>
 #include "marble_export.h"
-#include "GeoDataDocument.h"
+#include "GeoDataExtendedData.h"
 
-#include <QVector>
+class QTime;
 
 namespace Marble
 {
 
 class MarbleModel;
-class GeoDataExtendedData;
+class GeoDataDocument;
 class RouteRequest;
 
 class MARBLE_EXPORT RoutingRunner : public QObject
@@ -58,10 +58,10 @@ protected:
      */
     const MarbleModel *model() const;
 
-    const QString nameString( const QString &name, qreal &length, const QTime &duration ) const;
-    const QString lengthString( qreal &length ) const;
+    const QString nameString( const QString &name, qreal length, const QTime &duration ) const;
+    const QString lengthString( qreal length ) const;
     const QString durationString( const QTime &duration ) const;
-    const GeoDataExtendedData routeData( const qreal &length, const QTime &duration ) const;
+    const GeoDataExtendedData routeData( qreal length, const QTime &duration ) const;
 
 private:
     const MarbleModel *m_model;

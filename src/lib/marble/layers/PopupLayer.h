@@ -14,10 +14,6 @@
 #define POPUPLAYER_H
 
 #include "LayerInterface.h"
-#include "ViewportParams.h"
-#include "GeoPainter.h"
-#include "MarbleWidget.h"
-#include "GeoDataCoordinates.h"
 
 #include <QObject>
 #include <QUrl>
@@ -25,15 +21,14 @@
 namespace Marble
 {
 
-class PopupItem;
-class MarbleModel;
+class GeoDataCoordinates;
+class MarbleWidget;
 
 /**
  * @brief The PopupLayer class
  *
  * A popup dialog opening on top of the map. The content is shown in a QWebView,
- * acting like a minimalistic web browser. The dialog is either shown aligned to
- * a geo position or shown at a specific screen position.
+ * acting like a minimalistic web browser.
  *
  */
 class MARBLE_EXPORT PopupLayer : public QObject, public LayerInterface
@@ -125,16 +120,6 @@ public:
     void setContent( const QString &html, const QUrl & baseUrl = QUrl() );
 
     /**
-     * @brief Sets style and content of the browser
-     *
-     * Sets the bgColor, textColor, displayMode and Content.
-     * Replaces $[*] by their values.
-     *
-     * @param placemark the placemark which invoked this popup
-     */
-    void setPlacemark( const GeoDataPlacemark *placemark );
-
-    /**
      * @brief Sets background color of the header
      *
      * @see PopupItem::setBackgroundColor();
@@ -155,27 +140,12 @@ public:
 Q_SIGNALS:
     void repaintNeeded();
 
-private slots:
+private Q_SLOTS:
     void hidePopupItem();
 
 private:
-    /**
-     * @brief Sets size of the popup item, based on the requested size and viewport size
-     * @param viewport required to compute the maximum dimensions
-     */
-    void setAppropriateSize( const ViewportParams *viewport );
-
-    static QString filterEmptyShortDescription(const QString &description);
-    void setupDialogSatellite( const GeoDataPlacemark *index );
-    void setupDialogCity( const GeoDataPlacemark *index );
-    void setupDialogNation( const GeoDataPlacemark *index );
-    void setupDialogGeoPlaces( const GeoDataPlacemark *index );
-    void setupDialogSkyPlaces( const GeoDataPlacemark *index );
-
-    PopupItem *const m_popupItem;
-    MarbleWidget * const m_widget;
-    QSizeF m_requestedSize;
-    bool m_adjustMap;
+    class Private;
+    Private *const d;
 };
 
 }

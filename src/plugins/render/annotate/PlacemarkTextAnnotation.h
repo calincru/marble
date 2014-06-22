@@ -28,9 +28,6 @@ public:
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
-    /**
-     * @brief Provides information for downcasting a SceneGraphicsItem.
-     */
     virtual const char *graphicType() const;
 
 private:

@@ -13,12 +13,14 @@
 #include "GeoParser.h"
 #include "MarbleDebug.h"
 #include "KmlElementDictionary.h"
+#include "KmlObjectTagHandler.h"
 
 namespace Marble
 {
 namespace kml
 {
-
+namespace gx
+{
 KML_DEFINE_TAG_HANDLER_GX22( AnimatedUpdate )
 
 GeoNode* KmlAnimatedUpdateTagHandler::parse( GeoParser& parser ) const
@@ -28,6 +30,7 @@ GeoNode* KmlAnimatedUpdateTagHandler::parse( GeoParser& parser ) const
     GeoStackItem parentItem = parser.parentElement();
 
     GeoDataAnimatedUpdate *animatedUpdate = new GeoDataAnimatedUpdate;
+    KmlObjectTagHandler::parseIdentifiers( parser, animatedUpdate );
 
     if (parentItem.is<GeoDataPlaylist>()) {
         parentItem.nodeAs<GeoDataPlaylist>()->addPrimitive( animatedUpdate );
@@ -38,6 +41,6 @@ GeoNode* KmlAnimatedUpdateTagHandler::parse( GeoParser& parser ) const
 
     return 0;
 }
-
+}
 }
 }

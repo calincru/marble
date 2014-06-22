@@ -16,13 +16,14 @@ namespace Marble
 {
 namespace kml
 {
-
+namespace gx
+{
 class KmlAnimatedUpdateTagHandler : public GeoTagHandler
 {
 public:
     virtual GeoNode* parse(GeoParser&) const;
 };
-
+}
 }
 }
 
