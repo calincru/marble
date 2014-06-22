@@ -59,7 +59,7 @@ public:
     /**
      * @brief Checks whether the point parameter is contained by one of its inner
      * boundaries.
-     * @p restrictive If this parameter is set to false, only check if one of its
+     * @param restrictive If this parameter is set to false, only check if one of its
      * inner boundaries contains the point (using GeoDataLinerRing::contains). In
      * addition to this, when restrictive is set to true, also check that none of
      * the polygon's regions (its nodes) contain the point (yes, these regions may
@@ -86,9 +86,19 @@ public:
 
     const QPair<int, int> &mergedNodes() const;
 
+    /**
+     * @brief Provides information for downcasting a SceneGraphicsItem.
+     */
     virtual const char *graphicType() const;
 
 private:
+    /**
+     * @brief Returns the index of the first region from the list SceneGraphicsItem::regions() which
+     * contains the position of the @p mouseEvent.
+     */
+    int firstRegionWhichContains( QMouseEvent *mouseEvent );
+
+
     QList<QRegion>     m_innerBoundariesList;
     ActionState        m_state;
 

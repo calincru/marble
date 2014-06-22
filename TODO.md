@@ -4,8 +4,6 @@ To FIX:
   consideration that the polygon is Tessellated.
 - the problem regarding moving the polygon around poles (and moving in general
   which changes polygon's shape).
-- rmb menus function - to follow the same logic like the one for merging
-  nodes.
 
 
 To ADD:
