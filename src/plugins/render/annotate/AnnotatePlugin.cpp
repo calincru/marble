@@ -49,6 +49,7 @@
 #include <QMessageBox>
 #include <QPair>
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -258,14 +259,16 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
 
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
-    if ( !enabled && m_holedPolygon &&
-         !m_holedPolygon->innerBoundaries().isEmpty() &&
-         m_holedPolygon->innerBoundaries().last().size() <= 2 ) {
-        m_holedPolygon->innerBoundaries().last().clear();
+    if ( !enabled && m_interactingArea ) {
+        GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( m_interactingArea->placemark()->geometry() );
+
+        if ( !poly->innerBoundaries().isEmpty() && poly->innerBoundaries().last().size() <= 2 ) {
+            poly->innerBoundaries().last().clear();
+        }
     }
 
     m_addingPolygonHole = enabled;
-    m_holedPolygon = 0;
+    m_interactingArea = 0;
 
     emit repaintNeeded( QRegion() );
 }
@@ -277,13 +280,13 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
-    if ( !enabled && m_mergedArea ) {
+    if ( !enabled && m_interactingArea ) {
         // Restore the normal state.
-        m_mergedArea->setState( AreaAnnotation::Normal );
+        m_interactingArea->setState( AreaAnnotation::Normal );
     }
 
     m_mergingNodes = enabled;
-    m_mergedArea = 0;
+    m_interactingArea = 0;
 }
 
 void AnnotatePlugin::setAddingNodes( bool enabled )
@@ -555,6 +558,8 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
 
                  ( m_mergingNodes && dealWithMergingNodes( mouseEvent, item ) ) ||
 
+                 ( m_addingNodes && dealWithAddingNodes( mouseEvent, item ) ) ||
+
                  ( dealWithShowingRmbMenus( mouseEvent, item ) ) ||
 
                  ( mouseEvent->type() == QEvent::MouseButtonPress &&
@@ -750,15 +755,15 @@ bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsI
 
     // If it is the first click in the interior of a polygon and the event position is not
     // a hole of the polygon, we initialize the polygon on which we want to draw a hole.
-    if ( !m_holedPolygon && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
-        m_holedPolygon = poly;
+    if ( !m_interactingArea && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+        m_interactingArea = area;
         poly->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
-    } else if ( m_holedPolygon != poly || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
+    } else if ( m_interactingArea != area || area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
         // Ignore clicks on other polygons if the polygon has already been initialized or
         // if the event position is contained by one of the polygon's holes.
         return false;
     }
-    m_holedPolygon->innerBoundaries().last().append( coords );
+    poly->innerBoundaries().last().append( coords );
 
     m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
     return true;
@@ -777,16 +782,16 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
     Q_ASSERT( area );
 
-    if ( m_mergedArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
+    if ( m_interactingArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
         // If the polygon has been initialized but it is different than the previously selected one,
         // change the state of the older one to Normal and to MergingNodes to the new one. This makes
         // possible merging nodes in different polygons without unchecking and checking again "Merge
         // Nodes".
-        if ( m_mergedArea ) {
-            m_mergedArea->setState( AreaAnnotation::Normal );
+        if ( m_interactingArea ) {
+            m_interactingArea->setState( AreaAnnotation::Normal );
         }
         area->setState( AreaAnnotation::MergingNodes );
-        m_mergedArea = area;
+        m_interactingArea = area;
     } else if ( area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
         // Ignore clicks on polygon's inner boundaries.
         return false;
@@ -838,7 +843,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
         return true;
     }
 
-    QList<int> &selectedNodes = m_mergedArea->selectedNodes();
+    QList<int> &selectedNodes = m_interactingArea->selectedNodes();
     int sizeOffset = 0;
 
     // If the selected nodes are part of one of the polygon's inner boundary.
@@ -961,6 +966,37 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     return true;
 }
 
+bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+{
+    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
+        return false;
+    }
+
+    // We can now be sure that the SceneGraphicsItem is an AreaAnnotation.
+    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
+    Q_ASSERT( area );
+
+    // When hovering the mid point of any polygon's side, call sceneEvent (which will certainly
+    // call AreaAnnotation::mouseMoveEvent) which has the responsability of drawing the virtual
+    // node.
+    if ( mouseEvent->type() == QEvent::MouseMove ) {
+        area->setState( AreaAnnotation::AddingNodes );
+        // Since we already know that we are in the AddingNodes state, then the mouse move event
+        // handler from AreaAnnotation will return true only if the region hovered is the middle
+        // of one of polygon's sides.
+        bool ret = area->sceneEvent( mouseEvent );
+        area->setState( AreaAnnotation::Normal );
+
+        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+        return ret;
+    //
+    } else if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
+        // Deal with making 'real' the virtual node. Maybe this could be done inside AreaAnnotation?
+    }
+
+    return false;
+}
+
 bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     // We get here when mousePressEvent returns false.
@@ -1052,6 +1088,7 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         QAction *addNodes = new QAction( this );
         addNodes->setText( tr("Add Nodes") );
         // TODO: set icon
+        addNodes->setCheckable( true );
         connect( addNodes, SIGNAL(toggled(bool)),
                  this, SLOT(setAddingNodes(bool)) );
 
@@ -1128,6 +1165,7 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         group->addAction( drawPolygon );
         group->addAction( addHole );
         group->addAction( mergeNodes );
+        group->addAction( addNodes );
         group->addAction( polygonEndSeparator );
         group->addAction( addPlacemark );
         group->addAction( addOverlay );

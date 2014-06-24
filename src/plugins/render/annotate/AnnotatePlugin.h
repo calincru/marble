@@ -163,6 +163,7 @@ private:
     bool dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
 
@@ -187,10 +188,7 @@ private:
     SceneGraphicsItem    *m_movedItem;
     GeoDataGroundOverlay *m_rmbOverlay;
     AreaAnnotation       *m_rmbSelectedArea;
-    GeoDataPolygon       *m_holedPolygon;
-
-    AreaAnnotation       *m_mergedArea;
-    int                   m_mergedNodeIndex;
+    AreaAnnotation       *m_interactingArea;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;

@@ -20,10 +20,12 @@
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
+#include "GeoDataStyle.h"
 
 // Qt
 #include <qmath.h>
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -42,9 +44,6 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
 {
     m_viewport = viewport;
     QList<QRegion> regionList;
-
-    // Clear the list of virtual nodes.
-    m_virtualNodesList.clear();
 
     painter->save();
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
@@ -73,15 +72,13 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
             }
 
             // If we are in the AddingNodes state, store the middle of each polygon side.
-            if ( m_state == AddingNodes ) {
-                if ( i ) {
-                    GeoDataCoordinates virtualNode = outerRing.at(i).interpolate( outerRing.at(i-1), 0.5 );
-                    m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
-                } else {
-                    GeoDataCoordinates virtualNode = outerRing.at(i).interpolate(
-                                                            outerRing.at(outerRing.size() - 1), 0.5 );
-                    m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
-                }
+            if ( i ) {
+                GeoDataCoordinates virtualNode = outerRing.at(i).interpolate( outerRing.at(i-1), 0.5 );
+                m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
+            } else {
+                GeoDataCoordinates virtualNode = outerRing.at(i).interpolate(
+                                                       outerRing.at(outerRing.size() - 1), 0.5 );
+                m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
             }
 
             regionList.append( newRegion );
@@ -171,7 +168,31 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return false;
     }
 
-    if ( m_movedNodeIndex < 0 ) {
+    // We deal with polygon hovering only when being in AddingNodes state so far.
+    if ( m_movedNodeIndex == -1 && m_state == AddingNodes ) {
+        for ( int i = 0; i < m_virtualNodesList.size(); ++i ) {
+            if ( m_virtualNodesList.at(i).contains( event->pos() ) ) {
+                // Here will take the 'virtual node drawing' magic take place.
+                // I will probably need another member within the object to tell where
+                // (between which two nodes) has the virtual node been added. This will
+                // be needed when not hovering anymore. I will also need a bool variable
+                // to tell me if the virtual node is being shown (or maybe use the above
+                // mentioned variable and consider 'false' as '-1' index).
+                GeoDataStyle *style = new GeoDataStyle( *placemark()->style() );
+
+                style->lineStyle().setWidth( style->lineStyle().width() + 1 );
+                placemark()->setStyle( style );
+                
+                return true;
+            }
+        }
+
+        // If the hovered region is not one of polygon sides' middle points let the event
+        // propagate.
+        return false;
+    // We don't have so far any functionality when hovering a polygon in other state, so let
+    // the event propagate in this situation as well.
+    } else if ( m_movedNodeIndex < 0 ) {
         return false;
     }
 
@@ -183,6 +204,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
     const GeoDataCoordinates coords( lon, lat );
+
 
     // This means one of the nodes has been clicked. The clicked node can be on the outer
     // boundary of the polygon as well as on its inner boundary.
