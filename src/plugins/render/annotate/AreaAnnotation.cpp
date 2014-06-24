@@ -38,10 +38,13 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
 
 }
 
-void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
+void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
     QList<QRegion> regionList;
+
+    // Clear the list of virtual nodes.
+    m_virtualNodesList.clear();
 
     painter->save();
     if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
@@ -66,9 +69,21 @@ void AreaAnnotation::paint(GeoPainter *painter, const ViewportParams *viewport )
                 painter->setBrush( Oxygen::emeraldGreen6 );
                 painter->drawEllipse( outerRing.at(i) , 15, 15 );
             } else {
-
-            painter->drawEllipse( outerRing.at(i) , 10, 10 );
+                painter->drawEllipse( outerRing.at(i) , 10, 10 );
             }
+
+            // If we are in the AddingNodes state, store the middle of each polygon side.
+            if ( m_state == AddingNodes ) {
+                if ( i ) {
+                    GeoDataCoordinates virtualNode = outerRing.at(i).interpolate( outerRing.at(i-1), 0.5 );
+                    m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
+                } else {
+                    GeoDataCoordinates virtualNode = outerRing.at(i).interpolate(
+                                                            outerRing.at(outerRing.size() - 1), 0.5 );
+                    m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
+                }
+            }
+
             regionList.append( newRegion );
         }
 

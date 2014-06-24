@@ -100,6 +100,7 @@ private:
 
 
     QList<QRegion>     m_innerBoundariesList;
+    QList<QRegion>     m_virtualNodesList;
     ActionState        m_state;
 
     QPair<int, int>    m_mergedNodes;

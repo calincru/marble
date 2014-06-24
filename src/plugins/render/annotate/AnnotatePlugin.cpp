@@ -286,6 +286,11 @@ void AnnotatePlugin::setMergingNodes( bool enabled )
     m_mergedArea = 0;
 }
 
+void AnnotatePlugin::setAddingNodes( bool enabled )
+{
+    m_addingNodes = enabled;
+}
+
 void AnnotatePlugin::setRemovingItems( bool enabled )
 {
     m_removingItem = enabled;
@@ -1039,10 +1044,16 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
 
         QAction *mergeNodes = new QAction( this );
         mergeNodes->setText( tr("Merge Nodes") );
-        // TODO: est icon
+        // TODO: set icon
         mergeNodes->setCheckable( true );
         connect( mergeNodes, SIGNAL(toggled(bool)),
                  this, SLOT(setMergingNodes(bool)) );
+
+        QAction *addNodes = new QAction( this );
+        addNodes->setText( tr("Add Nodes") );
+        // TODO: set icon
+        connect( addNodes, SIGNAL(toggled(bool)),
+                 this, SLOT(setAddingNodes(bool)) );
 
         QAction *addPlacemark= new QAction( this );
         addPlacemark->setText( tr("Add Placemark") );

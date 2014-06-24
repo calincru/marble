@@ -103,6 +103,7 @@ public slots:
     void setDrawingPolygon( bool );
     void setAddingPolygonHole( bool );
     void setMergingNodes( bool );
+    void setAddingNodes( bool );
     void setAddingOverlay( bool );
     void setRemovingItems( bool );
 
@@ -198,6 +199,7 @@ private:
     bool m_drawingPolygon;
     bool m_addingPolygonHole;
     bool m_mergingNodes;
+    bool m_addingNodes;
     bool m_addingOverlay;
     bool m_removingItem;
     bool m_isInitialized;
