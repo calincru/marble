@@ -976,25 +976,16 @@ bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphics
     AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
     Q_ASSERT( area );
 
-    // When hovering the mid point of any polygon's side, call sceneEvent (which will certainly
-    // call AreaAnnotation::mouseMoveEvent) which has the responsability of drawing the virtual
-    // node.
-    if ( mouseEvent->type() == QEvent::MouseMove ) {
-        area->setState( AreaAnnotation::AddingNodes );
-        // Since we already know that we are in the AddingNodes state, then the mouse move event
-        // handler from AreaAnnotation will return true only if the region hovered is the middle
-        // of one of polygon's sides.
-        bool ret = area->sceneEvent( mouseEvent );
-        area->setState( AreaAnnotation::Normal );
+    area->setState( AreaAnnotation::AddingNodes );
+    // Since we already know that we are in the AddingNodes state, then the mouse move event
+    // handler from AreaAnnotation will return true only if the region hovered is the middle
+    // of one of polygon's sides.
+    bool ret = area->sceneEvent( mouseEvent );
 
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-        return ret;
-    //
-    } else if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
-        // Deal with making 'real' the virtual node. Maybe this could be done inside AreaAnnotation?
-    }
+    area->setState( AreaAnnotation::Normal );
+    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
 
-    return false;
+    return ret;
 }
 
 bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )

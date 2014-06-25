@@ -62,8 +62,8 @@ public:
      * @param restrictive If this parameter is set to false, only check if one of its
      * inner boundaries contains the point (using GeoDataLinerRing::contains). In
      * addition to this, when restrictive is set to true, also check that none of
-     * the polygon's regions (its nodes) contain the point (yes, these regions may
-     * 'intersect' due to the way nodes are represented).
+     * the polygon nodes' regions contain the point (yes, these regions may 'intersect'
+     * due to the way nodes are represented).
      */
     bool isInnerBoundsPoint( const QPoint &point, bool restrictive = false ) const;
 
@@ -100,10 +100,13 @@ private:
 
 
     QList<QRegion>     m_innerBoundariesList;
-    QList<QRegion>     m_virtualNodesList;
+    int                m_virtualNodesCount;
     ActionState        m_state;
 
+    // Used for merging
     QPair<int, int>    m_mergedNodes;
+
+    // Used for adding nodes
 
     int                m_movedNodeIndex;
     int                m_rightClickedNode;

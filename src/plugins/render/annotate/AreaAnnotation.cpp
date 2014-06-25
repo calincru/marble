@@ -51,8 +51,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         const GeoDataLinearRing &outerRing = polygon->outerBoundary();
         const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
-        // First paint and add to the region list the nodes which form the outerBoundary, as
-        // well as the entire outer polygon.
+        // First paint and add to the regions list the nodes which form the outerBoundary.
         for ( int i = 0; i < outerRing.size(); ++i ) {
             QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
@@ -62,7 +61,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
                 painter->setBrush( Oxygen::aluminumGray6 );
             }
 
-            // If we are in the MergingNodes state paint with a different color the node.
+            // If we are in the MergingNodes state, paint with a different color the node.
             if ( ( i == m_mergedNodes.first && m_state == MergingNodes ) ||
                  ( i == m_mergedNodes.second && m_state == MergingNodes ) ) {
                 painter->setBrush( Oxygen::emeraldGreen6 );
@@ -71,20 +70,10 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
                 painter->drawEllipse( outerRing.at(i) , 10, 10 );
             }
 
-            // If we are in the AddingNodes state, store the middle of each polygon side.
-            if ( i ) {
-                GeoDataCoordinates virtualNode = outerRing.at(i).interpolate( outerRing.at(i-1), 0.5 );
-                m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
-            } else {
-                GeoDataCoordinates virtualNode = outerRing.at(i).interpolate(
-                                                       outerRing.at(outerRing.size() - 1), 0.5 );
-                m_virtualNodesList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
-            }
-
             regionList.append( newRegion );
         }
 
-        // Then paint and add to the region list the nodes which form the innerBoundaries
+        // Then paint and add to the regions list the nodes which form the innerBoundaries.
         int sizeOffset = outerRing.size();
         m_innerBoundariesList.clear();
 
@@ -112,8 +101,25 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
             m_innerBoundariesList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
         }
 
+        // Add to the regions list the whole polygon.
         regionList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
+
+        // Add to the regionList the virtual nodes as well. As a consequence, the polygon's index
+        // in the regions list will be regionList.size() - m_virtualNodesCount - 1. 
+        m_virtualNodesCount = 0;
+        for ( int i = 0; i < outerRing.size(); ++i ) {
+            if ( i ) {
+                GeoDataCoordinates virtualNode = outerRing.at(i).interpolate( outerRing.at(i-1), 0.5 );
+                regionList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
+            } else {
+                GeoDataCoordinates virtualNode = outerRing.at(i).interpolate(
+                                                       outerRing.at(outerRing.size() - 1), 0.5 );
+                regionList.append( painter->regionFromEllipse( virtualNode, 15, 15 ) );
+            }
+            ++m_virtualNodesCount;
+        }
     }
+
     painter->restore();
     setRegions( regionList );
 }
@@ -129,16 +135,27 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     m_movedPointCoords.set( lon, lat );
 
     int index = firstRegionWhichContains( event );
+    int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
-    if ( index == regionList.size() - 1 && isInnerBoundsPoint( event->pos() ) ) {
+    // If one of polygon's inner boundaries has been clicked, ignore the event.
+    if ( index == polyIndex && isInnerBoundsPoint( event->pos() ) ) {
         m_rightClickedNode = -2;
+        return false;
+    }
+
+    // This means that a virtual node has just been clicked.
+    if ( index > polyIndex ) {
+
+
+        // make sure we return here since some of the code below may become fauly
+        // otherwise
         return false;
     }
 
     if ( event->button() == Qt::LeftButton ) {
         m_movedNodeIndex = index;
         // If we are in the merging state store the clicked nodes.
-        if ( m_state == MergingNodes && index < regionList.size() - 1 ) {
+        if ( m_state == MergingNodes && index < polyIndex ) {
             if ( m_mergedNodes.first != -1 && m_mergedNodes.second != -1 ) {
                 m_mergedNodes = QPair<int, int>( -1, -1 );
             } else if ( m_mergedNodes.first == -1 ) {
@@ -150,9 +167,9 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
         return true;
     } else if ( event->button() == Qt::RightButton ) {
-        if ( index < regionList.size() - 1 ) {
+        if ( index < polyIndex ) {
             m_rightClickedNode = index;
-        } else {
+        } else if ( index == polyIndex ) {
             m_rightClickedNode = -1;
         }
 
@@ -168,10 +185,13 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return false;
     }
 
+    QList<QRegion> regionList = regions();
+    int polyIndex = regionList.size() - m_virtualNodesCount - 1;
+
     // We deal with polygon hovering only when being in AddingNodes state so far.
     if ( m_movedNodeIndex == -1 && m_state == AddingNodes ) {
-        for ( int i = 0; i < m_virtualNodesList.size(); ++i ) {
-            if ( m_virtualNodesList.at(i).contains( event->pos() ) ) {
+        for ( int i = polyIndex + 1; i < regionList.size(); ++i ) {
+            if ( regionList.at(i).contains( event->pos() ) ) {
                 // Here will take the 'virtual node drawing' magic take place.
                 // I will probably need another member within the object to tell where
                 // (between which two nodes) has the virtual node been added. This will
@@ -182,7 +202,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
                 style->lineStyle().setWidth( style->lineStyle().width() + 1 );
                 placemark()->setStyle( style );
-                
+ 
                 return true;
             }
         }
@@ -196,8 +216,6 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return false;
     }
 
-    QList<QRegion> regionList = regions();
-
     qreal lon, lat;
     m_viewport->geoCoordinates( event->pos().x(),
                                 event->pos().y(),
@@ -208,7 +226,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     // This means one of the nodes has been clicked. The clicked node can be on the outer
     // boundary of the polygon as well as on its inner boundary.
-    if ( m_movedNodeIndex >= 0 && m_movedNodeIndex < regionList.size() - 1 ) {
+    if ( m_movedNodeIndex >= 0 && m_movedNodeIndex < polyIndex ) {
         if ( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType ) {
             GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
             GeoDataLinearRing &outerRing = polygon->outerBoundary();
@@ -239,7 +257,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     // This means the interior of the polygon has been clicked (excepting its "holes" - its
     // inner boundaries) and here we handle the move of the entire polygon.
-    Q_ASSERT( m_movedNodeIndex == regionList.size() - 1 );
+    Q_ASSERT( m_movedNodeIndex == polyIndex );
     qreal bearing = m_movedPointCoords.bearing( coords );
     qreal distance = distanceSphere( coords, m_movedPointCoords );
 
@@ -307,10 +325,6 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     qreal x, y;
     m_viewport->screenCoordinates( m_movedPointCoords.longitude(), m_movedPointCoords.latitude(), x, y );
 
-    // Get the index of the first region from the regionList which contains the event pos.
-    // This may refer to a node or, if i == regionList.size() - 1, to the whole polygon.
-    int index = firstRegionWhichContains( event );
-
     // The node gets selected only if it is clicked and not moved.
     // Is this value ok in order to avoid this?
     if ( qFabs(event->pos().x() - x) > mouseMoveOffset ||
@@ -318,14 +332,20 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return true;
     }
 
+    // Get the index of the first region from the regionList which contains the event pos.
+    // This may refer to a node or, if i == polyIndex, to the whole polygon.
+    int index = firstRegionWhichContains( event );
+    int polyIndex = regionList.size() - m_virtualNodesCount - 1;
+
     // If the action state is set to MergingNodes then the clicked node should not get into the
     // selectedNodes list.
     if ( m_state == MergingNodes ) {
         return true;
     }
 
-    // Do the same as above with the node which has been clicked.
-    if ( index >= 0 && index < regionList.size() - 1 && event->button() == Qt::LeftButton ) {
+    // If this event has been caught on a node, add it to the selected nodes list if it has not
+    // been selected already, or remove it otherwise.
+    if ( index >= 0 && index < polyIndex && event->button() == Qt::LeftButton ) {
         if ( !m_selectedNodes.contains( index ) ) {
              m_selectedNodes.append( index );
         } else {
@@ -370,8 +390,9 @@ bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point, bool restrictive )
         if ( innerRegion.contains( point ) ) {
             if ( restrictive ) {
                 QList<QRegion> regionList = regions();
+                int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
-                for ( int i = 0; i < regionList.size() - 1; ++i ) {
+                for ( int i = 0; i < polyIndex; ++i ) {
                     if ( regionList.at(i).contains( point ) ) {
                         return false;
                     }
