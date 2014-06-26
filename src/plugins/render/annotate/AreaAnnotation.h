@@ -16,6 +16,7 @@
 #include "SceneGraphicsItem.h"
 #include "GeoDataCoordinates.h"
 #include "GeoDataStyle.h"
+#include "GeoDataLinearRing.h"
 
 #include <QPair>
 
@@ -109,7 +110,8 @@ private:
 
     // Used for adding nodes
     // n-o sa las asa, dar o sa fie asemanator cand o sa vad cum fac sa bag nodul ala acolo.
-    GeoDataStyle *m_style;
+    int                m_virtualNodeIndex;
+    GeoDataLinearRing *m_outerBoundaryTmp;
 
     int                m_movedNodeIndex;
     int                m_rightClickedNode;

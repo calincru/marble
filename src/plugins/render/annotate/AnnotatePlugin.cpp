@@ -69,6 +69,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_drawingPolygon( false ),
       m_addingPolygonHole( false ),
       m_mergingNodes( false ),
+      m_addingNodes( false ),
       m_removingItem( false ),
       // m_networkAccessManager( 0 ),
       m_isInitialized( false )
@@ -1070,7 +1071,7 @@ void AnnotatePlugin::dealWithUncaughtEvents( QMouseEvent *mouseEvent )
 
     // Since dealing with adding nodes is done first by handling hover events, when we are  not
     // hovering anymore an area annotation, change the state of the last area annotation we
-    // interacted with to Normal and the pointer which keeps track of it to null. 
+    // interacted with to Normal and the pointer which keeps track of it to null.
     if ( m_interactingArea && m_addingNodes ) {
         m_interactingArea->setState( AreaAnnotation::Normal );
         m_marbleWidget->model()->treeModel()->updateFeature( m_interactingArea->placemark() );
@@ -1462,7 +1463,7 @@ void AnnotatePlugin::removePolygon()
     m_graphicsItems.removeAll( m_rmbSelectedArea );
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
 
-    
+
     delete m_rmbSelectedArea->feature();
     delete m_rmbSelectedArea;
 }
