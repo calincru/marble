@@ -7,17 +7,16 @@ To FIX:
 
 
 To ADD:
-- merging nodes - maybe highlight on the nodes which could be merged, but
-  after review.
-- adding nodes:
-    -> when painting the nodes, maybe add in a new list the regions
-    which contain the middle of each segment and their nearby surrounding area;
-    -> modify AreaAnnotation::mouseMoveEvent as well as
-    AnnotatePlugin::eventFilter to deal with mouse move events caught on
-    polygons (not necessary when m_movedItem != nullptr) - search within the
-    above mentioned list;
-    -> show some "virtual node" as tackat mentioned and when being clicked,
-    make it become real and have it selected (m_movedItem = that node).
+- adding nodes (the structure is done, there are still a few problems):
+    -> in AreaAnnotation::mousePressEvent is a problem caused by the fact that 
+    when clicking the virtual node "from the polygon's inside"
+    firstRegionWhichContains is in fact the polygon which fucks up everything;
+    -> skip mouse press release (keep m_movedItem != nullptr );
+    -> maybe the most important, see how that virtual nod will be added;
+    -> organize a little bit AreaAnnotation class (comments, maybe new methods
+    due to repeating code sequences);
+    -> in the end, maybe take into consideration showing the virtual node
+    evetywhere on a polygon's side.
 - a more friendly user interface;
 - redesigning the whole event filter in AnnotatePlugin: find a why to keep the
   code easier to upgrade and better documented as well as easier to be
