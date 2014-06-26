@@ -147,13 +147,8 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
     // This means that a virtual node has just been clicked.
     if ( index > polyIndex && m_state == AddingNodes ) {
-
-
-        // make sure we return here since some of the code below may become fauly
-        // otherwise
-        
         // problema e ca ia primul poligonul clickul. fuck
-        qDebug() << "intra aici\n";
+        m_style = 0;
         return true;
     } else if ( index > polyIndex ) {
         // In other states than AddingNodes, clicking the virtual nodes does nothing.

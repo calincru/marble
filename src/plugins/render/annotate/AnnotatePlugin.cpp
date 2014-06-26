@@ -725,9 +725,11 @@ bool AnnotatePlugin::dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphic
                                               QMessageBox::Yes | QMessageBox::No );
 
     if ( result == QMessageBox::Yes ) {
+        m_interactingArea = 0;
         m_movedItem = 0;
         m_graphicsItems.removeAll( item );
         m_marbleWidget->model()->treeModel()->removeFeature( item->feature() );
+
         delete item->feature();
         delete item;
         emit itemRemoved();
@@ -1004,7 +1006,6 @@ bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphics
     bool ret = m_interactingArea->sceneEvent( mouseEvent );
 
     if ( mouseEvent->type() == QEvent::MouseButtonPress && ret ) {
-        qDebug() << "Ajunge aici\n";
         m_movedItem = area;
         area->setState( AreaAnnotation::Normal );
         m_addingNodes = false;
@@ -1060,21 +1061,16 @@ void AnnotatePlugin::dealWithUncaughtEvents( QMouseEvent *mouseEvent )
         clearOverlayFrames();
     }
 
-    //
-    //for ( int i = 0; i < m_graphicsItems.size(); ++i ) {
-    //    if ( m_graphicsItems.at(i).graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
-    //        AreaAnnotation *area = static_cast<AreaAnnotation*>( m_graphicsItems.at(i) );
-    //        Q_ASSERT( area );
-
-    //        area->restoreBeforeHover();
-    //    }
-    //}
-
-    if ( m_interactingArea ) {
+    // Since dealing with adding nodes is done first by dealing with hovering events, when we are
+    // not hovering anymore an area annotation, change the state of the last area annotation we
+    // interacted with to Normal and the pointer which keeps track of the annotations we interact
+    // with in general to null.
+    if ( m_interactingArea && m_addingNodes ) {
         m_interactingArea->setState( AreaAnnotation::Normal );
         m_marbleWidget->model()->treeModel()->updateFeature( m_interactingArea->placemark() );
         m_interactingArea = 0;
     }
+
 }
 
 void AnnotatePlugin::setupActions(MarbleWidget *widget)
@@ -1452,8 +1448,16 @@ void AnnotatePlugin::deleteSelectedNodes()
 
 void AnnotatePlugin::removePolygon()
 {
+    // Make sure it won't crash if the polygon gets removed when 'Merging Nodes' at the same time
+    // (or other action on polygons).
+    // FIXME: This will be fixed when right clicking a polygon while 'Merging Nodes' (as well as
+    // other polygons actions) is selected will not be possible anymore.
+    m_interactingArea = 0;
+
     m_graphicsItems.removeAll( m_rmbSelectedArea );
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
+
+    
     delete m_rmbSelectedArea->feature();
     delete m_rmbSelectedArea;
 }
