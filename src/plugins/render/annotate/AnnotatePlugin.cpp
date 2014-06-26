@@ -64,6 +64,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_annotationDocument( new GeoDataDocument ),
       m_polygonPlacemark( 0 ),
       m_movedItem( 0 ),
+      m_interactingArea( 0 ),
       m_addingPlacemark( false ),
       m_drawingPolygon( false ),
       m_addingPolygonHole( false ),
@@ -291,7 +292,13 @@ void AnnotatePlugin::setMergingNodes( bool enabled )
 
 void AnnotatePlugin::setAddingNodes( bool enabled )
 {
+    if ( !enabled && m_interactingArea ) {
+        // Restore the normal state
+        m_interactingArea->setState( AreaAnnotation::Normal );
+    }
+
     m_addingNodes = enabled;
+    m_interactingArea = 0;
 }
 
 void AnnotatePlugin::setRemovingItems( bool enabled )
@@ -798,7 +805,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     }
 
     // We can now be sure that mousePressEvent in AreaAnnotation will return true.
-    Q_ASSERT( area->sceneEvent( mouseEvent) );
+    Q_ASSERT( area->sceneEvent( mouseEvent ) );
     QPair<int, int> &mergedNodes = area->mergedNodes();
 
     // Ignore event if the first node to be merged is set to -1. This means that actually no node
@@ -976,15 +983,36 @@ bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphics
     AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
     Q_ASSERT( area );
 
-    area->setState( AreaAnnotation::AddingNodes );
+    if ( m_interactingArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
+        // If the polygon has been initialized but it is different than the previously selected one,
+        // change the state of the older one to Normal and to AddingNodes to the new one. This makes
+        // possible adding nodes to different polygons without unchecking and checking again "Add
+        // Nodes".
+        if ( m_interactingArea ) {
+            m_interactingArea->setState( AreaAnnotation::Normal );
+        }
+        area->setState( AreaAnnotation::AddingNodes );
+        m_interactingArea = area;
+    } else if ( area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
+        // Ignore clicks on polygon's inner boundaries.
+        return false;
+    }
+
     // Since we already know that we are in the AddingNodes state, then the mouse move event
     // handler from AreaAnnotation will return true only if the region hovered is the middle
     // of one of polygon's sides.
-    bool ret = area->sceneEvent( mouseEvent );
+    bool ret = m_interactingArea->sceneEvent( mouseEvent );
 
-    area->setState( AreaAnnotation::Normal );
+    if ( mouseEvent->type() == QEvent::MouseButtonPress && ret ) {
+        qDebug() << "Ajunge aici\n";
+        m_movedItem = area;
+        area->setState( AreaAnnotation::Normal );
+        m_addingNodes = false;
+
+        emit nodeAdded();
+    }
+
     m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-
     return ret;
 }
 
@@ -1030,6 +1058,22 @@ void AnnotatePlugin::dealWithUncaughtEvents( QMouseEvent *mouseEvent )
     if ( !m_groundOverlayFrames.isEmpty() &&
          mouseEvent->type() != QEvent::MouseMove && mouseEvent->type() != QEvent::MouseButtonRelease ) {
         clearOverlayFrames();
+    }
+
+    //
+    //for ( int i = 0; i < m_graphicsItems.size(); ++i ) {
+    //    if ( m_graphicsItems.at(i).graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+    //        AreaAnnotation *area = static_cast<AreaAnnotation*>( m_graphicsItems.at(i) );
+    //        Q_ASSERT( area );
+
+    //        area->restoreBeforeHover();
+    //    }
+    //}
+
+    if ( m_interactingArea ) {
+        m_interactingArea->setState( AreaAnnotation::Normal );
+        m_marbleWidget->model()->treeModel()->updateFeature( m_interactingArea->placemark() );
+        m_interactingArea = 0;
     }
 }
 
@@ -1082,6 +1126,8 @@ void AnnotatePlugin::setupActions(MarbleWidget *widget)
         addNodes->setCheckable( true );
         connect( addNodes, SIGNAL(toggled(bool)),
                  this, SLOT(setAddingNodes(bool)) );
+        connect( this, SIGNAL(nodeAdded()),
+                 addNodes, SLOT(toggle()) );
 
         QAction *addPlacemark= new QAction( this );
         addPlacemark->setText( tr("Add Placemark") );

@@ -33,6 +33,7 @@ namespace Marble
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
       m_state( Normal ),
+      m_style( 0 ),
       m_movedNodeIndex( -1 ),
       m_rightClickedNode( -2 ),
       m_viewport( 0 )
@@ -55,6 +56,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         for ( int i = 0; i < outerRing.size(); ++i ) {
             QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
+            // If the node is marked as selected, paint with a different color.
             if ( !m_selectedNodes.contains( i ) ) {
                 painter->setBrush( Oxygen::aluminumGray3);
             } else {
@@ -105,7 +107,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         regionList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
 
         // Add to the regionList the virtual nodes as well. As a consequence, the polygon's index
-        // in the regions list will be regionList.size() - m_virtualNodesCount - 1. 
+        // in the regions list will be regionList.size() - m_virtualNodesCount - 1.
         m_virtualNodesCount = 0;
         for ( int i = 0; i < outerRing.size(); ++i ) {
             if ( i ) {
@@ -134,7 +136,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
                                 GeoDataCoordinates::Radian );
     m_movedPointCoords.set( lon, lat );
 
-    int index = firstRegionWhichContains( event );
+    int index = firstRegionWhichContains( event->pos() );
     int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
     // If one of polygon's inner boundaries has been clicked, ignore the event.
@@ -144,11 +146,17 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     }
 
     // This means that a virtual node has just been clicked.
-    if ( index > polyIndex ) {
+    if ( index > polyIndex && m_state == AddingNodes ) {
 
 
         // make sure we return here since some of the code below may become fauly
         // otherwise
+        
+        // problema e ca ia primul poligonul clickul. fuck
+        qDebug() << "intra aici\n";
+        return true;
+    } else if ( index > polyIndex ) {
+        // In other states than AddingNodes, clicking the virtual nodes does nothing.
         return false;
     }
 
@@ -188,23 +196,32 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     QList<QRegion> regionList = regions();
     int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
+    // Va trebui sa fac verific in uncaught events daca am vreun annotate area care
+    // trebuie <echivalentul deselectat de la GO> - sa ii ne-afisez nodurile virtuale.
+
     // We deal with polygon hovering only when being in AddingNodes state so far.
     if ( m_movedNodeIndex == -1 && m_state == AddingNodes ) {
         for ( int i = polyIndex + 1; i < regionList.size(); ++i ) {
             if ( regionList.at(i).contains( event->pos() ) ) {
-                // Here will take the 'virtual node drawing' magic take place.
-                // I will probably need another member within the object to tell where
-                // (between which two nodes) has the virtual node been added. This will
-                // be needed when not hovering anymore. I will also need a bool variable
-                // to tell me if the virtual node is being shown (or maybe use the above
-                // mentioned variable and consider 'false' as '-1' index).
+                // daca deja e desenat, nu il mai desenez
+                if ( m_style ) {
+                    return true;
+                }
+
                 GeoDataStyle *style = new GeoDataStyle( *placemark()->style() );
+                m_style = new GeoDataStyle( *style );
 
                 style->lineStyle().setWidth( style->lineStyle().width() + 1 );
                 placemark()->setStyle( style );
- 
+
                 return true;
             }
+        }
+
+        if ( m_style ) {
+            placemark()->setStyle( m_style );
+            m_style = 0;
+            return false;
         }
 
         // If the hovered region is not one of polygon sides' middle points let the event
@@ -334,7 +351,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 
     // Get the index of the first region from the regionList which contains the event pos.
     // This may refer to a node or, if i == polyIndex, to the whole polygon.
-    int index = firstRegionWhichContains( event );
+    int index = firstRegionWhichContains( event->pos() );    
     int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
     // If the action state is set to MergingNodes then the clicked node should not get into the
@@ -363,9 +380,20 @@ void AreaAnnotation::setState( ActionState state )
 {
     m_state = state;
 
-    // Also do the initializations.
-    if ( state == MergingNodes ) {
-        m_mergedNodes = QPair<int, int>( -1, -1 );
+    // Do the initializations when entering a new state.
+    switch ( state ) {
+        case MergingNodes:
+            m_mergedNodes = QPair<int, int>( -1, -1 );
+            break;
+        case AddingNodes:
+            // nothing so far
+            break;
+        case Normal:
+            if ( m_style ) {
+                placemark()->setStyle( m_style );
+                m_style = 0;
+            }
+            break;
     }
 }
 
@@ -433,17 +461,27 @@ QPair<int, int> &AreaAnnotation::mergedNodes()
     return m_mergedNodes;
 }
 
+/*
+bool AreaAnnotation::isVirtualNode( const QPoint &eventPos ) const
+{
+    QList<QRegion> regionList = regions();
+    int index = firstRegionWhichContains( eventPos );
+
+
+}
+*/
+
 const char *AreaAnnotation::graphicType() const
 {
     return SceneGraphicTypes::SceneGraphicAreaAnnotation;
 }
 
-int AreaAnnotation::firstRegionWhichContains( QMouseEvent *mouseEvent )
+int AreaAnnotation::firstRegionWhichContains( const QPoint &eventPos ) const
 {
     QList<QRegion> regionList = regions();
 
     for ( int i = 0; i < regionList.size(); ++i ) {
-        if ( regionList.at(i).contains( mouseEvent->pos() ) ) {
+        if ( regionList.at(i).contains( eventPos ) ) {
             return i;
         }
     }

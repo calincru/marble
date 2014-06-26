@@ -15,6 +15,7 @@
 
 #include "SceneGraphicsItem.h"
 #include "GeoDataCoordinates.h"
+#include "GeoDataStyle.h"
 
 #include <QPair>
 
@@ -86,6 +87,8 @@ public:
 
     const QPair<int, int> &mergedNodes() const;
 
+//    bool isVirtualNode( const QPoint &eventPos ) const;
+
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
@@ -94,9 +97,9 @@ public:
 private:
     /**
      * @brief Returns the index of the first region from the list SceneGraphicsItem::regions() which
-     * contains the position of the @p mouseEvent.
+     * contains the @p eventPos.
      */
-    int firstRegionWhichContains( QMouseEvent *mouseEvent );
+    int firstRegionWhichContains( const QPoint &eventPos ) const;
 
 
     QList<QRegion>     m_innerBoundariesList;
@@ -107,6 +110,8 @@ private:
     QPair<int, int>    m_mergedNodes;
 
     // Used for adding nodes
+    // n-o sa las asa, dar o sa fie asemanator cand o sa vad cum fac sa bag nodul ala acolo.
+    GeoDataStyle *m_style;
 
     int                m_movedNodeIndex;
     int                m_rightClickedNode;
