@@ -139,6 +139,8 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     int index = firstRegionWhichContains( event->pos() );
     int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
+    // TODO: Clean this up.
+
     // If one of polygon's inner boundaries has been clicked, ignore the event.
     if ( index == polyIndex && isInnerBoundsPoint( event->pos() ) ) {
         m_rightClickedNode = -2;
@@ -191,8 +193,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     QList<QRegion> regionList = regions();
     int polyIndex = regionList.size() - m_virtualNodesCount - 1;
 
-    // Va trebui sa fac verific in uncaught events daca am vreun annotate area care
-    // trebuie <echivalentul deselectat de la GO> - sa ii ne-afisez nodurile virtuale.
+    // TODO: Clean this up.
 
     // We deal with polygon hovering only when being in AddingNodes state so far.
     if ( m_movedNodeIndex == -1 && m_state == AddingNodes ) {
@@ -375,6 +376,7 @@ void AreaAnnotation::setState( ActionState state )
 {
     m_state = state;
 
+    // TODO: clean this up
     // Do the initializations when entering a new state.
     switch ( state ) {
         case MergingNodes:
@@ -455,16 +457,6 @@ QPair<int, int> &AreaAnnotation::mergedNodes()
 {
     return m_mergedNodes;
 }
-
-/*
-bool AreaAnnotation::isVirtualNode( const QPoint &eventPos ) const
-{
-    QList<QRegion> regionList = regions();
-    int index = firstRegionWhichContains( eventPos );
-
-
-}
-*/
 
 const char *AreaAnnotation::graphicType() const
 {

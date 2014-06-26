@@ -68,6 +68,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_addingPlacemark( false ),
       m_drawingPolygon( false ),
       m_addingPolygonHole( false ),
+      m_mergingNodes( false ),
       m_removingItem( false ),
       // m_networkAccessManager( 0 ),
       m_isInitialized( false )
@@ -705,6 +706,8 @@ bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGr
         return false;
     }
 
+    // TODO: Don't null it when m_addingNodes is true?
+
     // The moved item gets deselected at mouse release event.
     m_movedItem = 0;
 
@@ -1005,6 +1008,8 @@ bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphics
     // of one of polygon's sides.
     bool ret = m_interactingArea->sceneEvent( mouseEvent );
 
+    // TODO: To finish.
+
     if ( mouseEvent->type() == QEvent::MouseButtonPress && ret ) {
         m_movedItem = area;
         area->setState( AreaAnnotation::Normal );
@@ -1061,16 +1066,16 @@ void AnnotatePlugin::dealWithUncaughtEvents( QMouseEvent *mouseEvent )
         clearOverlayFrames();
     }
 
-    // Since dealing with adding nodes is done first by dealing with hovering events, when we are
-    // not hovering anymore an area annotation, change the state of the last area annotation we
-    // interacted with to Normal and the pointer which keeps track of the annotations we interact
-    // with in general to null.
+    // TODO: Is this ok for sure?
+
+    // Since dealing with adding nodes is done first by handling hover events, when we are  not
+    // hovering anymore an area annotation, change the state of the last area annotation we
+    // interacted with to Normal and the pointer which keeps track of it to null. 
     if ( m_interactingArea && m_addingNodes ) {
         m_interactingArea->setState( AreaAnnotation::Normal );
         m_marbleWidget->model()->treeModel()->updateFeature( m_interactingArea->placemark() );
         m_interactingArea = 0;
     }
-
 }
 
 void AnnotatePlugin::setupActions(MarbleWidget *widget)

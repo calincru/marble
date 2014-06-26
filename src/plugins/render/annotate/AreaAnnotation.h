@@ -87,8 +87,6 @@ public:
 
     const QPair<int, int> &mergedNodes() const;
 
-//    bool isVirtualNode( const QPoint &eventPos ) const;
-
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
