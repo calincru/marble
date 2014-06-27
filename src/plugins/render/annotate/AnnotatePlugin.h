@@ -94,7 +94,6 @@ public:
 signals:
     void placemarkAdded();
     void overlayAdded();
-    void nodeAdded();
     void itemRemoved();
 
 public slots:

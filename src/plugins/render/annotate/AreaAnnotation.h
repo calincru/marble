@@ -28,10 +28,12 @@ class AreaAnnotation : public SceneGraphicsItem
 public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
 
+    ~AreaAnnotation();
+
     enum ActionState {
         Normal,
         MergingNodes,
-        AddingNodes // TODO
+        AddingNodes
     };
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
@@ -109,8 +111,6 @@ private:
     QPair<int, int>    m_mergedNodes;
 
     // Used for adding nodes
-    // n-o sa las asa, dar o sa fie asemanator cand o sa vad cum fac sa bag nodul ala acolo.
-    int                m_virtualNodeIndex;
     GeoDataLinearRing *m_outerBoundaryTmp;
 
     int                m_movedNodeIndex;
