@@ -401,9 +401,11 @@ void AnnotatePlugin::clearAnnotations()
                                               QMessageBox::Yes | QMessageBox::Cancel );
 
     if ( result == QMessageBox::Yes ) {
+        // It gets deleted three lines further, when calling qDeleteAll(). 
         m_movedItem = 0;
         delete m_polygonPlacemark;
         m_polygonPlacemark = 0;
+
         qDeleteAll( m_graphicsItems );
         m_graphicsItems.clear();
         m_marbleWidget->model()->treeModel()->removeDocument( m_annotationDocument );
@@ -526,22 +528,22 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     }
 
     // Deal with adding placemarks and polygons;
-    if ( ( m_addingPlacemark && dealWithAddingPlacemark( mouseEvent ) ) ||
-         ( m_drawingPolygon && dealWithAddingPolygon( mouseEvent ) ) ) {
+    if ( ( m_addingPlacemark && handleAddingPlacemark( mouseEvent ) ) ||
+         ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) ) {
         return true;
     }
 
     // It is important to deal with Ground Overlay mouse release event here because it uses the
     // texture layer in order to make the rendering more efficient.
     if ( mouseEvent->type() == QEvent::MouseButtonRelease && m_groundOverlayModel.rowCount() ) {
-        dealWithReleaseOverlay( mouseEvent );
+        handleReleaseOverlay( mouseEvent );
     }
 
     // It is important to deal with the MouseMove event here because it changes the state of the selected
     // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
     // globe, which is treated above).
     if ( mouseEvent->type() == QEvent::MouseMove && m_movedItem &&
-         dealWithMovingSelectedItem( mouseEvent ) ) {
+         handleMovingSelectedItem( mouseEvent ) ) {
         return true;
     }
 
@@ -561,21 +563,21 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
             // this situation; the same applies for adding polygon holes, merging nodes and showing rmb
             // menus so far. Then, if there is nothing to do before the item handles the event, let it
             // handle the event.
-            if ( ( m_removingItem && dealWithRemovingItem( mouseEvent, item ) ) ||
+            if ( ( m_removingItem && handleRemovingItem( mouseEvent, item ) ) ||
 
-                 ( m_addingPolygonHole && dealWithAddingHole( mouseEvent, item ) ) ||
+                 ( m_addingPolygonHole && handleAddingHole( mouseEvent, item ) ) ||
 
-                 ( m_mergingNodes && dealWithMergingNodes( mouseEvent, item ) ) ||
+                 ( m_mergingNodes && handleMergingNodes( mouseEvent, item ) ) ||
 
-                 ( m_addingNodes && dealWithAddingNodes( mouseEvent, item ) ) ||
+                 ( m_addingNodes && handleAddingNodes( mouseEvent, item ) ) ||
 
-                 ( dealWithShowingRmbMenus( mouseEvent, item ) ) ||
+                 ( handleShowingRmbMenus( mouseEvent, item ) ) ||
 
                  ( mouseEvent->type() == QEvent::MouseButtonPress &&
-                   dealWithMousePressEvent( mouseEvent, item ) ) ||
+                   handleMousePressEvent( mouseEvent, item ) ) ||
 
                  ( mouseEvent->type() == QEvent::MouseButtonRelease &&
-                   dealWithMouseReleaseEvent( mouseEvent, item ) ) ) {
+                   handleMouseReleaseEvent( mouseEvent, item ) ) ) {
                 return true;
             }
         }
@@ -584,12 +586,12 @@ bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
     // If the event gets here, it most probably means it is a map interaction event, or something
     // that has nothing to do with the annotate plugin items. We "deal" with this situation because,
     // for example, we may need to deselect some selected items.
-    dealWithUncaughtEvents( mouseEvent );
+    handleUncaughtEvents( mouseEvent );
 
     return false;
 }
 
-bool AnnotatePlugin::dealWithAddingPlacemark( QMouseEvent *mouseEvent )
+bool AnnotatePlugin::handleAddingPlacemark( QMouseEvent *mouseEvent )
 {
     if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
@@ -614,7 +616,7 @@ bool AnnotatePlugin::dealWithAddingPlacemark( QMouseEvent *mouseEvent )
     return true;
 }
 
-bool AnnotatePlugin::dealWithAddingPolygon( QMouseEvent *mouseEvent )
+bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
 {
     if ( mouseEvent->button() != Qt::LeftButton ||
          mouseEvent->type() != QEvent::MouseButtonPress ) {
@@ -637,7 +639,7 @@ bool AnnotatePlugin::dealWithAddingPolygon( QMouseEvent *mouseEvent )
     return true;
 }
 
-void AnnotatePlugin::dealWithReleaseOverlay( QMouseEvent *mouseEvent )
+void AnnotatePlugin::handleReleaseOverlay( QMouseEvent *mouseEvent )
 {
     qreal lon, lat;
     m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
@@ -668,7 +670,7 @@ void AnnotatePlugin::dealWithReleaseOverlay( QMouseEvent *mouseEvent )
     }
 }
 
-bool AnnotatePlugin::dealWithMovingSelectedItem( QMouseEvent *mouseEvent )
+bool AnnotatePlugin::handleMovingSelectedItem( QMouseEvent *mouseEvent )
 {
     // Handling easily the mouse move by calling for each scene graphic item their own mouseMoveEvent
     // handler and updating the placemark geometry.
@@ -680,7 +682,7 @@ bool AnnotatePlugin::dealWithMovingSelectedItem( QMouseEvent *mouseEvent )
     return false;
 }
 
-bool AnnotatePlugin::dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     // Return false if the item's mouse press event handler returns false.
     if ( !item->sceneEvent( mouseEvent ) ) {
@@ -700,7 +702,7 @@ bool AnnotatePlugin::dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGrap
     return true;
 }
 
-bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     // Return false if the mouse release event handler of the item returns false.
     if ( !item->sceneEvent( mouseEvent ) ) {
@@ -716,7 +718,7 @@ bool AnnotatePlugin::dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGr
     return true;
 }
 
-bool AnnotatePlugin::dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     if ( mouseEvent->type() != QEvent::MouseButtonPress ||
          mouseEvent->button() != Qt::LeftButton ) {
@@ -742,7 +744,7 @@ bool AnnotatePlugin::dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphic
     return true;
 }
 
-bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     // Ignore if it is not a LMB press or if someone by mistake clicks another scene graphic
     // element while having checked "Add Polygon Hole".
@@ -782,7 +784,7 @@ bool AnnotatePlugin::dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsI
     return true;
 }
 
-bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     if ( mouseEvent->type() != QEvent::MouseButtonPress ||
          mouseEvent->button() != Qt::LeftButton ||
@@ -979,7 +981,7 @@ bool AnnotatePlugin::dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphic
     return true;
 }
 
-bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
         return false;
@@ -1023,7 +1025,7 @@ bool AnnotatePlugin::dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphics
     return ret;
 }
 
-bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+bool AnnotatePlugin::handleShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     // We get here when mousePressEvent returns false.
     if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ||
@@ -1056,7 +1058,7 @@ bool AnnotatePlugin::dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGrap
     return true;
 }
 
-void AnnotatePlugin::dealWithUncaughtEvents( QMouseEvent *mouseEvent )
+void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
 {
     Q_UNUSED( mouseEvent );
 

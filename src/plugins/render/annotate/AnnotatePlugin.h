@@ -151,21 +151,21 @@ private:
     void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
 
 
-    void dealWithUncaughtEvents( QMouseEvent *mouseEvent );
-    void dealWithReleaseOverlay( QMouseEvent *mouseEvent );
+    void handleUncaughtEvents( QMouseEvent *mouseEvent );
+    void handleReleaseOverlay( QMouseEvent *mouseEvent );
 
-    bool dealWithAddingPlacemark( QMouseEvent *mouseEvent );
-    bool dealWithAddingPolygon( QMouseEvent *mouseEvent );
-    bool dealWithMovingSelectedItem( QMouseEvent *mouseEvent );
+    bool handleAddingPlacemark( QMouseEvent *mouseEvent );
+    bool handleAddingPolygon( QMouseEvent *mouseEvent );
+    bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
-    bool dealWithMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool dealWithMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
-    bool dealWithRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool dealWithAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool dealWithMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool dealWithAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool dealWithShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    bool handleShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
 
     //    void readOsmFile( QIODevice* device, bool flyToFile );
