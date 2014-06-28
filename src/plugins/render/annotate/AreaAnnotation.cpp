@@ -33,7 +33,8 @@ namespace Marble
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark )
     : SceneGraphicsItem( placemark ),
       m_state( Normal ),
-      m_outerBoundaryTmp( 0 ),
+      m_realOuterBoundary( 0 ),
+      m_adjustingNode( false ),
       m_movedNodeIndex( -1 ),
       m_rightClickedNode( -2 ),
       m_viewport( 0 )
@@ -45,7 +46,7 @@ AreaAnnotation::~AreaAnnotation()
 {
     // It can be either 0 or pointing to an outer boundary which had been alocated within the
     // object.
-    delete m_outerBoundaryTmp;
+    delete m_realOuterBoundary;
 }
 
 void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
@@ -67,7 +68,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
     for ( int i = 0; i < outerRing.size(); ++i ) {
         QRegion newRegion = painter->regionFromEllipse( outerRing.at(i), 15, 15 );
 
-        // If the node is marked as selected, paint with a different color.
+        // If the node is marked as selected, paint it with a different color.
         if ( !m_selectedNodes.contains( i ) ) {
             painter->setBrush( Oxygen::aluminumGray3);
         } else {
@@ -80,7 +81,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
             painter->setBrush( Oxygen::emeraldGreen6 );
             painter->drawEllipse( outerRing.at(i) , 15, 15 );
         // In the AddingNodes state, the virtual node is always the last.
-        } else if ( i == outerRing.size() - 1 && m_state == AddingNodes ) {
+        } else if ( i == outerRing.size() - 1 && m_state == AddingNodes && m_realOuterBoundary ) {
             painter->setBrush( Oxygen::forestGreen6 );
             painter->drawEllipse( outerRing.at(i) , 15, 15 );
         } else {
@@ -89,7 +90,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
 
         // If we are in the 'AddingNodes' state  we don't want to add the virtual node
         // to the region list, just to draw it.
-        if ( i < outerRing.size() || m_state == AddingNodes ) {
+        if ( i < outerRing.size() || m_state != AddingNodes ) {
             regionList.append( newRegion );
         }
     }
@@ -126,12 +127,15 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
     regionList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
 
 
-    // Add to the regionList the virtual nodes as well. As a consequence, the polygon's index
+    // Add to the regions list the virtual nodes as well. As a consequence, the polygon's index
     // in the regions list will be regionList.size() - m_virtualNodesCount - 1.
     m_virtualNodesCount = 0;
-    int size = outerRing.size();
-    if ( m_outerBoundaryTmp ) {
-        size = m_outerBoundaryTmp->size();
+    int size;
+
+    if ( m_realOuterBoundary ) {
+        size = m_realOuterBoundary->size();
+    } else {
+        size = outerRing.size();
     }
 
     for ( int i = 0; i < size; ++i ) {
@@ -142,8 +146,8 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
             // it into consideration when adding the virtual nodes to the regions list. Otherwise, after
             // this function finishes its execution, the painted virtual node would not be anymore a virtual
             // node.
-            if ( m_outerBoundaryTmp ) {
-                virtualNode = m_outerBoundaryTmp->at(i).interpolate( m_outerBoundaryTmp->at(i-1), 0.5 );
+            if ( m_realOuterBoundary ) {
+                virtualNode = m_realOuterBoundary->at(i).interpolate( m_realOuterBoundary->at(i-1), 0.5 );
             } else {
                 virtualNode = outerRing.at(i).interpolate( outerRing.at(i-1), 0.5 );
             }
@@ -151,9 +155,9 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         } else {
             GeoDataCoordinates virtualNode;
 
-            if ( m_outerBoundaryTmp ) {
-                virtualNode = m_outerBoundaryTmp->at(i).interpolate(
-                                       m_outerBoundaryTmp->at(m_outerBoundaryTmp->size() - 1), 0.5 );
+            if ( m_realOuterBoundary ) {
+                virtualNode = m_realOuterBoundary->at(i).interpolate(
+                                       m_realOuterBoundary->at(m_realOuterBoundary->size() - 1), 0.5 );
             } else {
                 virtualNode = outerRing.at(i).interpolate( outerRing.at(outerRing.size() - 1), 0.5 );
             }
@@ -189,15 +193,18 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
             if ( !regionList.at(i).contains( event->pos() ) ) {
                 continue;
             }
+            GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( placemark()->geometry() );
 
-            delete m_outerBoundaryTmp;
-            m_outerBoundaryTmp = 0;
+            delete m_realOuterBoundary;
+            m_realOuterBoundary = 0;
+
+            m_adjustingNode = true;
+            m_movedNodeIndex = poly->outerBoundary().size() - 1;
+            m_state = Normal;
         }
 
         return true;
-    }
-
-    if ( m_state == MergingNodes ) {
+    } else if ( m_state == MergingNodes ) {
         if ( event->button() == Qt::LeftButton && index < polyIndex ) {
             if ( m_mergedNodes.first != -1 && m_mergedNodes.second != -1 ) {
                 m_mergedNodes = QPair<int, int>( -1, -1 );
@@ -209,13 +216,19 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
         }
 
         return true;
-    }
-
-    if ( m_state == Normal ) {
+    } else if ( m_state == Normal ) {
         // If one of polygon's inner boundaries has been clicked, ignore the event.
         if ( index == polyIndex && isInnerBoundsPoint( event->pos() ) ) {
             m_rightClickedNode = -2;
             return false;
+        }
+
+        if ( m_adjustingNode ) {
+            m_adjustingNode = false;
+            m_movedNodeIndex = -1;
+            m_state = AddingNodes;
+
+            return true;
         }
 
         // If while being in the Normal state, one of the virtual nodes gets clicked, we
@@ -267,12 +280,12 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         for ( int i = polyIndex + 1; i < regionList.size(); ++i ) {
             if ( regionList.at(i).contains( event->pos() ) ) {
                 // If the virtual node is already painted, ignore the event.
-                if ( m_outerBoundaryTmp ) {
+                if ( m_realOuterBoundary ) {
                     return true;
                 }
 
                 int virtualIndex = i - polyIndex - 1;
-                m_outerBoundaryTmp = new GeoDataLinearRing( outer );
+                m_realOuterBoundary = new GeoDataLinearRing( outer );
 
                 // Next we have to 'rotate' the container from GeoDataLinearRing (polygon's
                 // outer boundary) until virtualIndex becomes the first node added
@@ -281,8 +294,8 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                 // virtualIndex'th node.
                 outer.clear();
                 for ( i = virtualIndex;
-                      i < virtualIndex + m_outerBoundaryTmp->size(); ++i ) {
-                    outer.append( m_outerBoundaryTmp->at(i % m_outerBoundaryTmp->size()) );
+                      i < virtualIndex + m_realOuterBoundary->size(); ++i ) {
+                    outer.append( m_realOuterBoundary->at(i % m_realOuterBoundary->size()) );
                 }
                 // Then add the virtual node.
                 outer.append( outer.at(0).interpolate(outer.at(outer.size() - 1), 0.5 ) );
@@ -293,11 +306,11 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
         // If the hovered region is not one of polygon sides' middle points, ignore the event.
         // If a virtual node had been painted before, reset to the old outer boundary.
-        if ( m_outerBoundaryTmp ) {
-            poly->setOuterBoundary( *m_outerBoundaryTmp );
+        if ( m_realOuterBoundary ) {
+            poly->setOuterBoundary( *m_realOuterBoundary );
 
-            delete m_outerBoundaryTmp;
-            m_outerBoundaryTmp = 0;
+            delete m_realOuterBoundary;
+            m_realOuterBoundary = 0;
         }
 
         return true;
@@ -456,16 +469,16 @@ void AreaAnnotation::setState( ActionState state )
     if ( state == Normal ) {
         // If we left the AddingNodes state with the virtual node being painted, we reset the
         // original outer boundary.
-        if ( m_outerBoundaryTmp ) {
+        if ( m_realOuterBoundary ) {
             GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( placemark()->geometry() );
 
-            poly->setOuterBoundary( *m_outerBoundaryTmp );
-            m_outerBoundaryTmp = 0;
+            poly->setOuterBoundary( *m_realOuterBoundary );
+            m_realOuterBoundary = 0;
         }
     } else if ( state == MergingNodes ) {
         m_mergedNodes = QPair<int, int>( -1, -1 );
     } else if ( state == AddingNodes ) {
-        m_outerBoundaryTmp = 0;
+        m_realOuterBoundary = 0;
     }
 }
 
@@ -531,6 +544,11 @@ void AreaAnnotation::setMergedNodes( const QPair<int, int> &nodes )
 QPair<int, int> &AreaAnnotation::mergedNodes()
 {
     return m_mergedNodes;
+}
+
+bool AreaAnnotation::isAdjustingNode() const
+{
+    return m_adjustingNode;
 }
 
 const char *AreaAnnotation::graphicType() const

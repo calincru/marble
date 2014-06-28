@@ -1042,8 +1042,13 @@ bool AnnotatePlugin::handleAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsIt
     // Since we already know that on both mouse press event and mouse move event, the event will not
     // propagate, we can assert this.
     Q_ASSERT( m_interactingArea->sceneEvent( mouseEvent ) );
+    if ( mouseEvent->type() == QEvent::MouseButtonPress && area->isAdjustingNode() ) {
+        area->setState( AreaAnnotation::Normal );
+        m_movedItem = area;
+    } else {
+        m_movedItem = 0;
+    }
 
-    // TODO: FINISH
     m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
     return true;
 }
@@ -1093,7 +1098,7 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
 
     // TODO: Is this ok for sure?
 
-    // Since dealing with adding nodes is done first by handling hover events, when we are  not
+    // Since dealing with adding nodes is done first by handling hover events, when we are not
     // hovering anymore an area annotation, change the state of the last area annotation we
     // interacted with to Normal and the pointer which keeps track of it to null.
     if ( m_interactingArea && m_addingNodes ) {

@@ -90,6 +90,8 @@ public:
 
     const QPair<int, int> &mergedNodes() const;
 
+    bool isAdjustingNode() const;
+
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
@@ -111,7 +113,8 @@ private:
     QPair<int, int>    m_mergedNodes;
 
     // Used for adding nodes
-    GeoDataLinearRing *m_outerBoundaryTmp;
+    GeoDataLinearRing *m_realOuterBoundary;
+    bool               m_adjustingNode;
 
     int                m_movedNodeIndex;
     int                m_rightClickedNode;
