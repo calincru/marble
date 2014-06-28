@@ -300,6 +300,20 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
                 // Then add the virtual node.
                 outer.append( outer.at(0).interpolate(outer.at(outer.size() - 1), 0.5 ) );
 
+                //
+                m_realSelectedNodes = m_selectedNodes;
+
+                QList<int>::iterator itBegin = m_selectedNodes.begin();
+                QList<int>::const_iterator itEnd = m_selectedNodes.constEnd();
+
+                for ( ; itBegin != itEnd; ++itBegin ) {
+                    if ( *itBegin - virtualIndex < 0 ) {
+                        *itBegin = *itBegin - virtualIndex + m_realOuterBoundary->size();
+                    } else {
+                        *itBegin -= virtualIndex;
+                    }
+                }
+
                 return true;
             }
         }
@@ -308,6 +322,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         // If a virtual node had been painted before, reset to the old outer boundary.
         if ( m_realOuterBoundary ) {
             poly->setOuterBoundary( *m_realOuterBoundary );
+            m_selectedNodes = m_realSelectedNodes;
 
             delete m_realOuterBoundary;
             m_realOuterBoundary = 0;
@@ -474,6 +489,7 @@ void AreaAnnotation::setState( ActionState state )
 
             poly->setOuterBoundary( *m_realOuterBoundary );
             m_realOuterBoundary = 0;
+            m_selectedNodes = m_realSelectedNodes;
         }
     } else if ( state == MergingNodes ) {
         m_mergedNodes = QPair<int, int>( -1, -1 );

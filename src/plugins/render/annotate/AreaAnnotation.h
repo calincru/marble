@@ -114,6 +114,7 @@ private:
 
     // Used for adding nodes
     GeoDataLinearRing *m_realOuterBoundary;
+    QList<int>         m_realSelectedNodes;
     bool               m_adjustingNode;
 
     int                m_movedNodeIndex;
