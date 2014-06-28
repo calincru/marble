@@ -50,13 +50,11 @@ GeoDataPlacemark *SceneGraphicsItem::placemark()
 
 bool SceneGraphicsItem::sceneEvent( QEvent *event )
 {
-    if( event->type() == QEvent::MouseButtonPress ) {
+    if ( event->type() == QEvent::MouseButtonPress ) {
         return mousePressEvent( static_cast<QMouseEvent*>( event ) );
-    }
-    if( event->type() == QEvent::MouseMove ) {
+    } else if ( event->type() == QEvent::MouseMove ) {
         return mouseMoveEvent( static_cast<QMouseEvent*>( event ) );
-    }
-    if( event->type() == QEvent::MouseButtonRelease ) {
+    } else if ( event->type() == QEvent::MouseButtonRelease ) {
         return mouseReleaseEvent( static_cast<QMouseEvent*>( event ) );
     }
 

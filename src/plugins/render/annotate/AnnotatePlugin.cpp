@@ -1108,7 +1108,7 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
     }
 }
 
-void AnnotatePlugin::setupActions(MarbleWidget *widget)
+void AnnotatePlugin::setupActions( MarbleWidget *widget )
 {
     qDeleteAll( m_actions );
     m_actions.clear();
