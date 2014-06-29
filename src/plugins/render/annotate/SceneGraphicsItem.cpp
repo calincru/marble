@@ -16,26 +16,27 @@
 namespace Marble
 {
 
-SceneGraphicsItem::SceneGraphicsItem( GeoDataPlacemark *placemark )
-    : GeoGraphicsItem( placemark ),
-      m_placemark( placemark )
+SceneGraphicsItem::SceneGraphicsItem( GeoDataPlacemark *placemark ) :
+    GeoGraphicsItem( placemark ),
+    m_state( Editing ),
+    m_placemark( placemark )
 {
-
+    // nothing to do
 }
 
 SceneGraphicsItem::~SceneGraphicsItem()
 {
-
+    // nothing to do
 }
 
-QList<QRegion> SceneGraphicsItem::regions() const
+ActionState SceneGraphicsItem::state() const
 {
-    return m_regions;
+    return m_state;
 }
 
-void SceneGraphicsItem::setRegions( const QList<QRegion> &regions )
+void SceneGraphicsItem::setState( ActionState state )
 {
-    m_regions = regions;
+    m_state = state;
 }
 
 const GeoDataPlacemark *SceneGraphicsItem::placemark() const

@@ -37,15 +37,28 @@ public:
     explicit SceneGraphicsItem( GeoDataPlacemark *placemark );
     ~SceneGraphicsItem();
 
-    /**
-     * @brief Returns the list of regions which form the scene graphic element.
-     */
-    QList<QRegion> regions() const;
+    enum ActionState {
+        // General action states
+        Editing,
 
-    /**
-     * @brief A setter for the m_regions private member.
-     */
-    void setRegions( const QList<QRegion> &regions );
+        // Polygon specific
+        DrawingPolygon,
+        AddingPolygonHole,
+        MergingPolygonNodes,
+        AddingPolygonNodes,
+
+        // Placemark specific
+        AddingPlacemark,
+
+        // Ground Overlays specific
+        AddingOverlay
+    };
+    
+    virtual bool containsPoint( const QPoint &eventPos ) const = 0;
+
+    ActionState state() const;
+
+    void setState( ActionState state );
 
     /**
      * @brief SceneGraphicItem class, when called from one of its derived classes'
@@ -82,7 +95,7 @@ protected:
     virtual bool mouseReleaseEvent( QMouseEvent *event ) = 0;
 
 private:
-    QList<QRegion> m_regions;
+    ActionState       m_state;
     GeoDataPlacemark *m_placemark;
 };
 

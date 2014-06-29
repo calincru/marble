@@ -476,33 +476,6 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     return true;
 }
 
-void AreaAnnotation::setState( ActionState state )
-{
-    m_state = state;
-
-    // Do the initializations when entering a new state.
-    if ( state == Normal ) {
-        // If we left the AddingNodes state with the virtual node being painted, we reset the
-        // original outer boundary.
-        if ( m_realOuterBoundary ) {
-            GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-
-            poly->setOuterBoundary( *m_realOuterBoundary );
-            m_realOuterBoundary = 0;
-            m_selectedNodes = m_realSelectedNodes;
-        }
-    } else if ( state == MergingNodes ) {
-        m_mergedNodes = QPair<int, int>( -1, -1 );
-    } else if ( state == AddingNodes ) {
-        m_realOuterBoundary = 0;
-    }
-}
-
-AreaAnnotation::ActionState AreaAnnotation::state() const
-{
-    return m_state;
-}
-
 QList<int> &AreaAnnotation::selectedNodes()
 {
     return m_selectedNodes;
