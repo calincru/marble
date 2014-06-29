@@ -482,7 +482,7 @@ void AnnotatePlugin::loadAnnotationFile()
     emit repaintNeeded( QRegion() );
 }
 
-bool AnnotatePlugin::eventFilter(QObject *watched, QEvent *event)
+bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 {
     if ( !m_widgetInitialized ) {
         MarbleWidget *marbleWidget = qobject_cast<MarbleWidget*>( watched );
