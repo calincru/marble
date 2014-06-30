@@ -22,6 +22,7 @@ namespace Marble
 class GeoDataPlacemark;
 class PolygonNode;
 class QPair;
+class QColor;
 
 class AreaAnnotation : public SceneGraphicsItem
 {
@@ -29,6 +30,12 @@ public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
 
     ~AreaAnnotation();
+
+    enum EditingInteractingObject {
+        InteractingNothing, // e.g. when hovering
+        InteractingNode,
+        InteractingPolygon
+    }
 
     /**
      * @brief
@@ -55,13 +62,13 @@ private:
      * @brief
      */
     void setupRegionsLists( GeoPainter *painter );
-  
+
     /**
      * @brief
      */
     void drawNodes( GeoPainter *painter );
 
-    int outerNodeContains( const QPoint &point ) const; 
+    int outerNodeContains( const QPoint &point ) const;
 
     QPair<int, int> innerNodeContains( const QPoint &point ) const;
 
@@ -81,7 +88,16 @@ private:
     bool processAddingNodesOnPress( QMouseEvent *mouseEvent );
 
 
+    const static int regularDim = 10;
+    const static int selectedDim = 10;
+    const static int mergedDim = 15;
+    const static int hoveredDim = 15;
+    const static QColor regularColor = Oxygen::aluminumGray3;
+    const static QColor selectedColor = Oxygen::aluminumGray6;
+    const static QColor mergedColor = Oxygen::emeraldGreen6;
+    const static QColor hoveredColor = Oxygen::burgundyPurple4;
 
+    const GeoPainter     *m_geopainter;
     const ViewportParams *m_viewport;
     bool                  m_regionsInitialized;
 
@@ -90,10 +106,10 @@ private:
     QList<PolygonNode>          m_virtualNodesList;
     QList<QRegion>              m_boundariesList;
 
-    // Used to point to the coordinates from the GeoDataLinearRing with which we
-    // have last interacted with.
-    GeoDataCoordinates *m_clickedNodeCoords;
-    bool                m_interactingPoly;
+    // Used in the Editing state
+    GeoDataCoordinates       m_movedPointCoords;
+    QPair<int, int>          m_clickedNodeIndexes;
+    EditingInteractingObject m_interactingObj;
 
 
 }

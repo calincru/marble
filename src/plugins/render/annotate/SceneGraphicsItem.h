@@ -12,7 +12,6 @@
 #ifndef SCENEGRAPHICSITEM_H
 #define SCENEGRAPHICSITEM_H
 
-#include <QRect>
 #include <QObject>
 #include <QPainterPath>
 #include <QMouseEvent>

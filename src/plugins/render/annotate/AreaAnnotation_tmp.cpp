@@ -152,10 +152,10 @@ bool PolygonNode::containsPoint( const QPoint &eventPos ) const
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
+    m_geopainter( 0 ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
-    m_clickedNodeCoords ( 0 ),
-    m_interactingPoly( false )
+    m_interactingObj( InteractingNothing )
 {
     // nothing to do
 }
@@ -168,6 +168,7 @@ AreaAnnotation::~AreaAnnotation()
 void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
+    m_geopainter = painter;
     Q_ASSERT( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType );
 
     painter->save();
@@ -188,6 +189,10 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
 
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 {
+    if ( !m_viewport || !m_geopainter ) {
+        return false;
+    }
+
     SceneGraphicsItem::ActionState state = state();
 
     if ( state == SceneGraphicsItem::Editing ) {
@@ -207,6 +212,10 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
+    if ( !m_viewport ) {
+        return false;
+    }
+
     SceneGraphicsItem::ActionState state = state();
 
     if ( state == SceneGraphicsItem::Editing ) {
@@ -226,7 +235,11 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
+    if ( !m_viewport ) {
+        return false;
+    }
 
+    SceneGraphicsItem::ActionState state = state();
 }
 
 const char *AreaAnnotation::graphicType() const
@@ -234,9 +247,9 @@ const char *AreaAnnotation::graphicType() const
     return SceneGraphicTypes::SceneGraphicAreaAnnotation;
 }
 
-void AreaAnnotation::setupRegionLists( QPainter *painter )
+void AreaAnnotation::setupRegionLists( GeoPainter *painter )
 {
-    const static int regDim = 20;
+    const static int regularDim = 20;
     const static int virtualsDim = 25;
 
     const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
@@ -247,7 +260,7 @@ void AreaAnnotation::setupRegionLists( QPainter *painter )
     QVector<GeoDataCoordinates>::ConstIterator itEnd = outerRing.end();
 
     for ( ; itBegin != itEnd; ++itBegin ) {
-        PolygonNode newNode = PolygonNode( painter->regionFromEllipse( *itBegin, regDim, regDim ) );
+        PolygonNode newNode = PolygonNode( painter->regionFromEllipse( *itBegin, regularDim, regularDim ) );
         m_outerNodesList.append( newNode );
 
         // Add at the same time the virtual nodes
@@ -266,16 +279,8 @@ void AreaAnnotation::setupRegionLists( QPainter *painter )
     m_boundariesList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
 }
 
-void AreaAnnotation::drawNodes( QPainter *painter )
+void AreaAnnotation::drawNodes( GeoPainter *painter )
 {
-    const static int regDim = 10;
-    const static int selectedDim = 10;
-    const static int mergedDim = 15;
-    const static int hoveredDim = 15;
-    const QColor regularColor = Oxygen::aluminumGray3;
-    const QColor selectedColor = Oxygen::aluminumGray6;
-    const QColor mergedColor = Oxygen::emeraldGreen6;
-    const QColor hoveredColor = Oxygen::burgundyPurple4;
 
     const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
@@ -291,7 +296,7 @@ void AreaAnnotation::drawNodes( QPainter *painter )
             painter->drawEllipse( outerRing.at(i), selectedDim, selectedDim );
         } else {
             painter->setBrush( regularColor );
-            painter->drawEllipse( outerRing.at(i), regDim, regDim );
+            painter->drawEllipse( outerRing.at(i), regularDim, regularDim );
         }
     }
 
@@ -305,7 +310,7 @@ void AreaAnnotation::drawNodes( QPainter *painter )
                 painter->drawEllipse( innerRings.at(i).at(j), selectedDim, selectedDim );
             } else {
                 painter->setBrush( regularColor );
-                painter->drawEllipse( innerRings.at(i).at(j), regDim, regDim );
+                painter->drawEllipse( innerRings.at(i).at(j), regularDim, regularDim );
             }
         }
     }
@@ -390,22 +395,29 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     // First check if one of the nodes from outer boundary has been clicked.
     int outerIndex = outerNodeContains( mouseEvent.pos() );
     if ( outerIndex != -1 ) {
-        m_clickedNodeCoords = &outerRing.at(outerIndex);
+        m_interactingObj = InteractingNode;
+        m_clickedNodeIndexes = QPair( outerIndex, -1 );
         return true;
     }
 
     // Then check if one of the nodes which form an inner boundary has been clicked.
     QPair<int, int> innerIndexes = innerNodeContains( mouseEvent.pos() );
     if ( innerIndexes.first != -1 && innerIndexes.second != -1 ) {
-        m_clickedNodeCoords = &innerRings.at(innerIndexes.first).at(innerIndexes.second);
+        m_interactingObj = InteractingNode;
+        m_clickedNodeIndexes = innerIndexes;
         return true;
     }
 
-    // If neither outer boundary nodes nor inner boundary nodes do not contain the
-    // event position, then check if the interior of the polygon (excepting its 'holes')
-    // contains this point.
+    // If neither outer boundary nodes nor inner boundary nodes contain the event position,
+    // then check if the interior of the polygon (excepting its 'holes')contains this point.
     if ( polygonContains( mouseEvent.pos() ) ) {
-        m_interactingPoly = true;
+        qreal lat, lon;
+        m_viewport->geoCoordinates( event->pos().x(), event->pos().y(),
+                                    lon, lat,
+                                    GeoDataCoordinates::Radian );
+
+        m_movedPointCoords.set( lon, lat );
+        m_interactingObj = InteractingPolygon;
         return true;
     }
 
@@ -418,10 +430,53 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
     const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
-    if ( mouseEvent->button() != Qt::LeftButton ) {
-        return false;
-    }
+    // Mouse move events have always associated NoButton.
+    Q_ASSERT( mouseEvent->button() == Qt::NoButton );
 
+    qreal lon, lat;
+    m_viewport->geoCoordinates( event->pos().x(),
+                                event->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
+    const GeoDataCoordinates newCoords( lon, lat );
+
+    if ( m_interactingObj == InteractingNode ) {
+        int i = m_clickedNodeIndexes.first;
+        int j = m_clickedNodeIndexes.second;
+
+        if ( j == -1 ) {
+            outerRing[i] = newCoords;
+            
+            QRegion newRegion;
+            if ( m_outerNodesList.at(i).isSelected() ) {
+                newRegion = m_geopainter->regionFromEllipse( newCoords, selectedDim, selectedDim ); 
+            } else {
+                newRegion = m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim ); 
+            }
+            m_outerNodesList[i].setRegion( newRegion );
+        } else {
+            Q_ASSERT( i != -1 && j != -1 );
+            innerRings[i].at(j) = newCoords;
+
+            QRegion newRegion;
+            if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                newRegion = m_geopainter->regionFromEllipse( newCoords, selectedDim, selectedDim );
+            } else {
+                newRegion = m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim );
+            }
+            m_innerNodesList.at(i).at(j).setRegion( newRegion );
+        }
+
+        return true;
+    } else if ( m_interactingObj == InteractingPolygon ) {
+
+
+        return true;
+    } // Just need to add a new if ( m_interactingObj = InteractingNothing ) here if you one wants to
+      // handle polygon hovers in Editing state.
+
+
+    return false;
 }
 
 bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
