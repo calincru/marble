@@ -153,7 +153,9 @@ bool PolygonNode::containsPoint( const QPoint &eventPos ) const
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
-    m_regionsInitialized( false )
+    m_regionsInitialized( false ),
+    m_clickedNodeCoords ( 0 ),
+    m_interactingPoly( false )
 {
     // nothing to do
 }
@@ -180,12 +182,8 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
 
 bool AreaAnnotation::containsPoint( const QPoint &point ) const
 {
-    if ( outerNodeContains( point ) != -1 || innerNodeContains( point ) != QPair(-1, -1) ||
-         virtualNodeContains( point ) != -1 || boundaryContains( point ) != -1 ) {
-        return true;
-    }
-
-    return false;
+    return outerNodeContains( point ) != -1 || innerNodeContains( point ) != QPair(-1, -1) ||
+           virtualNodeContains( point ) != -1 || polygonContains( point );
 }
 
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
@@ -193,7 +191,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     SceneGraphicsItem::ActionState state = state();
 
     if ( state == SceneGraphicsItem::Editing ) {
-
+        return processEditingOnPress( event );
     } else if ( state == SceneGraphicsItem::AddingPolygonHole ) {
 
     } else if ( state == SceneGraphicsItem::MergingPolygonNodes ) {
@@ -209,7 +207,21 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
+    SceneGraphicsItem::ActionState state = state();
 
+    if ( state == SceneGraphicsItem::Editing ) {
+        return processEditingOnMove( event );
+    } else if ( state == SceneGraphicsItem::AddingPolygonHole ) {
+
+    } else if ( state == SceneGraphicsItem::MergingPolygonNodes ) {
+
+    } else if ( state == SceneGraphicsItem::AddingPolygonNodes ) {
+
+    } else {
+        return false;
+    }
+
+    return true;
 }
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
@@ -314,31 +326,6 @@ void AreaAnnotation::drawNodes( QPainter *painter )
     }
 }
 
-bool AreaAnnotation::isInnerBoundsPoint( const QPoint &point, bool restrictive = false ) const
-{
-    // Starting from 1 because on the first position is always stored the polygon's QRegion.
-    // @see setupRegionLists
-    for ( int i = 1; i < m_boundariesList.size(); ++i ) {
-        if ( m_boundariesList.at(i).contains( point ) {
-            if ( restrictive ) {
-                foreach ( const QList<PolygonNode> &innerNodes, m_innerNodesList ) {
-                    foreach ( const PolygonNode &node, innerNodes ) {
-                        if ( node.containsPoint( point ) ) {
-                            return false;
-                        }
-                    }
-                }
-
-                return true;
-            } else {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 int AreaAnnotation::outerNodeContains( const QPoint &point ) const
 {
     for ( int i = 0; i < m_outerNodesList.size(); ++i ) {
@@ -374,16 +361,20 @@ int AreaAnnotation::virtualNodeContains( const QPoint &point ) const
     return -1;
 }
 
-int AreaAnnotation::boundaryContains( const QPoint &point ) const
+int AreaAnnotation::innerBoundsContain( const QPoint &point ) const
 {
-    for ( int i = 0; i < m_boundariesList.size(); ++i ) {
-        if ( m_boundariesList.at(i).containsPoint( point ) ) {
+    for ( int i = 1; i < m_boundariesList.size(); ++i ) {
+        if ( m_boundariesList.at(i).contains( point ) ) {
             return i;
         }
     }
 
     return -1;
+}
 
+bool AreaAnnotation::polygonContains( const QPoint &point ) const
+{
+    return m_boundariesList.at(0).contains( point ) && innerBoundsContain( point ) == -1;
 }
 
 bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
@@ -399,23 +390,43 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     // First check if one of the nodes from outer boundary has been clicked.
     int outerIndex = outerNodeContains( mouseEvent.pos() );
     if ( outerIndex != -1 ) {
-        m_clickedNodeCoords = outerRing.at(outerIndex);
+        m_clickedNodeCoords = &outerRing.at(outerIndex);
         return true;
     }
 
     // Then check if one of the nodes which form an inner boundary has been clicked.
     QPair<int, int> innerIndexes = innerNodeContains( mouseEvent.pos() );
     if ( innerIndexes.first != -1 && innerIndexes.second != -1 ) {
-        m_clickedNodeCoords = innerRings.at(innerIndexes.first).at(innerIndexes.second);
+        m_clickedNodeCoords = &innerRings.at(innerIndexes.first).at(innerIndexes.second);
         return true;
     }
 
-    if ( !boundaryContains( mouseEvent->pos() ) ) {
-        
+    // If neither outer boundary nodes nor inner boundary nodes do not contain the
+    // event position, then check if the interior of the polygon (excepting its 'holes')
+    // contains this point.
+    if ( polygonContains( mouseEvent.pos() ) ) {
+        m_interactingPoly = true;
         return true;
     }
 
     return false;
+}
+
+bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
+{
+    const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
+    const GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+    if ( mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+}
+
+bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
+{
+
 }
 
 bool AreaAnnotation::processAddingHoleOnPress( QMouseEvent *mouseEvent )
