@@ -7,7 +7,7 @@
 //
 // Copyright 2009      Andrew Manson            <g.real.ate@gmail.com>
 // Copyright 2013      Thibaut Gridel           <tgridel@free.fr>
-// Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com
+// Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com>
 //
 
 #ifndef AREAANNOTATION_H
@@ -48,6 +48,11 @@ public:
     virtual bool containsPoint( const QPoint &point ) const;
 
     /**
+     * @brief
+     */
+    virtual void itemChanged( const SceneGraphicItem &other );
+
+    /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
     virtual const char *graphicType() const;
@@ -84,18 +89,28 @@ private:
     bool processEditingOnRelease( QMouseEvent *mouseEvent );
 
     bool processAddingHoleOnPress( QMouseEvent *mouseEvent );
+    bool processAddingHoleOnMove( QMouseEvent *mouseEvent );
+    bool processAddingHoleOnRelease( QMouseEvent *mouseEvent );
+
     bool processMergingOnPress( QMouseEvent *mouseEvent );
+    bool processMergingOnMove( QMouseEvent *mouseEvent );
+    bool processMergingOnRelease( QMouseEvent *mouseEvent );
+
     bool processAddingNodesOnPress( QMouseEvent *mouseEvent );
+    bool processAddingNodesOnMove( QMouseEvent *mouseEvent );
+    bool processAddingNodesOnRelease( QMouseEvent *mouseEvent );
+
+    void updateBoundariesList();
 
 
-    const static int regularDim = 10;
-    const static int selectedDim = 10;
-    const static int mergedDim = 15;
-    const static int hoveredDim = 15;
-    const static QColor regularColor = Oxygen::aluminumGray3;
-    const static QColor selectedColor = Oxygen::aluminumGray6;
-    const static QColor mergedColor = Oxygen::emeraldGreen6;
-    const static QColor hoveredColor = Oxygen::burgundyPurple4;
+    static const int regularDim;
+    static const int selectedDim;
+    static const int mergedDim;
+    static const int hoveredDim;
+    static const QColor regularColor;
+    static const QColor selectedColor;
+    static const QColor mergedColor;
+    static const QColor hoveredColor;
 
     const GeoPainter     *m_geopainter;
     const ViewportParams *m_viewport;
@@ -110,7 +125,6 @@ private:
     GeoDataCoordinates       m_movedPointCoords;
     QPair<int, int>          m_clickedNodeIndexes;
     EditingInteractingObject m_interactingObj;
-
 
 }
 
