@@ -69,9 +69,6 @@ public:
 
     Q_DECLARE_FLAGS(PolyNodeFlags, PolyNodeFlag)
 
-    bool operator==( const PolygonNode &other ) const;
-    bool operator!=( const PolygonNode &other ) const;
-
     bool isSelected() const;
     bool isInnerTmp() const;
     bool isBeingMerged() const;
@@ -98,18 +95,6 @@ PolygonNode::PolygonNode( QRegion region ) :
 PolygonNode::~PolygonNode()
 {
     // nothing to do
-}
-
-bool PolygonNode::operator==( const PolygonNode &other ) const
-{
-    return m_region == other.m_region &&
-           m_isSelected == other.m_isSelected &&
-           m_isVirtual == other.m_isVirtual;
-}
-
-bool PolygonNode::operator!=( const PolygonNode &other ) const
-{
-    return !this->operator==( other );
 }
 
 bool PolygonNode::isSelected() const
@@ -245,7 +230,17 @@ void AreaAnnotation::itemChanged( const SceneGraphicItem &other )
             }
         }
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
+        int i = m_mergedNodeIndexes.first;
+        int j = m_mergedNodeIndexes.second;
 
+        if ( i != -1 && j != -1 ) {
+            m_innerNodesList.at(i).at(j).setFlag( PolygonNode::NodeIsMerged, false );
+        } else if ( i != -1 && j == -1 ) {
+            m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsMerged, false );
+        }
+
+        m_mergedNodeIndexes = QPair( -1, -1 );
+        m_mergingWarning = NoWarning;
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
 
     }
@@ -264,12 +259,12 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
     } else if ( state == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnPress( event );
     } else if ( state == SceneGraphicsItem::MergingPolygonNodes ) {
-
+        return processMergingOnPress( event );
     } else if ( state == SceneGraphicsItem::AddingPolygonNodes ) {
-
+        return processAddingNodesOnPress( event );
     }
 
-    return true;
+    return false;
 }
 
 bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
@@ -285,9 +280,9 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
     } else if ( state == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnMove( event );
     } else if ( state == SceneGraphicsItem::MergingPolygonNodes ) {
-
+        return processMergingOnMove( event );
     } else if ( state == SceneGraphicsItem::AddingPolygonNodes ) {
-
+        return processAddingNodesOnMove( event );
     }
 
     return false;
@@ -306,9 +301,9 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     } else if ( state == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnRelease( event );
     } else if ( state == SceneGraphicsItem::MergingPolygonNodes ) {
-        return true;
+        return processMergingOnRelease( event );
     } else if ( state == SceneGraphicsItem::AddingPolygonNodes ) {
-        return true;
+        return processAddingNodesOnRelease( event );
     }
 
     return false;
@@ -316,10 +311,27 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 
 void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState )
 {
-    Q_UNUSED( previousState );
+    // Dealing with cases when exiting a state has an effect on the scene graphic items.
+    if ( previousState == SceneGraphicsItem::Editing ) {
 
+    } else if ( previousState == SceneGraphicsItem::AddingPolygonHole ) {
+
+    } else if ( previousState == SceneGraphicsItem::MergingPolygonNodes ) {
+        int i = m_mergedNodeIndexes.first;
+        int j = m_mergedNodeIndexes.second;
+
+        if ( i != -1 && j != -1 ) {
+            m_innerNodesList.at(i).at(j).setFlag( PolygonNode::NodeIsMerged, false );
+        } else if ( i != -1 && j == -1 ) {
+             m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsMerged, false );
+        }
+    } else if ( previousState == SceneGraphicsItem::AddingPolygonNodes ) {
+
+    }
+
+    // Dealing with cases when entering a state has an effect on scene graphic items.
     if ( state() == SceneGraphicsItem::Editing ) {
-        return;
+        m_interactingObj = InteractingNothing;
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         // Check if a polygon hole was being drawn before moving to other item.
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
@@ -340,7 +352,8 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
             }
         }
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
-
+        m_mergedNodeIndexes = QPair(-1, -1);
+        m_warning = NoWarning;
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
 
     }
@@ -463,6 +476,7 @@ int AreaAnnotation::virtualNodeContains( const QPoint &point ) const
 
 int AreaAnnotation::innerBoundsContain( const QPoint &point ) const
 {
+    // Starting from 1 because on index 0 is stored the region representing the whole polygon.
     for ( int i = 1; i < m_boundariesList.size(); ++i ) {
         if ( m_boundariesList.at(i).contains( point ) ) {
             return i;
@@ -716,31 +730,119 @@ bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 {
-    if ( mouseEvent->button() != Qt::RightButton ) {
+    if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
     }
 
+    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+    GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> &innerBounds = polygon->innerBoundaries();
 
+    int outerIndex = outerNodeContains( mouseEvent->pos() );
+    if ( outerIndex != -1 ) {
+        if ( m_mergedNodeIndexes.first == -1 && m_mergedNodeIndexes.second == -1 ) {
+            m_mergingWarning = NoWarning;
+            m_mergedNodeIndexes = QPair( outerIndex, -1 );
+            m_outerNodesList.at(outerIndex).setFlag( PolygonNode::NodeIsMerged );
+        } else if ( m_mergedNodeIndexes.first != -1 && m_mergedNodeIndexes.second != -1 ) {
+            m_mergingWarning = OuterInnerWarning;
+            m_outerNodesList.at(m_mergedNodeIndexes.first).setFlag( PolygonNode::NodeIsMerged, false );
+            m_mergedNodeIndexes = QPair( -1, -1 );
+        } else {
+            Q_ASSERT( m_mergedNodeIndexes.first != -1 && m_mergedNodeIndexes.second == -1 );
+
+            GeoDataCoordinates newCoords = outerRing.at(m_mergedNodeIndexes.first).interpolate(
+                                                                outerRing.at(outerIdex), 0.5 );
+            outerRing.at(outerIndex) = newCoords;
+            outerRing.remove( m_mergedNodeIndexes.first );
+
+            m_outerNodesList.at(outerIndex).setRegion(
+                    m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim ) );
+            m_outerNodesList.at(outerIndex).setFlag( PolygonNode::NodeIsMerged, false );
+            // If the first clicked node is selected but this one is not, make sure the resulting
+            // node is selected as well.
+            if ( m_outerNodesList.at(m_mergedNodeIndexes.first).isSelected() ) {
+                m_outerNodesList.at(outerIndex).setFlag( PolygonNode::NodeIsSelected );
+            }
+            Q_ASSERT( m_outerNodesList.removeAll( m_mergedNodeIndexes.first  ) == 1 );
+
+            m_mergingWarning = NoWarning;
+            m_mergedNodeIndexes = QPair( -1, -1 );
+        }
+
+        return true;
+    }
+
+    QPair<int, int> innerIndexes = innerNodeContains( mouseEvent->pos() );
+    if ( innerIndexes.first != -1 && innerIndexes.second != -1 ) {
+        int i = m_mergedNodeIndexes.first;
+        int j = m_mergedNodeIndexes.second;
+
+        if ( i == -1 && j == -1 ) {
+            m_mergingWarning = NoWarning;
+            m_mergedNodeIndexes = innerIndexes;
+            m_innerNodesList.at(i).at(j).setFlag( PolygonNode::NodeIsMerged );
+        } else if ( i != -1 && j == -1 ) {
+            m_mergingWarning = OuterInnerWarning;
+            m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsMerged, false );
+            m_mergedNodeIndexes = QPair( -1, -1 );
+        } else {
+            Q_ASSERT( i != -1 && j != -1 );
+            if ( i != innerIndexes.first ) {
+                m_mergingWarning = InnerInnerWarning;
+                m_innerNodesList.at(innerIndexes.first).at(innerIndexes.second).setFlag(
+                                                        PolygonNode::NodeIsMerged, false );
+                return true;
+            }
+
+            GeoDataCoordinates newCoords = innerRings.at(i).at(j).interpolate(
+                                            innerRings.at(i).at(innerIndexes.second) );
+            innerRings.at(i).at(innerIndexes.second) = newCoords;
+            innerRings[i].remove( j );
+
+            m_innerNodesList.at(i).at(innerIndexes.second).setRegion(
+                    m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim );
+            m_innerNodesList.at(i).at(innerIndexes.second).setFlag( PolygonNode::NodeIsMerged, false );
+            if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                m_innerNodesList.at(i).at(innerIndexes.second).setFlag( PolygonNode::NodeIsSelected );
+            }
+            Q_ASSERT( m_innerNodesList[i].removeAll( j ) == 1 );
+
+            m_mergingWarning = NoWarning;
+            m_mergedNodeIndexes = QPair( -1, -1 );
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 bool AreaAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
 {
-
+    Q_UNUSED( mouseEvent );
+    return true;
 }
 
 bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
 {
-
+    Q_UNUSED( mouseEvent );
+    return true;
 }
 
 bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 {
+    if ( mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
 
+
+    return false;
 }
 
 bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 {
-
+    Q_ASSERT( mouseEvent->button() == Qt::NoButton );
 }
 
 bool AreaAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )

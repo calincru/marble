@@ -37,6 +37,13 @@ public:
         InteractingPolygon
     }
 
+    enum MergingWarning {
+        NoWarning,
+        OuterInnerWarning,
+        InnerInnerWarning,
+        FewNodesWarning
+    }
+
     /**
      * @brief
      */
@@ -133,6 +140,7 @@ private:
 
     // used in Merging Nodes state
     QPair<int, int>          m_mergedNodeIndexes;
+    MergingWarning           m_mergingWarning;
 }
 
 }
