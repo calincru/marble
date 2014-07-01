@@ -36,6 +36,7 @@ ActionState SceneGraphicsItem::state() const
 
 void SceneGraphicsItem::setState( ActionState state )
 {
+    stateChanged( m_state );
     m_state = state;
 }
 

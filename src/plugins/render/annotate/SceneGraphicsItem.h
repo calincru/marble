@@ -95,6 +95,7 @@ protected:
     virtual bool mouseMoveEvent( QMouseEvent *event ) = 0;
     virtual bool mouseReleaseEvent( QMouseEvent *event ) = 0;
 
+    virtual void stateChanged( SceneGraphicItem::ActionState previousState ) = 0;
 private:
     ActionState       m_state;
     GeoDataPlacemark *m_placemark;

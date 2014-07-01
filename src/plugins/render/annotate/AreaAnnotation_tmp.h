@@ -62,6 +62,11 @@ protected:
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
 
+    /**
+     * @brief
+     */
+    virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
+
 private:
     /**
      * @brief
@@ -126,6 +131,8 @@ private:
     QPair<int, int>          m_clickedNodeIndexes;
     EditingInteractingObject m_interactingObj;
 
+    // used in Merging Nodes state
+    QPair<int, int>          m_mergedNodeIndexes;
 }
 
 }

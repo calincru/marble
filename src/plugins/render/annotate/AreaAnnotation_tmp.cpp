@@ -224,16 +224,32 @@ void AreaAnnotation::itemChanged( const SceneGraphicItem &other )
     Q_UNUSED( other );
 
     if ( state() == SceneGraphicsItem::Editing ) {
-
+        return;
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
-  
+        // Check if a polygon hole was being drawn before moving to other item.
+        GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+        QVector<GeoDataLinearRing> &innerBounds = polygon->innerBoundaries();
+
+        if ( innerBoundaries.size() && innerBounds.last().size() &&
+             m_innerNodesList.last().last().isInnerTmp() ) {
+            // If only two nodes were added, remove all this inner boundary.
+            if ( innerBounds.last().size() <= 2 ) {
+                innerBounds.remove( innerBoundaries.size() - 1 );
+                m_innerNodesList.removeLast();
+                return;
+            }
+
+            // Remove the 'NodeIsInnerTmp' flag, to allow ::draw method to paint the nodes.
+            foreach ( const PolygonNode &node, m_innerNodesList.last() ) {
+                node.setFlag( PolygonNode::NodeIsInnerTmp, false );
+            }
+        }
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
 
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
-    
+
     }
 }
-
 
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 {
@@ -296,6 +312,38 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     }
 
     return false;
+}
+
+void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState )
+{
+    Q_UNUSED( previousState );
+
+    if ( state() == SceneGraphicsItem::Editing ) {
+        return;
+    } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
+        // Check if a polygon hole was being drawn before moving to other item.
+        GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+        QVector<GeoDataLinearRing> &innerBounds = polygon->innerBoundaries();
+
+        if ( innerBoundaries.size() && innerBounds.last().size() &&
+             m_innerNodesList.last().last().isInnerTmp() ) {
+            // If only two nodes were added, remove all this inner boundary.
+            if ( innerBounds.last().size() <= 2 ) {
+                innerBounds.remove( innerBoundaries.size() - 1 );
+                m_innerNodesList.removeLast();
+                return;
+            }
+
+            // Remove the 'NodeIsInnerTmp' flag, to allow ::draw method to paint the nodes.
+            foreach ( const PolygonNode &node, m_innerNodesList.last() ) {
+                node.setFlag( PolygonNode::NodeIsInnerTmp, false );
+            }
+        }
+    } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
+
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
+
+    }
 }
 
 const char *AreaAnnotation::graphicType() const
@@ -636,13 +684,11 @@ bool AreaAnnotation::processAddingHoleOnPress( QMouseEvent *mouseEvent )
                                     GeoDataCoordinates::Radian );
     const GeoDataCoordinates newCoords( lon, lat );
 
-    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( item->placemark()->geometry() );
+    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
     QVector<GeoDataLinearRing> &innerBounds = polygon->innerBoundaries();
-    int listSize = innerBounds.size();
-    int ringSize = listSize ? innerBounds.at(listSize - 1).size() : 0;
 
     // Check if this is the first node which is being added as a new polygon inner boundary.
-    if ( !ringSize || !m_innerNodesList.at(listSize - 1).at(ringSize - 1).isInnerTmp() ) {
+    if ( !innerBounds.size() || !m_innerNodesList.last().last().isInnerTmp() ) {
            polygon->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
            m_innerNodesList.append( QList<PolygonNode>() );
     }
@@ -670,10 +716,34 @@ bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 {
+    if ( mouseEvent->button() != Qt::RightButton ) {
+        return false;
+    }
+
+
+}
+
+bool AreaAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
+{
+
+}
+
+bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
+{
 
 }
 
 bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
+{
+
+}
+
+bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
+{
+
+}
+
+bool AreaAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
 {
 
 }
