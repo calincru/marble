@@ -152,13 +152,13 @@ QList<PluginAuthor> AnnotatePlugin::pluginAuthors() const
     return QList<PluginAuthor>()
             << PluginAuthor( "Andrew Manson", "<g.real.ate@gmail.com>" )
             << PluginAuthor( "Thibaut Gridel", "<tgridel@free.fr>" );
+            << PluginAuthor( "Calin-Cristian Cruceru", "<crucerucalincristian@gmail.com>" );
 }
 
 QIcon AnnotatePlugin::icon() const
 {
     return QIcon( ":/icons/draw-placemark.png");
 }
-
 
 void AnnotatePlugin::initialize()
 {

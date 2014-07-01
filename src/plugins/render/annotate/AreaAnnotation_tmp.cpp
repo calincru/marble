@@ -49,6 +49,26 @@
  *  in adding polygon holes, cand da click pe interiorul unui poligon handeluiesc aici (tin intr-un buffer, etc,
  *  am explicat mai sus), dar daca schimba poligonul pe care da click, cel vechi trebuie sa stie pentru a-l face
  *  real inner boundary-ul sau pentru a-l sterge daca are sub 3 noduri.
+ *
+ *  -> Cred ca pana la urma pentru nodurile virtuale o sa tin doar un pointer la ultimul nod care a continut
+ *  pozitia eventului si il desenez pe respectivul in drawNodes (cand nu e nullptr). Diferenta fata de cum faceam
+ *  inainte, in vechiul AreaAnnotation este aceea ca acolo ma complicam adaugand nodul virtual la outerBoundary.
+ *  Acum, nodul virtual este chiar virtual, este un 'hack'. Practic doar il desenez pe ecran, el nu apartine
+ *  poligonului. Astfel, voi avea urmatoarele
+ *  situatii:
+ *      -> nodul virtual desenat contine pozitia curenat a eventului (presupunem ca l-am setat la un pas anterior).
+ *  In acest caz, ies direct din functie fara sa fac nimic;
+ *      -> exista un nod virtual desenat anterior iar acesta nu contine pozitia eventului. IN acest caz il fac
+ *  nullptr. De aici, totusi, se desprind 2 situatii:
+ *          -> pozitia eventului este in interiorul poligonului, deci itemul acesta o intercepteaza (vezi
+ *          ::containsPoint, am modificat-o la virtualNodes tocmai din acel motiv) si pot sa fac nullptr pointerul
+ *          catre nodul virtual 'de desenat';
+ *          -> pozitia eventului este in afara poligonului, caz in care in AnnotatePlugin::eventFilter() voi trimite
+ *          prin ::itemChanged() un nullptr (trebuie sa schimb din SceneGraphicsItem& in SceneGraphicsItem*) care va
+ *          semnifica faptul ca itemul s-a schimbat dintr-un item apartinand AnnotatePlugin intr-un item\
+ *          nerecunoscut, spre exemplu mapa.
+ *      -> nu exista un nod virtual desenat anterior, deci caut prin lista de noduri virtuale daca nu cumva ne-am
+ *  mutat cu cursorul pe o pozitie care reprezinta un alt nod virtual.
  */
 
 namespace Marble {
@@ -142,10 +162,10 @@ bool PolygonNode::containsPoint( const QPoint &eventPos ) const
 }
 
 
-const int AreaAnnotation::regularDim = 10;
-const int AreaAnnotation::selectedDim = 10;
-const int AreaAnnotation::mergedDim = 15;
-const int AreaAnnotation::hoveredDim = 15;
+const int AreaAnnotation::regularDim = 15;
+const int AreaAnnotation::selectedDim = 15;
+const int AreaAnnotation::mergedDim = 20;
+const int AreaAnnotation::hoveredDim = 22;
 const QColor AreaAnnotation::regularColor = Oxygen::aluminumGray3;
 const QColor AreaAnnotation::selectedColor = Oxygen::aluminumGray6;
 const QColor AreaAnnotation::mergedColor = Oxygen::emeraldGreen6;
@@ -197,8 +217,8 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         return outerNodeContains( point ) != -1 || innerNodeContains( point ) != QPair(-1, -1);
 
-    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
-        return virtualNodeContains( point ) != -1;
+    } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
+        return polygonContains( point ) && virtualNodeContains( point ) != -1;
     }
 
     return false;
@@ -326,7 +346,7 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
              m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsMerged, false );
         }
     } else if ( previousState == SceneGraphicsItem::AddingPolygonNodes ) {
-
+        m_virtualNodesList.clear();
     }
 
     // Dealing with cases when entering a state has an effect on scene graphic items.
@@ -355,7 +375,21 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
         m_mergedNodeIndexes = QPair(-1, -1);
         m_warning = NoWarning;
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
+        // First fill the virtual nodes list.
+        const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
+        const GeoDataLinearRing &outerRing = polygon->outerBoundary();
 
+        QVector<GeoDataCoordinates>::Iterator itBegin = outerRing.begin();
+        QVector<GeoDataCoordinates>::Iterator itEnd = outerRing.end();
+
+        PolygonNode firstNode = PolygonNode( m_geopainter->regionFromEllipse(
+                    (*itBegin).interpolate( *itEnd, 0.5 ), hoveredDim, hoveredDim ) );
+        m_virtualNodesList.append( firstNode );
+        for ( ; itBegin != itEnd - 1; ++itBegin ) {
+            PolygonNode newNode = PolygonNode( m_geopainter->regionFromEllipse(
+                    (*itBegin).interpolate( *(itBegin + 1), 0.5 ), hoveredDim, hoveredDim ) );
+            m_virtualNodesList.append( newNode );
+        }
     }
 }
 
@@ -366,17 +400,15 @@ const char *AreaAnnotation::graphicType() const
 
 void AreaAnnotation::setupRegionLists( GeoPainter *painter )
 {
-    const static int regionDim = 20;
-
     const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
 
     // Add the outer boundary nodes
-    QVector<GeoDataCoordinates>::ConstIterator itBegin = outerRing.begin();
-    QVector<GeoDataCoordinates>::ConstIterator itEnd = outerRing.end();
+    QVector<GeoDataCoordinates>::Iterator itBegin = outerRing.begin();
+    QVector<GeoDataCoordinates>::Iterator itEnd = outerRing.end();
 
     for ( ; itBegin != itEnd; ++itBegin ) {
-        PolygonNode newNode = PolygonNode( painter->regionFromEllipse( *itBegin, regionDim, regionDim ) );
+        PolygonNode newNode = PolygonNode( painter->regionFromEllipse( *itBegin, regularDim, regularDim ) );
         m_outerNodesList.append( newNode );
     }
 
@@ -386,6 +418,11 @@ void AreaAnnotation::setupRegionLists( GeoPainter *painter )
 
 void AreaAnnotation::drawNodes( GeoPainter *painter )
 {
+    static const int d_regularDim = 10;
+    static const int d_selectedDim = 10;
+    static const int d_mergedDim = 20;
+    static const int d_hoveredDim = 20;
+
     const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
     const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
@@ -394,13 +431,13 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
         // The order here is important, because a merged node can be at the same time selected.
         if ( m_outerNodesList.at(i).isMerged() ) {
             painter->setBrush( mergedColor );
-            painter->drawEllipse( outerRing.at(i), mergedDim, mergedDim );
+            painter->drawEllipse( outerRing.at(i), d_mergedDim, d_mergedDim );
         } else if ( m_outerNodesList.at(i).isSelected() ) {
             painter->setBrush( selectedColor );
-            painter->drawEllipse( outerRing.at(i), selectedDim, selectedDim );
+            painter->drawEllipse( outerRing.at(i), d_selectedDim, d_selectedDim );
         } else {
             painter->setBrush( regularColor );
-            painter->drawEllipse( outerRing.at(i), regularDim, regularDim );
+            painter->drawEllipse( outerRing.at(i), d_regularDim, d_regularDim );
         }
     }
 
@@ -408,17 +445,17 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
         for ( int j = 0; j < innerRings.at(i).size(); ++i ) {
             if ( m_innerNodesList.at(i).at(j).isMerged() ) {
                 painter->setBrush( mergedColor );
-                painter->drawEllipse( innerRings.at(i).at(j), mergedDim, mergedDim );
+                painter->drawEllipse( innerRings.at(i).at(j), d_mergedDim, d_mergedDim );
             } else if ( m_innerNodesList.at(i).at(j).isSelected() ) {
                 painter->setBrush( selectedColor );
-                painter->drawEllipse( innerRings.at(i).at(j), selectedDim, selectedDim );
+                painter->drawEllipse( innerRings.at(i).at(j), d_selectedDim, d_selectedDim );
             } else if ( m_innerNodesList.at(i).at(j).isInnerTmp() ) {
                 // Do not draw inner nodes until the 'process' of adding these nodes ends
                 // (aka while being in the 'Adding Polygon Hole').
                 continue;
             } else {
                 painter->setBrush( regularColor );
-                painter->drawEllipse( innerRings.at(i).at(j), regularDim, regularDim );
+                painter->drawEllipse( innerRings.at(i).at(j), d_regularDim, d_regularDim );
             }
         }
     }
@@ -434,7 +471,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
                 coords = m_outerNodesList.at(i).interpolate(
                             m_outerNodesList.at(m_outerNodesList.size() - 1), 0.5 );
             }
-            painter->drawEllipse( coords, hoveredDim, hoveredDim );
+            painter->drawEllipse( coords, d_hoveredDim, d_hoveredDim );
         }
     }
 }
@@ -843,11 +880,19 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 {
     Q_ASSERT( mouseEvent->button() == Qt::NoButton );
+
+    foreach ( const PolygonNode &node, m_virtualNodesList ) {
+        if ( node.containsPoint( mouseEvent->pos() ) && !node.isVirtualHovered() ) {
+            node.setFlag( PolygonNode::NodeIsVirtualHovered );
+            return true;
+        }
+    }
 }
 
 bool AreaAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
 {
-
+    Q_UNUSED( mouseEvent );
+    return true;
 }
 
 void AreaAnnotation::updateBoundariesList()
