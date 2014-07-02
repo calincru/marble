@@ -139,8 +139,12 @@ private:
     EditingInteractingObject m_interactingObj;
 
     // used in Merging Nodes state
-    QPair<int, int>          m_mergedNodeIndexes;
-    MergingWarning           m_mergingWarning;
+    QPair<int, int> m_mergedNodeIndexes;
+    MergingWarning  m_mergingWarning;
+
+    // used in Adding Nodes state
+    int  m_virtualHovered;
+    bool m_adjustingNode;
 }
 
 }
