@@ -229,26 +229,29 @@ void AnnotatePlugin::enableModel( bool enabled )
 void AnnotatePlugin::setAddingPlacemark( bool enabled )
 {
     m_addingPlacemark = enabled ;
+    announceStateChanged( SceneGraphicsItem::AddingPlacemark );
 }
 
 void AnnotatePlugin::setDrawingPolygon( bool enabled )
 {
     m_drawingPolygon = enabled;
-    if ( enabled ) {
-        m_polygonPlacemark = new GeoDataPlacemark;
+    announceStateChanged( SceneGraphicsItem::DrawingPolygon );
 
+    if ( enabled ) {
         GeoDataPolygon *polygon = new GeoDataPolygon( Tessellate );
         polygon->outerBoundary().setTessellate( true );
-        m_polygonPlacemark->setGeometry( polygon );
 
+        m_polygonPlacemark = new GeoDataPlacemark;
+        m_polygonPlacemark->setGeometry( polygon );
         m_polygonPlacemark->setParent( m_annotationDocument );
         m_polygonPlacemark->setStyleUrl( "#polygon" );
+        
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
     } else {
         const GeoDataPolygon *poly = dynamic_cast<const GeoDataPolygon*>( m_polygonPlacemark->geometry() );
         Q_ASSERT( poly );
 
-        if ( !poly->outerBoundary().isEmpty() ) {
+        if ( poly->outerBoundary().size() > 2 ) {
             AreaAnnotation *area = new AreaAnnotation( m_polygonPlacemark );
             m_graphicsItems.append( area );
             m_marbleWidget->update();
@@ -262,45 +265,23 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
 
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
-    if ( !enabled && m_interactingArea ) {
-        GeoDataPolygon *poly = static_cast<GeoDataPolygon*>( m_interactingArea->placemark()->geometry() );
-
-        if ( !poly->innerBoundaries().isEmpty() && poly->innerBoundaries().last().size() <= 2 ) {
-            poly->innerBoundaries().last().clear();
-        }
-    }
-
-    m_addingPolygonHole = enabled;
-    m_interactingArea = 0;
-
-    emit repaintNeeded( QRegion() );
+    announceStateChanged( SceneGraphicsItem::AddingPolygonHole );
 }
 
 void AnnotatePlugin::setAddingOverlay( bool enabled )
 {
 	m_addingOverlay = enabled;
+    announceStateChanged( SceneGraphicsItem::AddingOverlay );
 }
 
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
-    if ( !enabled && m_interactingArea ) {
-        // Restore the normal state.
-        m_interactingArea->setState( AreaAnnotation::Normal );
-    }
-
-    m_mergingNodes = enabled;
-    m_interactingArea = 0;
+    announceStateChanged( SceneGraphicsItem::MergingPolygonNodes );
 }
 
 void AnnotatePlugin::setAddingNodes( bool enabled )
 {
-    if ( !enabled && m_interactingArea ) {
-        // Restore the normal state
-        m_interactingArea->setState( AreaAnnotation::Normal );
-    }
-
-    m_addingNodes = enabled;
-    m_interactingArea = 0;
+    announceStateChanged( SceneGraphicsItem::AddingPolygonNodes );
 }
 
 void AnnotatePlugin::setRemovingItems( bool enabled )
@@ -486,6 +467,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 {
     if ( !m_widgetInitialized ) {
         MarbleWidget *marbleWidget = qobject_cast<MarbleWidget*>( watched );
+
         if ( marbleWidget ) {
             m_marbleWidget = marbleWidget;
 
@@ -550,37 +532,16 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
     // Pass the event to Graphic Items.
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
-        QListIterator<QRegion> it( item->regions() );
-
-        while ( it.hasNext() ) {
-            QRegion region = it.next();
-            if ( !region.contains( mouseEvent->pos() ) )
-                continue;
-
-            // The flow here is as it follows: first check if there is anything we may want to do
-            // before the item itself handles the event. For example, we don't want the item to handle
-            // the event when having selected "Removing item"; instead, we want to remove the item in
-            // this situation; the same applies for adding polygon holes, merging nodes and showing rmb
-            // menus so far. Then, if there is nothing to do before the item handles the event, let it
-            // handle the event.
-            if ( ( m_removingItem && handleRemovingItem( mouseEvent, item ) ) ||
-
-                 ( m_addingPolygonHole && handleAddingHole( mouseEvent, item ) ) ||
-
-                 ( m_mergingNodes && handleMergingNodes( mouseEvent, item ) ) ||
-
-                 ( m_addingNodes && handleAddingNodes( mouseEvent, item ) ) ||
-
-                 ( handleShowingRmbMenus( mouseEvent, item ) ) ||
-
-                 ( mouseEvent->type() == QEvent::MouseButtonPress &&
-                   handleMousePressEvent( mouseEvent, item ) ) ||
-
-                 ( mouseEvent->type() == QEvent::MouseButtonRelease &&
-                   handleMouseReleaseEvent( mouseEvent, item ) ) ) {
-                return true;
-            }
+        if ( !item->containsPoint( mouseEvent->pos() ) ) {
+            continue;
         }
+
+        if ( m_removingItem && mouseEvent->button() == Qt::LeftButton &&
+             mouseEvent->type == QEvent::MouseButtonPress && handleRemovingItem( item ) ) {
+            return true;
+        }
+
+
     }
 
     // If the event gets here, it most probably means it is a map interaction event, or something
@@ -716,13 +677,8 @@ bool AnnotatePlugin::handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGrap
     return true;
 }
 
-bool AnnotatePlugin::handleRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+void AnnotatePlugin::handleRemovingItem( SceneGraphicsItem *item )
 {
-    if ( mouseEvent->type() != QEvent::MouseButtonPress ||
-         mouseEvent->button() != Qt::LeftButton ) {
-        return false;
-    }
-
     const int result = QMessageBox::question( m_marbleWidget,
                                               QObject::tr( "Remove current item" ),
                                               QObject::tr( "Are you sure you want to remove the current item?" ),
@@ -738,351 +694,6 @@ bool AnnotatePlugin::handleRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsI
         delete item;
         emit itemRemoved();
     }
-
-    return true;
-}
-
-bool AnnotatePlugin::handleAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
-{
-    // Ignore if someone by mistake clicks another scene graphic element while having checked
-    // "Add Polygon Hole".
-    // FIXME: Maybe add a warning and return true?
-    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-        return false;
-    }
-
-    // If it is not a left button mouse button click, ignore the event (do not let it
-    // propagate).
-    if ( mouseEvent->type() != QEvent::MouseButtonPress ||
-         mouseEvent->button() != Qt::LeftButton ) {
-        return true;
-    }
-
-
-    qreal lon, lat;
-    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
-                                    mouseEvent->pos().y(),
-                                    lon, lat,
-                                    GeoDataCoordinates::Radian );
-    const GeoDataCoordinates coords( lon, lat );
-
-    // We can now be sure that the scene graphic item is an area annotation and its
-    // geometry is a polygon.
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( item->placemark()->geometry() );
-    Q_ASSERT( area );
-    Q_ASSERT( poly );
-
-    // If it is the first click in the interior of a polygon and the event position is not
-    // a hole of the polygon, we initialize the polygon on which we want to draw a hole.
-    if ( !m_interactingArea && !area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
-        m_interactingArea = area;
-        poly->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
-    } else if ( area->isInnerBoundsPoint( mouseEvent->pos() ) ) {
-        // If the event position is contained by one of the polygon's holes, let the event
-        // propagate.
-        // FIXME: Clicking the 'outside-the-polygon' parts of the virtual nodes.
-        return false;
-    } else if ( m_interactingArea != area ) {
-        // Ignore clicks on other polygons if the polygon has already been initialized.
-        return true;
-    }
-    poly->innerBoundaries().last().append( coords );
-
-    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-    return true;
-}
-
-bool AnnotatePlugin::handleMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
-{
-    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-        return false;
-    }
-
-    // If it is not a left button mouse button click, ignore the event (do not let it
-    // propagate).
-    if ( mouseEvent->type() != QEvent::MouseButtonPress ||
-         mouseEvent->button() != Qt::LeftButton ) {
-        return true;
-    }
-
-    // We can now be sure that the scene graphic item is an area annotation and its
-    // geometry is a polygon.
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-    Q_ASSERT( area );
-
-    if ( m_interactingArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
-        // If the polygon has been initialized but it is different than the previously selected one,
-        // change the state of the older one to Normal and to MergingNodes to the new one. This makes
-        // possible merging nodes in different polygons without unchecking and checking again "Merge
-        // Nodes".
-        if ( m_interactingArea ) {
-            m_interactingArea->setState( AreaAnnotation::Normal );
-        }
-        area->setState( AreaAnnotation::MergingNodes );
-        m_interactingArea = area;
-    } else if ( area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
-        // Let the event propagate if one of polygon's holes contains the position of the event.
-        return false;
-    }
-
-    // We can now be sure that mousePressEvent in AreaAnnotation will return true.
-    Q_ASSERT( area->sceneEvent( mouseEvent ) );
-    QPair<int, int> &mergedNodes = area->mergedNodes();
-
-    // Stop the event from propagating if the first node to be merged is set to -1. This means that
-    // actually no node as been clicked (so far this happens when clicking the interior of the
-    // polygon).
-    if ( mergedNodes.first == -1 ) {
-        return true;
-    }
-
-    // If only one node has been clicked wait for the second one to be clicked.
-    if ( mergedNodes.second == -1 ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-        return true;
-    } else if ( mergedNodes.second == mergedNodes.first ) {
-        // Do not allow merging a node with itself. Without dealing with this case, the node got
-        // removed and maybe this is not one might want.
-        area->setMergedNodes( QPair<int, int>(-1, -1) );
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-        return true;
-    }
-
-    // Keep the two nodes sorted.
-    if ( mergedNodes.first > mergedNodes.second ) {
-        qSwap<int>( mergedNodes.first, mergedNodes.second );
-    }
-
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( area->placemark()->geometry() );
-    Q_ASSERT( poly );
-
-    // Store the initial inner boundaries and outer boundary in case the polygon will have an invalid
-    // shape after merging two nodes.
-    GeoDataLinearRing initialOuterBoundary = poly->outerBoundary();
-    QVector<GeoDataLinearRing> initialInnerBoundaries = poly->innerBoundaries();
-
-    GeoDataLinearRing &outer = poly->outerBoundary();
-    if ( ( mergedNodes.first >= outer.size() && mergedNodes.second < outer.size() ) ||
-         ( mergedNodes.first < outer.size() && mergedNodes.second >= outer.size() ) ) {
-        QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted"),
-                              QString( "Cannot merge a node from polygon's outer boundary with"
-                                       " a node from one of its inner boundaries!" ) );
-        area->setMergedNodes( QPair<int, int>(-1, -1) );
-        // Made the user aware of the impossibility of merging those nodes and return true so that
-        // the event do not propagate.
-        return true;
-    }
-
-    QList<int> &selectedNodes = m_interactingArea->selectedNodes();
-    int sizeOffset = 0;
-
-    // If the selected nodes are part of one of the polygon's inner boundary.
-    if ( mergedNodes.first - outer.size() >= 0 && mergedNodes.second - outer.size() >= 0 ) {
-        QVector<GeoDataLinearRing> &inners = poly->innerBoundaries();
-
-        mergedNodes.first -= outer.size();
-        mergedNodes.second -= outer.size();
-        sizeOffset += outer.size();
-
-        // The merging is done by removing the first selected node and changing the coordinates
-        // of the second one.
-        for ( int i = 0; i < inners.size(); ++i ) {
-            if ( mergedNodes.first - inners.at(i).size() < 0 &&
-                 mergedNodes.second - inners.at(i).size() < 0 ) {
-                inners[i].at(mergedNodes.second) = inners.at(i).at(mergedNodes.second).interpolate(
-                                                        inners.at(i).at(mergedNodes.first), 0.5 );
-                inners[i].remove( mergedNodes.first );
-                // If this inner boundary has only two remaining nodes, remove it all.
-                if ( inners.at(i).size() <= 2 ) {
-                    inners[i].clear();
-
-                    // Remove any of these three nodes (including the earlier removed one) from the
-                    // selectedNodes list.
-                    selectedNodes.removeAll( sizeOffset );
-                    selectedNodes.removeAll( sizeOffset + 1 );
-                    selectedNodes.removeAll( sizeOffset + 2 );
-
-                    // Decrement the indexes of selected nodes from other inner boundaries which have
-                    // been drawn after this one.
-                    QList<int>::iterator itBegin = selectedNodes.begin();
-                    QList<int>::const_iterator itEnd = selectedNodes.constEnd();
-
-                    for ( ; itBegin != itEnd; ++itBegin ) {
-                        if ( *itBegin > sizeOffset + 2 ) {
-                            *itBegin -= 3;
-                        }
-                    }
-
-                    area->setMergedNodes( QPair<int, int>(-1, -1) );
-                    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-                    return true;
-                }
-
-                break;
-            } else if ( mergedNodes.first - inners.at(i).size() < 0 ||
-                        mergedNodes.second - inners.at(i).size() < 0 ) {
-                // Even though they are set to (-1, -1) below, before the warning takes the focus, the
-                // paint methods are called so we make sure the correct nodes are painted, so that the
-                // user knows which nodes he tried to merge.
-                mergedNodes.first += sizeOffset;
-                mergedNodes.second += sizeOffset;
-
-                QMessageBox::warning( m_marbleWidget,
-                                      QString( "Operation not permitted"),
-                                      QString( "Cannot merge two nodes from two different"
-                                               " inner boundaries!") );
-                area->setMergedNodes( QPair<int, int>(-1, -1) );
-                return true;
-            } else {
-                mergedNodes.first -= inners.at(i).size();
-                mergedNodes.second -= inners.at(i).size();
-                sizeOffset += inners.at(i).size();
-            }
-        }
-    } else {
-        outer.at(mergedNodes.second) = outer.at(mergedNodes.second).interpolate(
-                                            outer.at(mergedNodes.first), 0.5 );
-        outer.remove( mergedNodes.first );
-
-        // If the polygon's outer boundary has only two nodes remained after merging, remove it all.
-        if ( outer.size() <= 2 ) {
-            m_graphicsItems.removeAll( area );
-            m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
-            delete area->feature();
-            delete area;
-
-            return true;
-        }
-
-        // When merging two nodes from polygon's outer boundary, check if the polygon is still valid.
-        if ( !area->isValidPolygon() ) {
-            poly->outerBoundary() = initialOuterBoundary;
-            poly->innerBoundaries() = initialInnerBoundaries;
-
-            QMessageBox::warning( m_marbleWidget,
-                                  QString( "Operation not permitted"),
-                                  QString( "The polygon would have an invalid shape after this"
-                                           " operation (e.g. its outerboundary would not contain"
-                                           " all its inner boundaries).") );
-            area->setMergedNodes( QPair<int, int>(-1, -1) );
-            return true;
-        }
-    }
-
-
-    // Reconstruct clicked nodes to resemble the indexes stored in selectedNodes list.
-    mergedNodes.first += sizeOffset;
-    mergedNodes.second += sizeOffset;
-
-    // When having one of the two merged nodes marked as selected, the resulting node will also be
-    // selected.
-    if ( selectedNodes.contains( mergedNodes.first ) || selectedNodes.contains( mergedNodes.second ) ) {
-        selectedNodes.removeAll( mergedNodes.first );
-        selectedNodes.removeAll( mergedNodes.second );
-        selectedNodes.append( mergedNodes.second );
-    }
-
-    QList<int>::iterator itBegin = selectedNodes.begin();
-    QList<int>::const_iterator itEnd = selectedNodes.constEnd();
-
-    // Decrement the indexes of the selected nodes which have bigger indexes than the
-    // node with a smaller index.
-    for ( ; itBegin != itEnd; ++itBegin ) {
-        if ( *itBegin > mergedNodes.first ) {
-            (*itBegin)--;
-        }
-    }
-
-    area->setMergedNodes( QPair<int, int>(-1, -1) );
-    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-    return true;
-}
-
-bool AnnotatePlugin::handleAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
-{
-    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ) {
-        return false;
-    }
-
-    // If it is not a mouse move or a mouse button press, ignore the event and do not let it
-    // propagate.
-    if ( mouseEvent->type() != QEvent::MouseMove &&
-         mouseEvent->type() != QEvent::MouseButtonPress ) {
-        return true;
-    }
-
-    // If it is a mouse button press but the button is other than the left one, do the same
-    // as above.
-    if ( mouseEvent->type() == QEvent::MouseButtonPress &&
-         mouseEvent->button() != Qt::LeftButton ) {
-        return true;
-    }
-
-    // We can now be sure that the SceneGraphicsItem is an AreaAnnotation.
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-    Q_ASSERT( area );
-
-    if ( m_interactingArea != area && !area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
-        // If the polygon has been initialized but it is different than the previously selected one,
-        // change the state of the older one to Normal and of the new one to AddingNodes. This makes
-        // possible adding nodes to different polygons without unchecking and checking again "Add
-        // Nodes".
-        if ( m_interactingArea ) {
-            m_interactingArea->setState( AreaAnnotation::Normal );
-        }
-        area->setState( AreaAnnotation::AddingNodes );
-        m_interactingArea = area;
-    } else if ( area->isInnerBoundsPoint( mouseEvent->pos(), true ) ) {
-        // Ignore clicks on polygon's inner boundaries.
-        return false;
-    }
-
-    // Since we already know that on both mouse press event and mouse move event, the event will not
-    // propagate, we can assert this.
-    Q_ASSERT( m_interactingArea->sceneEvent( mouseEvent ) );
-    if ( mouseEvent->type() == QEvent::MouseButtonPress && area->isAdjustingNode() ) {
-        area->setState( AreaAnnotation::Normal );
-        m_movedItem = area;
-    } else {
-        m_movedItem = 0;
-    }
-
-    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-    return true;
-}
-
-bool AnnotatePlugin::handleShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
-{
-    // We get here when mousePressEvent returns false.
-    if ( item->graphicType() != SceneGraphicTypes::SceneGraphicAreaAnnotation ||
-         mouseEvent->type() != QEvent::MouseButtonPress ||
-         mouseEvent->button() != Qt::RightButton ) {
-        return false;
-    }
-
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-    Q_ASSERT( area );
-
-    // Call AreaAnnotation::mousePressEvent in order to get the node index which has been
-    // right-clicked.
-    area->sceneEvent( mouseEvent );
-
-    if ( area->rightClickedNode() == -1 ) {
-        showPolygonRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
-    } else if ( area->rightClickedNode() >= 0 ){
-        showNodeRmbMenu( area, mouseEvent->x(), mouseEvent->y() );
-    } else {
-        // If the region clicked is the interior of an innerBoundary of a polygon or an
-        // 'outside-the-polygon' part of a virtual node, we pass the event handling further.
-        // This guarantees that the events are caught by imbricated polygons irrespective
-        // of their number (e.g. we can have polygon within polygon within polygon, etc ).
-        return false;
-    }
-
-    m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-    return true;
 }
 
 void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
@@ -1624,6 +1235,14 @@ void AnnotatePlugin::deleteNode()
         }
     }
 }
+
+void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
+{
+    foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
+        item.setState( newState );
+    }
+}
+
 
 //void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )
 //{

@@ -116,7 +116,6 @@ public slots:
     void saveAnnotationFile();
     void loadAnnotationFile();
 
-
 private slots:
     void editOverlay();
     void removeOverlay();
@@ -128,7 +127,6 @@ private slots:
     void deleteNode();
     void unselectNodes();
     void deleteSelectedNodes();
-
 
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
@@ -149,7 +147,6 @@ private:
     void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
     void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
 
-
     void handleUncaughtEvents( QMouseEvent *mouseEvent );
     void handleReleaseOverlay( QMouseEvent *mouseEvent );
 
@@ -160,12 +157,9 @@ private:
     bool handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     bool handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
-    bool handleRemovingItem( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool handleAddingHole( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool handleMergingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool handleAddingNodes( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool handleShowingRmbMenus( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleRemovingItem( SceneGraphicsItem *item );
 
+    void announceStateChanged( SceneGraphicsItem::ActionState newState );
 
     //    void readOsmFile( QIODevice* device, bool flyToFile );
 
