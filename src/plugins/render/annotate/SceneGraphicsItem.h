@@ -55,7 +55,7 @@ public:
 
     virtual bool containsPoint( const QPoint &eventPos ) const = 0;
 
-    virtual void itemChanged( const SceneGraphicItem &other ) = 0;
+    virtual void itemChanged( const SceneGraphicItem *other ) = 0;
 
     ActionState state() const;
 

@@ -37,6 +37,8 @@ public:
         InteractingPolygon
     }
 
+    // Redenumesc cu ceva gen requests, sa simbolifice faptul ca au nevoie de marble widget. Si o sa includ aici si
+    // afisarea rmb menus.
     enum MergingWarning {
         NoWarning,
         OuterInnerWarning,
@@ -57,7 +59,15 @@ public:
     /**
      * @brief
      */
-    virtual void itemChanged( const SceneGraphicItem &other );
+    virtual void itemChanged( const SceneGraphicItem *other );
+
+    void deselectAllNodes();
+
+    void deleteAllSelectedNodes();
+
+    void deleteSelectedNode();
+
+    void deselectSelectedNode();
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.

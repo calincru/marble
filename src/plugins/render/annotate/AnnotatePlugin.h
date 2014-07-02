@@ -154,8 +154,8 @@ private:
     bool handleAddingPolygon( QMouseEvent *mouseEvent );
     bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
-    bool handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    bool handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void handleRemovingItem( SceneGraphicsItem *item );
 
@@ -180,9 +180,9 @@ private:
 
     GeoDataPlacemark     *m_polygonPlacemark;
     SceneGraphicsItem    *m_movedItem;
+    SceneGraphicsitem    *m_lastItem;
     GeoDataGroundOverlay *m_rmbOverlay;
     AreaAnnotation       *m_rmbSelectedArea;
-    AreaAnnotation       *m_interactingArea;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;

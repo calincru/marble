@@ -64,14 +64,11 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_annotationDocument( new GeoDataDocument ),
       m_polygonPlacemark( 0 ),
       m_movedItem( 0 ),
-      m_interactingArea( 0 ),
+      m_lastItem( 0 ),
+      // m_networkAccessManager( 0 ),
       m_addingPlacemark( false ),
       m_drawingPolygon( false ),
-      m_addingPolygonHole( false ),
-      m_mergingNodes( false ),
-      m_addingNodes( false ),
       m_removingItem( false ),
-      // m_networkAccessManager( 0 ),
       m_isInitialized( false )
 {
     // Plugin is enabled by default
@@ -228,14 +225,18 @@ void AnnotatePlugin::enableModel( bool enabled )
 
 void AnnotatePlugin::setAddingPlacemark( bool enabled )
 {
-    m_addingPlacemark = enabled ;
-    announceStateChanged( SceneGraphicsItem::AddingPlacemark );
+    m_addingPlacemark = enabled;
+
+    if ( enabled ) {
+        announceStateChanged( SceneGraphicsItem::AddingPlacemark );
+    } else {
+        announceStateChanged( SceneGraphicsItem::Editing );
+    }
 }
 
 void AnnotatePlugin::setDrawingPolygon( bool enabled )
 {
     m_drawingPolygon = enabled;
-    announceStateChanged( SceneGraphicsItem::DrawingPolygon );
 
     if ( enabled ) {
         GeoDataPolygon *polygon = new GeoDataPolygon( Tessellate );
@@ -245,8 +246,9 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
         m_polygonPlacemark->setGeometry( polygon );
         m_polygonPlacemark->setParent( m_annotationDocument );
         m_polygonPlacemark->setStyleUrl( "#polygon" );
-        
+
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
+        announceStateChanged( SceneGraphicsItem::DrawingPolygon );
     } else {
         const GeoDataPolygon *poly = dynamic_cast<const GeoDataPolygon*>( m_polygonPlacemark->geometry() );
         Q_ASSERT( poly );
@@ -260,28 +262,46 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
             delete m_polygonPlacemark;
         }
         m_polygonPlacemark = 0;
+        announceStateChanged( SceneGraphicsItem::Editing );
     }
 }
 
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
-    announceStateChanged( SceneGraphicsItem::AddingPolygonHole );
+    if ( enabled ) {
+        announceStateChanged( SceneGraphicsItem::AddingPolygonHole );
+    } else {
+        announceStateChanged( SceneGraphicsItem::Editing );
+    }
 }
 
 void AnnotatePlugin::setAddingOverlay( bool enabled )
 {
 	m_addingOverlay = enabled;
-    announceStateChanged( SceneGraphicsItem::AddingOverlay );
+
+    if ( enabled ) {
+        announceStateChanged( SceneGraphicsItem::AddingOverlay );
+    } else {
+        announceStateChanged( SceneGraphicsItem::Editing );
+    }
 }
 
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
-    announceStateChanged( SceneGraphicsItem::MergingPolygonNodes );
+    if ( enabled ) {
+        announceStateChanged( SceneGraphicsItem::MergingNodes );
+    } else {
+        announceStateChanged( SceneGraphicsItem::Editing );
+    }
 }
 
 void AnnotatePlugin::setAddingNodes( bool enabled )
 {
-    announceStateChanged( SceneGraphicsItem::AddingPolygonNodes );
+    if ( enabled ) {
+        announceStateChanged( SceneGraphicsItem::AddingNodes );
+    } else {
+        announceStateChanged( SceneGraphicsItem::Editing );
+    }
 }
 
 void AnnotatePlugin::setRemovingItems( bool enabled )
@@ -529,19 +549,35 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         return true;
     }
 
-
     // Pass the event to Graphic Items.
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
         if ( !item->containsPoint( mouseEvent->pos() ) ) {
             continue;
         }
 
+        // notify the previous item we interacted with about the change.
+        if ( m_lastItem ) {
+            m_lastItem->itemChanged( item );
+        }
+
         if ( m_removingItem && mouseEvent->button() == Qt::LeftButton &&
-             mouseEvent->type == QEvent::MouseButtonPress && handleRemovingItem( item ) ) {
+             mouseEvent->type == QEvent::MouseButtonRelease ) {
+            handleRemovingItem( item );
             return true;
         }
 
+        if ( item->sceneEvent( event ) ) {
+            // Make sure this is zeroed when removing the polygon by the rmb menu below.
+            m_lastItem = item;
 
+            if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
+                handleMousePressEvent( mouseEvent, item );
+            } else if ( mouseEvent->type() == QEvent::MouseButtonRelease ) {
+                handleMouseReleaseEvent( mouseEvent, item );
+            }
+
+            return true;
+        }
     }
 
     // If the event gets here, it most probably means it is a map interaction event, or something
@@ -643,34 +679,27 @@ bool AnnotatePlugin::handleMovingSelectedItem( QMouseEvent *mouseEvent )
     return false;
 }
 
-bool AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+void AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
-    // Return false if the item's mouse press event handler returns false.
-    if ( !item->sceneEvent( mouseEvent ) ) {
-        return false;
-    }
-
     // The item gets selected at each mouse press event.
     m_movedItem = item;
 
     // For ground overlays, if the current item is not contained in m_groundOverlayFrames, clear
-    // all frames, which means the overlay gets deselected on each "extern" click.
-    if ( !m_groundOverlayFrames.values().contains( item ) ) {
-        clearOverlayFrames();
+    // all frames, which means the overlay gets deselected on each "external" click.
+    if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicGroundOverlay ) {
+        if ( !m_groundOverlayFrames.values().contains( item ) ) {
+            clearOverlayFrames();
+        }
+    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+
     }
 
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
     return true;
 }
 
-bool AnnotatePlugin::handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+void AnnotatePlugin::handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
-    // Return false if the mouse release event handler of the item returns false.
-    if ( !item->sceneEvent( mouseEvent ) ) {
-        return false;
-    }
-
-    // TODO: Don't null it when m_addingNodes is true?
     m_movedItem = 0;
 
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
@@ -685,7 +714,7 @@ void AnnotatePlugin::handleRemovingItem( SceneGraphicsItem *item )
                                               QMessageBox::Yes | QMessageBox::No );
 
     if ( result == QMessageBox::Yes ) {
-        m_interactingArea = 0;
+        m_lastItem = 0;
         m_movedItem = 0;
         m_graphicsItems.removeAll( item );
         m_marbleWidget->model()->treeModel()->removeFeature( item->feature() );
@@ -707,15 +736,10 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
         clearOverlayFrames();
     }
 
-    // TODO: Is this ok for sure?
-
-    // Since dealing with adding nodes is done first by handling hover events, when we are not
-    // hovering anymore an area annotation, change the state of the last area annotation we
-    // interacted with to Normal and the pointer which keeps track of it to null.
-    if ( m_interactingArea && m_addingNodes ) {
-        m_interactingArea->setState( AreaAnnotation::Normal );
-        m_marbleWidget->model()->treeModel()->updateFeature( m_interactingArea->placemark() );
-        m_interactingArea = 0;
+    if ( m_lastItem ) {
+        // 0 means interacting with something that is not an annotate plugin item.
+        m_lastItem->itemChanged( 0 );
+        m_lastItem = 0;
     }
 }
 
@@ -1092,14 +1116,6 @@ void AnnotatePlugin::deleteSelectedNodes()
 
 void AnnotatePlugin::removePolygon()
 {
-    // Make sure it won't crash if the polygon gets removed when 'Merging Nodes' at the same time
-    // (or other action on polygons).
-    // FIXME: This will be fixed when right clicking a polygon while 'Merging Nodes' (as well as
-    // other polygons actions) is selected will not be possible anymore.
-    if ( m_interactingArea == m_rmbSelectedArea ) {
-        m_interactingArea = 0;
-    }
-
     m_graphicsItems.removeAll( m_rmbSelectedArea );
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
 

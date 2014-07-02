@@ -217,7 +217,7 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
     return false;
 }
 
-void AreaAnnotation::itemChanged( const SceneGraphicItem &other )
+void AreaAnnotation::itemChanged( const SceneGraphicItem *other )
 {
     Q_UNUSED( other );
 
