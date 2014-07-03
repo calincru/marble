@@ -698,12 +698,25 @@ void AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphi
         } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos.x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
-            QMessageBox::warning( m_marbleWidget, QString( "Operation not permitted" ),
-                                  QString(
+            QMessageBox::warning( m_marbleWidget,
+                                  QString( "Operation not permitted" ),
+                                  QString( "Cannot merge a node from polygon's outer boundary "
+                                           "with a node from one of its inner boundaries" ) );
+        } else if ( area->request() == AreaAnnotation::InnerInnerMergingWarning ) {
+            QMessageBox::warning( m_marbleWidget,
+                                  QString( "Operation not permitted" ),
+                                  QString( "Cannot merge two nodes from two different inner "
+                                           "boundaaries" ) );
+        } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
+            m_graphicsItems.removeAll( area );
+            m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
+
+            delete area->feature();
+            delete area;
         }
     }
 
-    m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
+    //m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
     return true;
 }
 
