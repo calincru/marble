@@ -90,6 +90,8 @@ private:
      */
     void setupRegionsLists( GeoPainter *painter );
 
+    void updateNodesRegions( GeoPainter *painter );
+
     /**
      * @brief
      */
@@ -124,7 +126,7 @@ private:
 
     void updateBoundariesList();
 
-
+    // change the scope from class' to updateNodes method
     static const int regularDim;
     static const int selectedDim;
     static const int mergedDim;

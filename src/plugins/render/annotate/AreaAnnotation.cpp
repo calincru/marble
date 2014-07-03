@@ -25,6 +25,7 @@
 // Qt
 #include <qmath.h>
 #include <QPair>
+#include <QDebug>
 
 
 namespace Marble {
@@ -126,7 +127,8 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     m_viewport( 0 ),
     m_regionsInitialized( false ),
     m_request( NoRequest ),
-    m_interactingObj( InteractingNothing )
+    m_interactingObj( InteractingNothing ),
+    m_virtualHovered( -1 )
 {
     // nothing to do
 }
@@ -150,7 +152,9 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         updateBoundariesList();
     }
 
+    updateNodesRegions( painter );
     drawNodes( painter );
+
     painter->restore();
 }
 
@@ -257,6 +261,7 @@ void AreaAnnotation::deleteAllSelectedNodes()
 
             m_outerNodesList.removeAt( i );
             outerRing.remove( i );
+            --i;
         }
     }
 
@@ -271,6 +276,7 @@ void AreaAnnotation::deleteAllSelectedNodes()
 
                 innerRings[i].remove( j );
                 m_innerNodesList[i].removeAt( j );
+                --j;
             }
         }
     }
@@ -407,7 +413,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     m_request = NoRequest;
 
     if ( state() == SceneGraphicsItem::Editing ) {
-        return processEditingOnMove( event );
+        return processEditingOnRelease( event );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnRelease( event );
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
@@ -450,7 +456,7 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
         if ( i != -1 && j != -1 ) {
             m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsMerged, false );
         } else if ( i != -1 && j == -1 ) {
-             m_outerNodesList[i].setFlag( PolygonNode::NodeIsMerged, false );
+            m_outerNodesList[i].setFlag( PolygonNode::NodeIsMerged, false );
         }
     } else if ( previousState == SceneGraphicsItem::AddingPolygonNodes ) {
         m_virtualNodesList.clear();
@@ -538,7 +544,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
     }
 
     for ( int i = 0; i < innerRings.size(); ++i ) {
-        for ( int j = 0; j < innerRings.at(i).size(); ++i ) {
+        for ( int j = 0; j < innerRings.at(i).size(); ++j ) {
             if ( m_innerNodesList.at(i).at(j).isBeingMerged() ) {
                 painter->setBrush( mergedColor );
                 painter->drawEllipse( innerRings.at(i).at(j), d_mergedDim, d_mergedDim );
@@ -567,6 +573,103 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
             newCoords = outerRing.at(0).interpolate( outerRing.last(), 0.5 );
         }
         painter->drawEllipse( newCoords, d_hoveredDim, d_hoveredDim );
+    }
+}
+
+void AreaAnnotation::updateNodesRegions( GeoPainter *painter )
+{
+    const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
+    const GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+    if ( state() == SceneGraphicsItem::Editing ) {
+
+        if ( m_interactingObj == InteractingNode ) {
+            int i = m_clickedNodeIndexes.first;
+            int j = m_clickedNodeIndexes.second;
+
+            if ( i != -1 && j != -1 ) {
+                QRegion newRegion;
+                if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                    newRegion = painter->regionFromEllipse( innerRings.at(i).at(j),
+                                                            selectedDim, selectedDim );
+                } else {
+                    newRegion = painter->regionFromEllipse( innerRings.at(i).at(j),
+                                                            regularDim, regularDim );
+                }
+                m_innerNodesList[i][j].setRegion( newRegion );
+            } else if ( i != -1 && j == -1 ) {
+                QRegion newRegion;
+                if ( m_outerNodesList.at(i).isSelected() ) {
+                    newRegion = painter->regionFromEllipse( outerRing.at(i),
+                                                            selectedDim, selectedDim );
+                } else {
+                    newRegion = painter->regionFromEllipse( outerRing.at(i),
+                                                            regularDim, regularDim );
+                }
+                m_outerNodesList[i].setRegion( newRegion );
+            }
+        } else if ( m_interactingObj == InteractingPolygon || m_interactingObj == InteractingNothing ) {
+            for ( int i = 0; i < outerRing.size(); ++i ) {
+                QRegion newRegion;
+                if ( m_outerNodesList.at(i).isSelected() ) {
+                    newRegion = painter->regionFromEllipse( outerRing.at(i),
+                                                            selectedDim, selectedDim );
+                } else {
+                    newRegion = painter->regionFromEllipse( outerRing.at(i),
+                                                            regularDim, regularDim );
+                }
+                m_outerNodesList[i].setRegion( newRegion );
+            }
+
+            for ( int i = 0; i < innerRings.size(); ++i ) {
+                for ( int j = 0; j < innerRings.at(i).size(); ++j ) {
+                    QRegion newRegion;
+                    if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                        newRegion = painter->regionFromEllipse( innerRings.at(i).at(j),
+                                                                     selectedDim, selectedDim );
+                    } else {
+                        newRegion = painter->regionFromEllipse( innerRings.at(i).at(j),
+                                                                     regularDim, regularDim );
+                    }
+                    m_innerNodesList[i][j].setRegion( newRegion );
+                }
+            }
+        }
+    } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
+        // First update the regions for the inner bounds regions we already know about.
+        for ( int i = 0; i < m_innerNodesList.size(); ++i ) {
+            for ( int j = 0; j < m_innerNodesList.at(i).size(); ++j ) {
+                int size;
+                if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                    size = selectedDim;
+                } else {
+                    size = regularDim;
+                }
+
+                m_innerNodesList[i][j].setRegion( painter->regionFromEllipse(
+                                                  innerRings.at(i).at(j), size, size ) );
+            }
+        }
+
+        // If meanwhile a new inner boundary have been added, append an empy list of PolygonNodes.
+        if ( m_innerNodesList.size() < innerRings.size() ) {
+            m_innerNodesList.append( QList<PolygonNode>() );
+        }
+
+        // If meanwhile a new node has been added, append it to the most recent inner boundary from
+        // the inner boundaries regions list.
+        if ( m_innerNodesList.size() &&
+             m_innerNodesList.last().size() < innerRings.last().size() ) {
+            PolygonNode newNode = PolygonNode( painter->regionFromEllipse(
+                                               innerRings.last().last(), regularDim, regularDim ) );
+            newNode.setFlag( PolygonNode::NodeIsInnerTmp );
+            m_innerNodesList.last().append( newNode );
+        }
+    } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
+
+    } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
+
     }
 }
 
@@ -607,6 +710,11 @@ int AreaAnnotation::virtualNodeContains( const QPoint &point ) const
 
 int AreaAnnotation::innerBoundsContain( const QPoint &point ) const
 {
+    // There are no inner boundaries.
+    if ( m_boundariesList.size() == 1 ) {
+        return -1;
+    }
+
     // Starting from 1 because on index 0 is stored the region representing the whole polygon.
     for ( int i = 1; i < m_boundariesList.size(); ++i ) {
         if ( m_boundariesList.at(i).contains( point ) ) {
@@ -628,26 +736,36 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
         return false;
     }
 
+    qreal lat, lon;
+    m_viewport->geoCoordinates( mouseEvent->pos().x(),
+                                mouseEvent->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
+    m_movedPointCoords.set( lon, lat );
+
     // First check if one of the nodes from outer boundary has been clicked.
     int outerIndex = outerNodeContains( mouseEvent->pos() );
     if ( outerIndex != -1 ) {
-        m_interactingObj = InteractingNode;
         m_clickedNodeIndexes = QPair<int, int>( outerIndex, -1 );
 
         if ( mouseEvent->button() == Qt::RightButton ) {
             m_request = ShowNodeRmbMenu;
+        } else {
+            m_interactingObj = InteractingNode;
         }
+
         return true;
     }
 
     // Then check if one of the nodes which form an inner boundary has been clicked.
     QPair<int, int> innerIndexes = innerNodeContains( mouseEvent->pos() );
     if ( innerIndexes.first != -1 && innerIndexes.second != -1 ) {
-        m_interactingObj = InteractingNode;
         m_clickedNodeIndexes = innerIndexes;
 
         if ( mouseEvent->button() == Qt::RightButton ) {
             m_request = ShowNodeRmbMenu;
+        } else {
+            m_interactingObj = InteractingNode;
         }
         return true;
     }
@@ -655,17 +773,10 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     // If neither outer boundary nodes nor inner boundary nodes contain the event position,
     // then check if the interior of the polygon (excepting its 'holes') contains this point.
     if ( polygonContains( mouseEvent->pos() ) ) {
-        qreal lat, lon;
-        m_viewport->geoCoordinates( mouseEvent->pos().x(),
-                                    mouseEvent->pos().y(),
-                                    lon, lat,
-                                    GeoDataCoordinates::Radian );
-
-        m_movedPointCoords.set( lon, lat );
-        m_interactingObj = InteractingPolygon;
-
         if ( mouseEvent->button() == Qt::RightButton ) {
             m_request = ShowPolygonRmbMenu;
+        } else {
+            m_interactingObj = InteractingPolygon;
         }
         return true;
     }
@@ -678,8 +789,9 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 {
-    // Mouse move events have always associated NoButton.
-    Q_ASSERT( mouseEvent->button() == Qt::NoButton );
+    if ( !m_viewport || !m_geopainter ) {
+        return false;
+    }
 
     qreal lon, lat;
     m_viewport->geoCoordinates( mouseEvent->pos().x(),
@@ -698,25 +810,9 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         if ( j == -1 ) {
             outerRing[i] = newCoords;
-
-            QRegion newRegion;
-            if ( m_outerNodesList.at(i).isSelected() ) {
-                newRegion = m_geopainter->regionFromEllipse( newCoords, selectedDim, selectedDim );
-            } else {
-                newRegion = m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim );
-            }
-            m_outerNodesList[i].setRegion( newRegion );
         } else {
             Q_ASSERT( i != -1 && j != -1 );
             innerRings[i].at(j) = newCoords;
-
-            QRegion newRegion;
-            if ( m_innerNodesList.at(i).at(j).isSelected() ) {
-                newRegion = m_geopainter->regionFromEllipse( newCoords, selectedDim, selectedDim );
-            } else {
-                newRegion = m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim );
-            }
-            m_innerNodesList[i][j].setRegion( newRegion );
         }
 
         return true;
@@ -741,14 +837,6 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
             movedPoint.setLatitude( lat );
 
             polygon->outerBoundary().append( movedPoint );
-
-            QRegion newRegion;
-            if ( m_outerNodesList.at(i).isSelected() ) {
-                newRegion = m_geopainter->regionFromEllipse( movedPoint, selectedDim, selectedDim );
-            } else {
-                newRegion = m_geopainter->regionFromEllipse( movedPoint, regularDim, regularDim );
-            }
-            m_outerNodesList[i].setRegion( newRegion );
         }
 
         for ( int i = 0; i < innerRings.size(); ++i ) {
@@ -763,14 +851,6 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
                 movedPoint.setLatitude( lat );
 
                 newRing.append( movedPoint );
-
-                QRegion newRegion;
-                if ( m_innerNodesList.at(i).at(j).isSelected() ) {
-                    newRegion = m_geopainter->regionFromEllipse( movedPoint, selectedDim, selectedDim );
-                } else {
-                    newRegion = m_geopainter->regionFromEllipse( movedPoint, regularDim, regularDim );
-                }
-                m_innerNodesList[i][j].setRegion( newRegion );
             }
             polygon->innerBoundaries().append( newRing );
         }
@@ -793,10 +873,12 @@ bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
 
     if ( m_interactingObj == InteractingNode ) {
         qreal x, y;
+
         m_viewport->screenCoordinates( m_movedPointCoords.longitude(), m_movedPointCoords.latitude(), x, y );
         // The node gets selected only if it is clicked and not moved.
         if ( qFabs(mouseEvent->pos().x() - x) > mouseMoveOffset ||
              qFabs(mouseEvent->pos().y() - y) > mouseMoveOffset ) {
+            m_interactingObj = InteractingNothing;
             return true;
         }
 
@@ -804,10 +886,11 @@ bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
         int j = m_clickedNodeIndexes.second;
 
         if ( j == -1 ) {
-            m_outerNodesList[i].setFlag( PolygonNode::NodeIsSelected, !m_outerNodesList[i].isSelected() );
+            m_outerNodesList[i].setFlag( PolygonNode::NodeIsSelected,
+                                         !m_outerNodesList[i].isSelected() );
         } else {
             m_innerNodesList[i][j].setFlag ( PolygonNode::NodeIsSelected,
-                                                !m_innerNodesList.at(i).at(j).isSelected() );
+                                             !m_innerNodesList.at(i).at(j).isSelected() );
         }
 
         m_interactingObj = InteractingNothing;
@@ -818,9 +901,6 @@ bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
         return true;
     }
 
-    // Normally, it should not get here, because all we can interact with so far are nodes and the
-    // whole polygon.
-    Q_ASSERT( 0 );
     return false;
 }
 
@@ -850,11 +930,6 @@ bool AreaAnnotation::processAddingHoleOnPress( QMouseEvent *mouseEvent )
        m_innerNodesList.append( QList<PolygonNode>() );
     }
     innerBounds.last().append( newCoords );
-
-
-    PolygonNode newNode = PolygonNode( m_geopainter->regionFromEllipse( newCoords, regularDim, regularDim ) );
-    newNode.setFlag( PolygonNode::NodeIsInnerTmp );
-    m_innerNodesList.last().append( newNode );
 
     return true;
 }

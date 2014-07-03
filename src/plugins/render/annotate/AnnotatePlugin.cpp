@@ -545,38 +545,48 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     // It is important to deal with the MouseMove event here because it changes the state of the selected
     // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
     // globe, which is treated above).
+    //qDebug() << "Before moving\n";
     if ( mouseEvent->type() == QEvent::MouseMove && m_movedItem &&
          handleMovingSelectedItem( mouseEvent ) ) {
         return true;
     }
+    //qDebug() << "After moving\n";
 
     // Pass the event to Graphic Items.
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
+        //qDebug() << "Before containsPoint call\n";
         if ( !item->containsPoint( mouseEvent->pos() ) ) {
             continue;
         }
 
+        //qDebug() << "Before calling itemChanged\n";
         // notify the previous item we interacted with about the change.
-        if ( m_lastItem ) {
-            m_lastItem->itemChanged( item );
-        }
+        //if ( m_lastItem && m_lastItem != item ) {
+        //    m_lastItem->itemChanged( item );
+        //}
 
+        //qDebug() << "Before testing if we are removing items\n";
         if ( m_removingItem && mouseEvent->button() == Qt::LeftButton &&
              mouseEvent->type() == QEvent::MouseButtonRelease ) {
             handleRemovingItem( item );
             return true;
         }
 
+        //qDebug() << "Before scene event\n";
         if ( item->sceneEvent( event ) ) {
             // Make sure this is zeroed when removing the polygon by the rmb menu below.
-            m_lastItem = item;
+            // m_lastItem = item;
 
             if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
+                qDebug() << "Before handle mouse press\n";
                 handleMousePressEvent( mouseEvent, item );
+                qDebug() << "After handle mouse press\n";
             } else if ( mouseEvent->type() == QEvent::MouseButtonRelease ) {
+                //qDebug() << "Before handle mouse release\n";
                 handleMouseReleaseEvent( mouseEvent, item );
             }
 
+            m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
             return true;
         }
     }
@@ -584,6 +594,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     // If the event gets here, it most probably means it is a map interaction event, or something
     // that has nothing to do with the annotate plugin items. We "deal" with this situation because,
     // for example, we may need to deselect some selected items.
+    //qDebug() << "Before handle uncaught events\n";
     handleUncaughtEvents( mouseEvent );
 
     return false;
@@ -693,7 +704,7 @@ void AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphi
         }
     } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
-
+        //qDebug() << "Request: " << area->request() << "\n";
         if ( area->request() == AreaAnnotation::ShowPolygonRmbMenu ) {
             showPolygonRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
@@ -758,11 +769,11 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
         clearOverlayFrames();
     }
 
-    if ( m_lastItem ) {
+    //if ( m_lastItem ) {
         // 0 means interacting with something that is not an annotate plugin item.
-        m_lastItem->itemChanged( 0 );
-        m_lastItem = 0;
-    }
+    //    m_lastItem->itemChanged( 0 );
+    //    m_lastItem = 0;
+    //}
 }
 
 void AnnotatePlugin::setupActions( MarbleWidget *widget )
@@ -1031,7 +1042,7 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 {
     m_rmbSelectedArea = selectedArea;
 
-    if ( selectedArea->hasNodesSelected() ) {
+    if ( !selectedArea->hasNodesSelected() ) {
         m_polygonRmbMenu->actions().at(1)->setEnabled( false );
         m_polygonRmbMenu->actions().at(0)->setEnabled( false );
     } else {
@@ -1060,6 +1071,8 @@ void AnnotatePlugin::deleteSelectedNodes()
 
 void AnnotatePlugin::removePolygon()
 {
+    m_lastItem = 0;
+
     m_graphicsItems.removeAll( m_rmbSelectedArea );
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
 
@@ -1128,6 +1141,7 @@ void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newSta
 {
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
         item->setState( newState );
+        m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
     }
 }
 
