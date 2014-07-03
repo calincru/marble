@@ -29,7 +29,7 @@ SceneGraphicsItem::~SceneGraphicsItem()
     // nothing to do
 }
 
-ActionState SceneGraphicsItem::state() const
+SceneGraphicsItem::ActionState SceneGraphicsItem::state() const
 {
     return m_state;
 }

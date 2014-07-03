@@ -15,7 +15,7 @@
 namespace Marble
 {
 
-namespace SceneGraphicTypes
+namespace SceneGraphicsTypes
 {
     const char *SceneGraphicAreaAnnotation = "SceneGraphicAreaAnnotation";
 	const char *SceneGraphicGroundOverlay = "SceneGraphicGroundOverlay";

@@ -28,6 +28,10 @@ public:
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
+    virtual bool containsPoint( const QPoint &eventPos ) const;
+
+    virtual void itemChanged( const SceneGraphicsItem *other );
+
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
@@ -35,11 +39,14 @@ public:
 
 private:
     GeoWidgetBubble *bubble;
+    QList<QRegion>   m_regionList;
 
 protected:
     virtual bool mousePressEvent( QMouseEvent *event );
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
+
+    virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
 };
 
 }

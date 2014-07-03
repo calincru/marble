@@ -180,7 +180,7 @@ private:
 
     GeoDataPlacemark     *m_polygonPlacemark;
     SceneGraphicsItem    *m_movedItem;
-    SceneGraphicsitem    *m_lastItem;
+    SceneGraphicsItem    *m_lastItem;
     GeoDataGroundOverlay *m_rmbOverlay;
     AreaAnnotation       *m_rmbSelectedArea;
 

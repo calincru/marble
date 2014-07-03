@@ -55,7 +55,7 @@ public:
 
     virtual bool containsPoint( const QPoint &eventPos ) const = 0;
 
-    virtual void itemChanged( const SceneGraphicItem *other ) = 0;
+    virtual void itemChanged( const SceneGraphicsItem *other ) = 0;
 
     ActionState state() const;
 
@@ -95,7 +95,7 @@ protected:
     virtual bool mouseMoveEvent( QMouseEvent *event ) = 0;
     virtual bool mouseReleaseEvent( QMouseEvent *event ) = 0;
 
-    virtual void stateChanged( SceneGraphicItem::ActionState previousState ) = 0;
+    virtual void stateChanged( SceneGraphicsItem::ActionState previousState ) = 0;
 private:
     ActionState       m_state;
     GeoDataPlacemark *m_placemark;

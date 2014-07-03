@@ -47,7 +47,7 @@
 #include <QMessageBox>
 #include <QtAlgorithms>
 #include <QMessageBox>
-#include <QPair>
+#include <QColor>
 
 #include <QDebug>
 
@@ -148,7 +148,7 @@ QList<PluginAuthor> AnnotatePlugin::pluginAuthors() const
 {
     return QList<PluginAuthor>()
             << PluginAuthor( "Andrew Manson", "<g.real.ate@gmail.com>" )
-            << PluginAuthor( "Thibaut Gridel", "<tgridel@free.fr>" );
+            << PluginAuthor( "Thibaut Gridel", "<tgridel@free.fr>" )
             << PluginAuthor( "Calin-Cristian Cruceru", "<crucerucalincristian@gmail.com>" );
 }
 
@@ -289,7 +289,7 @@ void AnnotatePlugin::setAddingOverlay( bool enabled )
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
     if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::MergingNodes );
+        announceStateChanged( SceneGraphicsItem::MergingPolygonNodes );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -298,7 +298,7 @@ void AnnotatePlugin::setMergingNodes( bool enabled )
 void AnnotatePlugin::setAddingNodes( bool enabled )
 {
     if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::AddingNodes );
+        announceStateChanged( SceneGraphicsItem::AddingPolygonNodes );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -403,6 +403,7 @@ void AnnotatePlugin::clearAnnotations()
 
     if ( result == QMessageBox::Yes ) {
         // It gets deleted three lines further, when calling qDeleteAll().
+        m_lastItem = 0;
         m_movedItem = 0;
         delete m_polygonPlacemark;
         m_polygonPlacemark = 0;
@@ -561,7 +562,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         }
 
         if ( m_removingItem && mouseEvent->button() == Qt::LeftButton &&
-             mouseEvent->type == QEvent::MouseButtonRelease ) {
+             mouseEvent->type() == QEvent::MouseButtonRelease ) {
             handleRemovingItem( item );
             return true;
         }
@@ -696,7 +697,7 @@ void AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphi
         if ( area->request() == AreaAnnotation::ShowPolygonRmbMenu ) {
             showPolygonRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
-            showNodeRmbMenu( area, mouseEvent->pos.x(), mouseEvent->pos().y() );
+            showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),
@@ -717,15 +718,14 @@ void AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphi
     }
 
     //m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
-    return true;
 }
 
 void AnnotatePlugin::handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
+    Q_UNUSED( mouseEvent );
     m_movedItem = 0;
 
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
-    return true;
 }
 
 void AnnotatePlugin::handleRemovingItem( SceneGraphicsItem *item )
@@ -1127,7 +1127,7 @@ void AnnotatePlugin::deleteNode()
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
 {
     foreach ( SceneGraphicsItem *item, m_graphicsItems ) {
-        item.setState( newState );
+        item->setState( newState );
     }
 }
 

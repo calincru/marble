@@ -19,7 +19,7 @@ namespace Marble
  * interact with using the annotate plugin.
  */
 
-namespace SceneGraphicTypes
+namespace SceneGraphicsTypes
 {
     extern const char *SceneGraphicAreaAnnotation;
     extern const char *SceneGraphicGroundOverlay;

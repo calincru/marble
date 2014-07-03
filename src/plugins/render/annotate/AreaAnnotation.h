@@ -14,15 +14,15 @@
 #define AREAANNOTATION_H
 
 #include "SceneGraphicsItem.h"
+#include "GeoDataCoordinates.h"
 
+#include <QPair>
 
 namespace Marble
 {
 
 class GeoDataPlacemark;
 class PolygonNode;
-class QPair;
-class QColor;
 
 class AreaAnnotation : public SceneGraphicsItem
 {
@@ -38,7 +38,7 @@ public:
         ShowPolygonRmbMenu,
         ShowNodeRmbMenu,
         RemovePolygonRequest
-    }
+    };
 
     /**
      * @brief
@@ -53,7 +53,7 @@ public:
     /**
      * @brief
      */
-    virtual void itemChanged( const SceneGraphicItem *other );
+    virtual void itemChanged( const SceneGraphicsItem *other );
 
     MarbleWidgetRequest request() const;
 
@@ -149,7 +149,7 @@ private:
         InteractingNothing, // e.g. when hovering
         InteractingNode,
         InteractingPolygon
-    }
+    };
     
     GeoDataCoordinates       m_movedPointCoords;
     QPair<int, int>          m_clickedNodeIndexes;
@@ -161,6 +161,8 @@ private:
     // used in Adding Nodes state
     int  m_virtualHovered;
     bool m_adjustingNode;
-}
+};
 
 }
+
+#endif

@@ -22,9 +22,9 @@ namespace Marble
 
 GroundOverlayFrame::GroundOverlayFrame( GeoDataPlacemark *placemark, GeoDataGroundOverlay *overlay, TextureLayer *textureLayer )
     : SceneGraphicsItem( placemark ),
-      m_movedPoint( -1 ),
       m_overlay( overlay ),
       m_textureLayer( textureLayer ),
+      m_movedPoint( -1 ),
       m_viewport( 0 )
 {
     update();
@@ -33,7 +33,7 @@ GroundOverlayFrame::GroundOverlayFrame( GeoDataPlacemark *placemark, GeoDataGrou
 void GroundOverlayFrame::paint(GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    QList<QRegion> regionList;
+    m_regionList.clear();
 
     painter->save();
     painter->setBrush( Oxygen::aluminumGray4 );
@@ -41,21 +41,34 @@ void GroundOverlayFrame::paint(GeoPainter *painter, const ViewportParams *viewpo
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
         GeoDataLinearRing &ring = polygon->outerBoundary();
         for ( int i = 0; i < ring.size(); ++i ) {
-            regionList.append( painter->regionFromEllipse( ring.at(i), 10, 10 ) );
+            m_regionList.append( painter->regionFromEllipse( ring.at(i), 10, 10 ) );
         }
-        regionList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
+        m_regionList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
     }
     painter->restore();
-    setRegions( regionList );
+}
+
+bool GroundOverlayFrame::containsPoint( const QPoint &eventPos ) const
+{
+    foreach ( const QRegion &region, m_regionList ) {
+        if ( region.contains( eventPos ) ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void GroundOverlayFrame::itemChanged( const SceneGraphicsItem *other )
+{
+    Q_UNUSED( other );
 }
 
 bool GroundOverlayFrame::mousePressEvent( QMouseEvent *event )
 {
-    QList<QRegion> regionList = regions();
-
     // React to all ellipse as well as to the polygon.
-    for ( int i = 0; i < regionList.size(); ++i ) {
-        if ( regionList.at(i).contains( event->pos() ) ) {
+    for ( int i = 0; i < m_regionList.size(); ++i ) {
+        if ( m_regionList.at(i).contains( event->pos() ) ) {
             m_movedPoint = i;
 
             qreal lon, lat;
@@ -188,9 +201,15 @@ void GroundOverlayFrame::rotateAroundCenter( qreal lon, qreal lat, qreal &rotate
     GeoDataCoordinates::normalizeLonLat( rotatedLon, rotatedLat );
 }
 
+void GroundOverlayFrame::stateChanged( SceneGraphicsItem::ActionState previousState )
+{
+    Q_UNUSED( previousState );
+}
+
 const char *GroundOverlayFrame::graphicType() const
 {
-    return SceneGraphicTypes::SceneGraphicGroundOverlay;
+    return SceneGraphicsTypes::SceneGraphicGroundOverlay;
 }
+
 
 }
