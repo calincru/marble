@@ -7,21 +7,22 @@
 //
 // Copyright 2009      Andrew Manson            <g.real.ate@gmail.com>
 // Copyright 2013      Thibaut Gridel           <tgridel@free.fr>
-// Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com
+// Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com>
 //
 
 #ifndef AREAANNOTATION_H
 #define AREAANNOTATION_H
 
 #include "SceneGraphicsItem.h"
-#include "GeoDataCoordinates.h"
-#include "GeoDataStyle.h"
-#include "GeoDataLinearRing.h"
 
-#include <QPair>
 
 namespace Marble
 {
+
+class GeoDataPlacemark;
+class PolygonNode;
+class QPair;
+class QColor;
 
 class AreaAnnotation : public SceneGraphicsItem
 {
@@ -30,95 +31,136 @@ public:
 
     ~AreaAnnotation();
 
+    enum MarbleWidgetRequest {
+        NoRequest,
+        OuterInnerMergingWarning,
+        InnerInnerMergingWarning,
+        ShowPolygonRmbMenu,
+        ShowNodeRmbMenu,
+        RemovePolygonRequest
+    }
+
+    /**
+     * @brief
+     */
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
-    virtual bool containsPoint( const QPoint &point ) const; 
+    /**
+     * @brief
+     */
+    virtual bool containsPoint( const QPoint &point ) const;
 
     /**
-     * @brief Returns the list of selected node indexes.
+     * @brief
      */
-    QList<int> &selectedNodes();
+    virtual void itemChanged( const SceneGraphicItem *other );
 
-    /**
-     * @brief Returns the node index on which the mouse press event (with the right
-     * button) has been caught.
-     */
-    int rightClickedNode() const;
+    MarbleWidgetRequest request() const;
 
-    /**
-     * @brief Checks whether the point parameter is contained by one of its inner
-     * boundaries.
-     * @param restrictive If this parameter is set to false, only check if one of its
-     * inner boundaries contains the point (using GeoDataLinerRing::contains). In
-     * addition to this, when restrictive is set to true, also check that none of
-     * the polygon nodes' regions contain the point (yes, these regions may 'intersect'
-     * due to the way nodes are represented).
-     */
-    bool isInnerBoundsPoint( const QPoint &point, bool restrictive = false ) const;
+    void deselectAllNodes();
 
-    /**
-     * @brief Checks if the polygon has a valid shape; an invalid shape would be, for
-     * example, if one of its inner boundaries ring is intersected by its outer
-     * boundary ring.
-     */
-    bool isValidPolygon() const;
+    void deleteAllSelectedNodes();
 
-    /**
-     * @brief Sets the nodes to be merged.
-     */
-    void setMergedNodes( const QPair<int, int> &nodes );
+    void deleteClickedNode();
 
-    /**
-     * @brief Getters for the nodes to be merged.
-     */
-    QPair<int, int> &mergedNodes();
+    void changeClickedNodeSelection();
 
-    const QPair<int, int> &mergedNodes() const;
+    bool hasNodesSelected() const;
 
-    bool isAdjustingNode() const;
+    bool clickedNodeIsSelected() const;
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
     virtual const char *graphicType() const;
 
-private:
-    /**
-     * @brief Returns the index of the first region from the list SceneGraphicsItem::regions() which
-     * contains the @p eventPos.
-     */
-    int firstRegionWhichContains( const QPoint &eventPos ) const;
-
-
-    QList<QRegion>     m_innerBoundariesList;
-    int                m_virtualNodesCount;
-
-    // Used for merging
-    QPair<int, int>    m_mergedNodes;
-
-    // Used for adding nodes
-    GeoDataLinearRing *m_realOuterBoundary;
-    QList<int>         m_realSelectedNodes;
-    bool               m_adjustingNode;
-
-    int                m_movedNodeIndex;
-    int                m_rightClickedNode;
-    QList<int>         m_selectedNodes;
-    GeoDataCoordinates m_movedPointCoords;
-
-    const ViewportParams *m_viewport;
-
 protected:
-    /**
-     * @brief In the implementation of these virtual functions, the following convention has  been
-     * followed: if the event cannot be dealt with in this class (for example when right clicking
-     * a node or polygon), the functions return false and AnnotatePlugin::eventFilter deals with it.
-     */
     virtual bool mousePressEvent( QMouseEvent *event );
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
-};
 
+    /**
+     * @brief
+     */
+    virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
+
+private:
+    /**
+     * @brief
+     */
+    void setupRegionsLists( GeoPainter *painter );
+
+    /**
+     * @brief
+     */
+    void drawNodes( GeoPainter *painter );
+
+    int outerNodeContains( const QPoint &point ) const;
+
+    QPair<int, int> innerNodeContains( const QPoint &point ) const;
+
+    int virtualNodeContains( const QPoint &point ) const;
+
+    int innerBoundsContain( const QPoint &point ) const;
+
+    bool polygonContains( const QPoint &point ) const;
+
+
+    bool processEditingOnPress( QMouseEvent *mouseEvent );
+    bool processEditingOnMove( QMouseEvent *mouseEvent );
+    bool processEditingOnRelease( QMouseEvent *mouseEvent );
+
+    bool processAddingHoleOnPress( QMouseEvent *mouseEvent );
+    bool processAddingHoleOnMove( QMouseEvent *mouseEvent );
+    bool processAddingHoleOnRelease( QMouseEvent *mouseEvent );
+
+    bool processMergingOnPress( QMouseEvent *mouseEvent );
+    bool processMergingOnMove( QMouseEvent *mouseEvent );
+    bool processMergingOnRelease( QMouseEvent *mouseEvent );
+
+    bool processAddingNodesOnPress( QMouseEvent *mouseEvent );
+    bool processAddingNodesOnMove( QMouseEvent *mouseEvent );
+    bool processAddingNodesOnRelease( QMouseEvent *mouseEvent );
+
+    void updateBoundariesList();
+
+
+    static const int regularDim;
+    static const int selectedDim;
+    static const int mergedDim;
+    static const int hoveredDim;
+    static const QColor regularColor;
+    static const QColor selectedColor;
+    static const QColor mergedColor;
+    static const QColor hoveredColor;
+
+    const GeoPainter     *m_geopainter;
+    const ViewportParams *m_viewport;
+    bool                  m_regionsInitialized;
+    MarbleWidgetRequest   m_request;
+
+    QList<PolygonNode>          m_outerNodesList;
+    QList< QList<PolygonNode> > m_innerNodesList;
+    QList<PolygonNode>          m_virtualNodesList;
+    QList<QRegion>              m_boundariesList;
+
+    // Used in the Editing state
+    enum EditingInteractingObject {
+        InteractingNothing, // e.g. when hovering
+        InteractingNode,
+        InteractingPolygon
+    }
+    
+    GeoDataCoordinates       m_movedPointCoords;
+    QPair<int, int>          m_clickedNodeIndexes;
+    EditingInteractingObject m_interactingObj;
+
+    // used in Merging Nodes state
+    QPair<int, int> m_mergedNodeIndexes;
+
+    // used in Adding Nodes state
+    int  m_virtualHovered;
+    bool m_adjustingNode;
 }
 
-#endif // AREAANNOTATION_H
+}
