@@ -691,7 +691,16 @@ void AnnotatePlugin::handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphi
             clearOverlayFrames();
         }
     } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+        AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
 
+        if ( area->request() == AreaAnnotation::ShowPolygonRmbMenu ) {
+            showPolygonRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
+        } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
+            showNodeRmbMenu( area, mouseEvent->pos.x(), mouseEvent->pos().y() );
+        } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
+            QMessageBox::warning( m_marbleWidget, QString( "Operation not permitted" ),
+                                  QString(
+        }
     }
 
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
@@ -985,9 +994,9 @@ void AnnotatePlugin::clearOverlayFrames()
 
 void AnnotatePlugin::setupPolygonRmbMenu()
 {
-    QAction *unselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
-    m_polygonRmbMenu->addAction( unselectNodes );
-    connect( unselectNodes, SIGNAL(triggered()), this, SLOT(unselectNodes()) );
+    QAction *deselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( deselectNodes );
+    connect( deselectNodes, SIGNAL(triggered()), this, SLOT(deselectNodes()) );
 
     QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( deleteAllSelected );
@@ -1009,7 +1018,7 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 {
     m_rmbSelectedArea = selectedArea;
 
-    if ( selectedArea->selectedNodes().isEmpty() ) {
+    if ( selectedArea->hasNodesSelected() ) {
         m_polygonRmbMenu->actions().at(1)->setEnabled( false );
         m_polygonRmbMenu->actions().at(0)->setEnabled( false );
     } else {
@@ -1021,96 +1030,18 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 }
 
 
-void AnnotatePlugin::unselectNodes()
+void AnnotatePlugin::deselectNodes()
 {
-    m_rmbSelectedArea->selectedNodes().clear();
+    m_rmbSelectedArea->deselectAllNodes();
+
 }
 
 void AnnotatePlugin::deleteSelectedNodes()
 {
-    QList<int> &selectedNodes = m_rmbSelectedArea->selectedNodes();
+    m_rmbSelectedArea->deleteAllSelectedNodes();
 
-    // If there are no selected nodes, exit the function.
-    if ( !selectedNodes.size() ) {
-        return;
-    }
-
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
-    // Copy the current polygon's inner boundaries and outer boundary, to be able to recover them
-    // if the deletion fails (the polygon becomes invalid after deleting the selected nodes).
-    QVector<GeoDataLinearRing> innerBounds = poly->innerBoundaries();
-    GeoDataLinearRing outerBound = poly->outerBoundary();
-
-    // Sorting and iterating through the list of selected nodes backwards is important because when
-    // caling {outerBoundary,innerBoundary[i]}.remove, the indexes of the selected nodes bigger than
-    // the removed one's (in one step of the iteration) should be all decremented due to the way
-    // QVector::remove works.
-    // Sorting and iterating backwards is, therefore, faster than iterating through the list and at
-    // each iteration, iterate one more time through the list in order to decrement the above
-    // mentioned nodes (O(N * logN) < O(N ^ 2) in terms of complexity).
-    qSort( selectedNodes.begin(), selectedNodes.end() );
-
-    QListIterator<int> it( selectedNodes );
-    it.toBack();
-
-    // Deal with removing the selected nodes from the polygon's inner boundaries.
-    while ( it.hasPrevious() ) {
-        int nodeIndex = it.previous();
-
-        if ( nodeIndex < poly->outerBoundary().size() ) {
-            it.next();
-            break;
-        }
-
-        nodeIndex -= poly->outerBoundary().size();
-        for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
-            if ( nodeIndex - poly->innerBoundaries().at(i).size() < 0 ) {
-                poly->innerBoundaries()[i].remove( nodeIndex );
-                break;
-            } else {
-                nodeIndex -= poly->innerBoundaries().at(i).size();
-            }
-        }
-    }
-    // If one of the polygon's inner boundaries has 0, 1 or 2 nodes remained after
-    // removing the selected ones, remove this entire inner boundary.
-    for ( int i = 0; i < poly->innerBoundaries().size(); ++i ) {
-        if ( poly->innerBoundaries().at(i).size() <= 2 ) {
-            poly->innerBoundaries()[i].clear();
-        }
-    }
-
-
-
-    // Deal with removing the selected nodes from the polygon's outer boundaries.
-    while ( it.hasPrevious() ) {
-        poly->outerBoundary().remove( it.previous() );
-    }
-
-    // If the number of nodes remained after deleting the selected ones is 0, 1 or 2, we remove the
-    // entire polygon.
-    if ( poly->outerBoundary().size() <= 2 ) {
-        selectedNodes.clear();
-
-        m_graphicsItems.removeAll( m_rmbSelectedArea );
-        m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
-        delete m_rmbSelectedArea->feature();
-        delete m_rmbSelectedArea;
-
-        return;
-    }
-
-    // If the polygon is no longer valid (e.g. its outer boundary ring itersects one of its inner
-    // boundaries ring), recover it to the last valid shape and popup a warning.
-    if ( !m_rmbSelectedArea->isValidPolygon() ) {
-        poly->innerBoundaries() = innerBounds;
-        poly->outerBoundary() = outerBound;
-
-        QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted" ),
-                              QString( "Cannot delete the selected nodes" ) );
-    } else {
-        selectedNodes.clear();
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
+        removePolygon();        
     }
 }
 
@@ -1156,7 +1087,7 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 {
     // Check whether the node is already selected; we change the text of the
     // action accordingly.
-    if ( area->selectedNodes().contains( area->rightClickedNode() ) ) {
+    if ( area->clickedNodeIsSelected() ) {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Deselect Node") );
     } else {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
@@ -1168,87 +1099,15 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 
 void AnnotatePlugin::selectNode()
 {
-    if ( m_rmbSelectedArea->selectedNodes().contains(  m_rmbSelectedArea->rightClickedNode() ) ) {
-        m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
-    } else {
-        m_rmbSelectedArea->selectedNodes().append( m_rmbSelectedArea->rightClickedNode() );
-    }
+    m_rmbSelectedArea->changeClickedNodeSelection();
 }
-
 
 void AnnotatePlugin::deleteNode()
 {
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_rmbSelectedArea->placemark()->geometry() );
+    m_rmbSelectedArea->deleteClickedNode();
 
-    // Copy the current polygon's inner boundaries and outer boundary, to be able to recover them
-    // if the deletion fails (the polygon becomes invalid after deleting the selected nodes).
-    QVector<GeoDataLinearRing> innerBounds = poly->innerBoundaries();
-    GeoDataLinearRing outerBound = poly->outerBoundary();
-
-    int index = m_rmbSelectedArea->rightClickedNode();
-
-    // If the right clicked node is one of those nodes which form one of the inner boundaries
-    // of the polygon.
-    if ( index - poly->outerBoundary().size() >= 0 ) {
-        QVector<GeoDataLinearRing> &innerRings = poly->innerBoundaries();
-
-        index -= poly->outerBoundary().size();
-        for ( int i = 0; i < innerRings.size(); ++i ) {
-            // If we've found the inner boundary it is a part of, we remove it; also, if the
-            // linear ring has only 2 nodes remained after deletion, we remove the entire
-            // inner boundary.
-            if ( index - innerRings.at(i).size() < 0 ) {
-                innerRings[i].remove( index );
-                if ( innerRings.at(i).size() <= 2 ) {
-                    innerRings[i].clear();
-                }
-
-                break;
-            } else {
-                index -= innerRings.at(i).size();
-            }
-        }
-    } else {
-        poly->outerBoundary().remove( index );
-
-        // If the polygon has only 2 nodes, we remove it all.
-        if ( poly->outerBoundary().size() <= 2 ) {
-             m_rmbSelectedArea->selectedNodes().clear();
-
-            m_graphicsItems.removeAll( m_rmbSelectedArea );
-            m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
-            delete m_rmbSelectedArea->feature();
-            delete m_rmbSelectedArea;
-
-            return;
-        }
-    }
-
-    // If the polygon is no longer valid (e.g. its outer boundary ring itersects one of its inner
-    // boundaries ring), recover it to the last valid shape and popup a warning.
-    if ( !m_rmbSelectedArea->isValidPolygon() ) {
-        poly->innerBoundaries() = innerBounds;
-        poly->outerBoundary() = outerBound;
-
-        QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted"),
-                              QString( "Cannot delete the selected node" ) );
-
-        return;
-    }
-
-    // If the node is selected, remove it from the selected list of nodes as well.
-    m_rmbSelectedArea->selectedNodes().removeAll( m_rmbSelectedArea->rightClickedNode() );
-
-    QList<int>::iterator itBegin = m_rmbSelectedArea->selectedNodes().begin();
-    QList<int>::const_iterator itEnd = m_rmbSelectedArea->selectedNodes().constEnd();
-
-    // Decrement the indexes of the selected nodes which have bigger indexes than the
-    // removed one's.
-    for ( ; itBegin != itEnd; ++itBegin ) {
-        if ( *itBegin > m_rmbSelectedArea->rightClickedNode() ) {
-            (*itBegin)--;
-        }
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
+        removePolygon();
     }
 }
 

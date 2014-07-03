@@ -169,6 +169,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     m_geopainter( 0 ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
+    m_request( NoRequest ),
     m_interactingObj( InteractingNothing )
 {
     // nothing to do
@@ -253,10 +254,149 @@ void AreaAnnotation::itemChanged( const SceneGraphicItem *other )
         }
 
         m_mergedNodeIndexes = QPair( -1, -1 );
-        m_mergingWarning = NoWarning;
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         m_virtualHovered = -1;
     }
+}
+
+MarbleWidgetRequest AnnotatePlugin::request() const
+{
+    return m_request;
+}
+
+void AreaAnnotation::deselectAllNodes()
+{
+    if ( state() != SceneGraphicItem::Editing ) {
+        return;
+    }
+
+    for ( int i = 0 ; i < m_outerNodesList.size(); ++i ) {
+        m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsSelected, false );
+    }
+
+    for ( int i = 0; i < m_innerNodesList.size(); ++i ) {
+        for ( int j = 0; j < m_innerNodesList.at(i).size(); ++j ) {
+            m_innerNodesList.at(i).at(j).setFlag( PolygonNode::NodeIsSelected, false );
+        }
+    }
+}
+
+void AreaAnnotation::deleteAllSelectedNodes()
+{
+    if ( state() != SceneGraphicItem::Editing ) {
+        return;
+    }
+     
+    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+    GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+    for ( int i = 0; i < outerRing.size(); ++i ) {
+        if ( m_outerNodesList.at(i).isSelected() ) {
+            if ( m_outerNodesList.size() <= 3 ) {
+                m_request = RemovePolygonRequest;
+                return;
+            }
+
+            m_outerNodesList.removeAt( i );
+            outerRing.remove( i );
+        }
+    }
+
+    for ( int i = 0; i < innerRings.size(); ++i ) {
+        for ( int j = 0; j < innerRings.at(i).size(); ++j ) {
+            if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                if ( m_innerNodesList.at(i).size() <= 3 ) {
+                    innerRings.remove( i );
+                    m_innerNodesList.removeAt( i );
+                    return;
+                }
+
+                innerRings.at(i).remove( j );
+                m_innerNodesList.at(i).removeAt( j );
+            }
+        }
+    }
+}
+
+void AreaAnnotation::deleteClickedNode()
+{
+    if ( state() != SceneGraphicItem::Editing ) {
+        return;
+    }
+
+    int i = m_clickedNodeIndexes.first;
+    int j = m_clickedNodeIndexes.second;
+
+    if ( i != -1 && j == -1 ) {
+        if ( m_outerNodesList.size() <= 3 ) {
+            m_request = RemovePolygonRequest;
+            return;
+        }
+
+        GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+        GeoDataLinearRing &outerRing = polygon->outerBoundary();
+
+        outerRing.remove( i );
+        m_outerNodesList.removeAt( i );
+    } else if ( i != -1 && j != -1 ) {
+        GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+        QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+        if ( m_innerNodesList.at(i).size() <= 3 ) {
+            innerRings.remove( i );
+            m_innerNodesList.removeAt( i );
+        }
+
+        innerRings.at(i).remove( j );
+        m_innerNodesList.at(i).removeAt( j );
+    }
+}
+
+void AreaAnnotation::changeClickedNodeSelection()
+{
+    if ( state() != SceneGraphicItem::Editing ) {
+        return;
+    }
+
+    int i = m_clickedNodeIndexes.first;
+    int j = m_clickedNodeIndexes.second;
+
+    if ( i != -1 && j == -1 ) {
+        m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsSelected,
+                                        !m_outerNodesList.at(i).isSelected() );
+    } else if ( i != -1 && j != -1 ) {
+        m_innerNodesList.at(i).at(j).setFlag( PolygonNode::NodeIsSelected,
+                                              !m_innerNodesList.at(i).at(j).isSelected() );
+    }
+}
+
+bool AreaAnnotation::hasNodesSelected() const
+{
+    for ( int i = 0; i < m_outerNodesList.size(); ++i ) {
+        if ( m_outerNodesList.at(i).isSelected() ) {
+            return true;
+        }
+    }
+
+    for ( int i = 0; i < m_innerNodesList.size(); ++i ) {
+        for ( int j = 0; j < m_innerNodesList.at(i).size(); ++j ) {
+            if ( m_innerNodesList.at(i).at(j).isSelected() ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool AreaAnnotation::clickedNodeIsSelected() const
+{
+    int i = m_clickedNodeIndexes.first;
+    int j = m_clickedNodeIndexes.second;
+
+    return ( i != -1 && j == -1 && m_outerNodesList.at(i).isSelected() ) ||
+           ( i != -1 && j != -1 && m_innerNodesList.at(i).at(j).isSelected() );
 }
 
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
@@ -265,6 +405,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
         return false;
     }
 
+    m_request = NoRequest;
     SceneGraphicsItem::ActionState state = state();
 
     if ( state == SceneGraphicsItem::Editing ) {
@@ -286,6 +427,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return false;
     }
 
+    m_request = NoRequest;
     SceneGraphicsItem::ActionState state = state();
 
     if ( state == SceneGraphicsItem::Editing ) {
@@ -307,6 +449,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return false;
     }
 
+    m_request = NoRequest;
     SceneGraphicsItem::ActionState state = state();
 
     if ( state == SceneGraphicsItem::Editing ) {
@@ -326,7 +469,7 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
 {
     // Dealing with cases when exiting a state has an effect on the scene graphic items.
     if ( previousState == SceneGraphicsItem::Editing ) {
-
+        m_clickedNodeIndexes = QPair( -1, -1 );
     } else if ( previousState == SceneGraphicsItem::AddingPolygonHole ) {
         // Check if a polygon hole was being drawn before moving to other item.
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
@@ -361,14 +504,15 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
         m_adjustingNode = false;
     }
 
-    // Dealing with cases when entering a state has an effect on scene graphic items.
+    // Dealing with cases when entering a state has an effect on scene graphic items, or
+    // initializations are needed.
     if ( state() == SceneGraphicsItem::Editing ) {
         m_interactingObj = InteractingNothing;
+        m_clickedNodeIndexes = QPair( -1, -1 );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
 
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         m_mergedNodeIndexes = QPair(-1, -1);
-        m_warning = NoWarning;
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         // First fill the virtual nodes list.
         const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
@@ -539,6 +683,10 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     if ( outerIndex != -1 ) {
         m_interactingObj = InteractingNode;
         m_clickedNodeIndexes = QPair( outerIndex, -1 );
+
+        if ( mouseEvent->button() == Qt::RightButton ) {
+            m_request = ShowNodeRmbMenu;
+        }
         return true;
     }
 
@@ -547,6 +695,10 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     if ( innerIndexes.first != -1 && innerIndexes.second != -1 ) {
         m_interactingObj = InteractingNode;
         m_clickedNodeIndexes = innerIndexes;
+
+        if ( mouseEvent->button() == Qt::RightButton ) {
+            m_request = ShowNodeRmbMenu;
+        }
         return true;
     }
 
@@ -561,6 +713,10 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
 
         m_movedPointCoords.set( lon, lat );
         m_interactingObj = InteractingPolygon;
+
+        if ( mouseEvent->button() == Qt::RightButton ) {
+            m_request = ShowPolygonRmbMenu;
+        }
         return true;
     }
 
@@ -767,6 +923,7 @@ bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 {
+    // TODO: Verify if the size becomes smaller than 3.
     if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
     }
@@ -778,11 +935,10 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
     int outerIndex = outerNodeContains( mouseEvent->pos() );
     if ( outerIndex != -1 ) {
         if ( m_mergedNodeIndexes.first == -1 && m_mergedNodeIndexes.second == -1 ) {
-            m_mergingWarning = NoWarning;
             m_mergedNodeIndexes = QPair( outerIndex, -1 );
             m_outerNodesList.at(outerIndex).setFlag( PolygonNode::NodeIsMerged );
         } else if ( m_mergedNodeIndexes.first != -1 && m_mergedNodeIndexes.second != -1 ) {
-            m_mergingWarning = OuterInnerWarning;
+            m_request = OuterInnerMergingWarning;
             m_outerNodesList.at(m_mergedNodeIndexes.first).setFlag( PolygonNode::NodeIsMerged, false );
             m_mergedNodeIndexes = QPair( -1, -1 );
         } else {
@@ -801,9 +957,8 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             if ( m_outerNodesList.at(m_mergedNodeIndexes.first).isSelected() ) {
                 m_outerNodesList.at(outerIndex).setFlag( PolygonNode::NodeIsSelected );
             }
-            Q_ASSERT( m_outerNodesList.removeAll( m_mergedNodeIndexes.first  ) == 1 );
+            Q_ASSERT( m_outerNodesList.removeAt( m_mergedNodeIndexes.first  ) == 1 );
 
-            m_mergingWarning = NoWarning;
             m_mergedNodeIndexes = QPair( -1, -1 );
         }
 
@@ -816,17 +971,16 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
         int j = m_mergedNodeIndexes.second;
 
         if ( i == -1 && j == -1 ) {
-            m_mergingWarning = NoWarning;
             m_mergedNodeIndexes = innerIndexes;
             m_innerNodesList.at(i).at(j).setFlag( PolygonNode::NodeIsMerged );
         } else if ( i != -1 && j == -1 ) {
-            m_mergingWarning = OuterInnerWarning;
+            m_request = OuterInnerMergingWarning;
             m_outerNodesList.at(i).setFlag( PolygonNode::NodeIsMerged, false );
             m_mergedNodeIndexes = QPair( -1, -1 );
         } else {
             Q_ASSERT( i != -1 && j != -1 );
             if ( i != innerIndexes.first ) {
-                m_mergingWarning = InnerInnerWarning;
+                m_request = InnerInnerMergingWarning;
                 m_innerNodesList.at(innerIndexes.first).at(innerIndexes.second).setFlag(
                                                         PolygonNode::NodeIsMerged, false );
                 return true;
@@ -843,9 +997,8 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             if ( m_innerNodesList.at(i).at(j).isSelected() ) {
                 m_innerNodesList.at(i).at(innerIndexes.second).setFlag( PolygonNode::NodeIsSelected );
             }
-            Q_ASSERT( m_innerNodesList[i].removeAll( j ) == 1 );
+            Q_ASSERT( m_innerNodesList[i].removeAt( j ) == 1 );
 
-            m_mergingWarning = NoWarning;
             m_mergedNodeIndexes = QPair( -1, -1 );
         }
 

@@ -125,7 +125,7 @@ private slots:
     void removePolygon();
     void selectNode();
     void deleteNode();
-    void unselectNodes();
+    void deselectNodes();
     void deleteSelectedNodes();
 
 protected:

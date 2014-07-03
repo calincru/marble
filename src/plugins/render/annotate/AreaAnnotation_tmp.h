@@ -31,19 +31,13 @@ public:
 
     ~AreaAnnotation();
 
-    enum EditingInteractingObject {
-        InteractingNothing, // e.g. when hovering
-        InteractingNode,
-        InteractingPolygon
-    }
-
-    // Redenumesc cu ceva gen requests, sa simbolifice faptul ca au nevoie de marble widget. Si o sa includ aici si
-    // afisarea rmb menus.
-    enum MergingWarning {
-        NoWarning,
-        OuterInnerWarning,
-        InnerInnerWarning,
-        FewNodesWarning
+    enum MarbleWidgetRequest {
+        NoRequest,
+        OuterInnerMergingWarning,
+        InnerInnerMergingWarning,
+        ShowPolygonRmbMenu,
+        ShowNodeRmbMenu,
+        RemovePolygonRequest
     }
 
     /**
@@ -61,13 +55,19 @@ public:
      */
     virtual void itemChanged( const SceneGraphicItem *other );
 
+    MarbleWidgetRequest request() const;
+
     void deselectAllNodes();
 
     void deleteAllSelectedNodes();
 
-    void deleteSelectedNode();
+    void deleteClickedNode();
 
-    void deselectSelectedNode();
+    void changeClickedNodeSelection();
+
+    bool hasNodesSelected() const;
+
+    bool clickedNodeIsSelected() const;
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
@@ -137,6 +137,7 @@ private:
     const GeoPainter     *m_geopainter;
     const ViewportParams *m_viewport;
     bool                  m_regionsInitialized;
+    MarbleWidgetRequest   m_request;
 
     QList<PolygonNode>          m_outerNodesList;
     QList< QList<PolygonNode> > m_innerNodesList;
@@ -144,13 +145,18 @@ private:
     QList<QRegion>              m_boundariesList;
 
     // Used in the Editing state
+    enum EditingInteractingObject {
+        InteractingNothing, // e.g. when hovering
+        InteractingNode,
+        InteractingPolygon
+    }
+    
     GeoDataCoordinates       m_movedPointCoords;
     QPair<int, int>          m_clickedNodeIndexes;
     EditingInteractingObject m_interactingObj;
 
     // used in Merging Nodes state
     QPair<int, int> m_mergedNodeIndexes;
-    MergingWarning  m_mergingWarning;
 
     // used in Adding Nodes state
     int  m_virtualHovered;
