@@ -90,12 +90,15 @@ private:
      */
     void setupRegionsLists( GeoPainter *painter );
 
-    void updateNodesRegions( GeoPainter *painter );
+    void applyChanges( GeoPainter *painter );
+
+    void updateRegions( GeoPainter *painter );
 
     /**
      * @brief
      */
     void drawNodes( GeoPainter *painter );
+
 
     int outerNodeContains( const QPoint &point ) const;
 
@@ -124,9 +127,7 @@ private:
     bool processAddingNodesOnMove( QMouseEvent *mouseEvent );
     bool processAddingNodesOnRelease( QMouseEvent *mouseEvent );
 
-    void updateBoundariesList();
 
-    // change the scope from class' to updateNodes method
     static const int regularDim;
     static const int selectedDim;
     static const int mergedDim;
@@ -158,7 +159,9 @@ private:
     EditingInteractingObject m_interactingObj;
 
     // used in Merging Nodes state
-    QPair<int, int> m_mergedNodeIndexes;
+    QPair<int, int>    m_firstMergedNode;
+    QPair<int, int>    m_secondMergedNode;
+    GeoDataCoordinates m_resultingCoords;
 
     // used in Adding Nodes state
     int  m_virtualHovered;

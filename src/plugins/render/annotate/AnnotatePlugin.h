@@ -154,10 +154,12 @@ private:
     bool handleAddingPolygon( QMouseEvent *mouseEvent );
     bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
-    void handleMousePressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    void handleMouseReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void handleRemovingItem( SceneGraphicsItem *item );
+
+    void handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void announceStateChanged( SceneGraphicsItem::ActionState newState );
 
