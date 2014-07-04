@@ -718,7 +718,7 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),
                                   QString( "Cannot merge two nodes from two different inner "
-                                           "boundaaries" ) );
+                                           "boundaries" ) );
         } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
             m_graphicsItems.removeAll( area );
             m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
@@ -1047,7 +1047,6 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 void AnnotatePlugin::deselectNodes()
 {
     m_rmbSelectedArea->deselectAllNodes();
-
 }
 
 void AnnotatePlugin::deleteSelectedNodes()
@@ -1056,6 +1055,12 @@ void AnnotatePlugin::deleteSelectedNodes()
 
     if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
         removePolygon();        
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
+        QMessageBox::warning( m_marbleWidget,
+                              QString( "Operation not permitted" ),
+                              QString( "Cannot delete one of the selected nodes. Most probably "
+                                       "this would make the polygon's outer boundary to not "
+                                       " contain all its inner boundary nodes." ) );
     }
 }
 
@@ -1124,6 +1129,12 @@ void AnnotatePlugin::deleteNode()
 
     if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
         removePolygon();
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
+        QMessageBox::warning( m_marbleWidget,
+                              QString( "Operation not permitted" ),
+                              QString( "Cannot delete one of the selected nodes. Most probably "
+                                       "this would make the polygon's outer boundary to not "
+                                       " contain all its inner boundary nodes." ) );
     }
 }
 

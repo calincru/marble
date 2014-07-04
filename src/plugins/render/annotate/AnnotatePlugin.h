@@ -165,6 +165,7 @@ private:
 
     //    void readOsmFile( QIODevice* device, bool flyToFile );
 
+
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
 

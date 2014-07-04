@@ -35,6 +35,7 @@ public:
         NoRequest,
         OuterInnerMergingWarning,
         InnerInnerMergingWarning,
+        InvalidShapeWarning,
         ShowPolygonRmbMenu,
         ShowNodeRmbMenu,
         RemovePolygonRequest
@@ -85,6 +86,8 @@ protected:
     virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
 
 private:
+    bool isValidPolygon() const;
+
     /**
      * @brief
      */

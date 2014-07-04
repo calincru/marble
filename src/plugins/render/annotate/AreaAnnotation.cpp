@@ -251,6 +251,12 @@ void AreaAnnotation::deleteAllSelectedNodes()
     GeoDataLinearRing &outerRing = polygon->outerBoundary();
     QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
+    // If it proves inefficient, try something different.
+    GeoDataLinearRing initialOuterRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> initialInnerRings = polygon->innerBoundaries();
+    QList<PolygonNode> initialOuterNodes = m_outerNodesList;
+    QList< QList<PolygonNode> > initialInnerNodes = m_innerNodesList;
+
     for ( int i = 0; i < outerRing.size(); ++i ) {
         if ( m_outerNodesList.at(i).isSelected() ) {
             if ( m_outerNodesList.size() <= 3 ) {
@@ -270,7 +276,8 @@ void AreaAnnotation::deleteAllSelectedNodes()
                 if ( m_innerNodesList.at(i).size() <= 3 ) {
                     innerRings.remove( i );
                     m_innerNodesList.removeAt( i );
-                    return;
+                    --i;
+                    break;
                 }
 
                 innerRings[i].remove( j );
@@ -279,6 +286,14 @@ void AreaAnnotation::deleteAllSelectedNodes()
             }
         }
     }
+
+    if ( !isValidPolygon() ) {
+        polygon->outerBoundary() = initialOuterRing;
+        polygon->innerBoundaries() = initialInnerRings;
+        m_outerNodesList = initialOuterNodes;
+        m_innerNodesList = initialInnerNodes;
+        m_request = InvalidShapeWarning;
+    }
 }
 
 void AreaAnnotation::deleteClickedNode()
@@ -286,6 +301,16 @@ void AreaAnnotation::deleteClickedNode()
     if ( state() != SceneGraphicsItem::Editing ) {
         return;
     }
+
+    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+    GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
+
+    // If it proves inefficient, try something different.
+    GeoDataLinearRing initialOuterRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> initialInnerRings = polygon->innerBoundaries();
+    QList<PolygonNode> initialOuterNodes = m_outerNodesList;
+    QList< QList<PolygonNode> > initialInnerNodes = m_innerNodesList;
 
     int i = m_clickedNodeIndexes.first;
     int j = m_clickedNodeIndexes.second;
@@ -296,15 +321,9 @@ void AreaAnnotation::deleteClickedNode()
             return;
         }
 
-        GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-        GeoDataLinearRing &outerRing = polygon->outerBoundary();
-
         outerRing.remove( i );
         m_outerNodesList.removeAt( i );
     } else if ( i != -1 && j != -1 ) {
-        GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-        QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
-
         if ( m_innerNodesList.at(i).size() <= 3 ) {
             innerRings.remove( i );
             m_innerNodesList.removeAt( i );
@@ -313,6 +332,14 @@ void AreaAnnotation::deleteClickedNode()
 
         innerRings[i].remove( j );
         m_innerNodesList[i].removeAt( j );
+    }
+
+    if ( !isValidPolygon() ) {
+        polygon->outerBoundary() = initialOuterRing;
+        polygon->innerBoundaries() = initialInnerRings;
+        m_outerNodesList = initialOuterNodes;
+        m_innerNodesList = initialInnerNodes;
+        m_request = InvalidShapeWarning;
     }
 }
 
@@ -501,6 +528,22 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
 const char *AreaAnnotation::graphicType() const
 {
     return SceneGraphicsTypes::SceneGraphicAreaAnnotation;
+}
+
+bool AreaAnnotation::isValidPolygon() const
+{
+    const GeoDataPolygon *poly = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
+    const QVector<GeoDataLinearRing> &innerRings = poly->innerBoundaries();
+
+    foreach ( const GeoDataLinearRing &innerRing, innerRings ) {
+        for ( int i = 0; i < innerRing.size(); ++i ) {
+            if ( !poly->outerBoundary().contains( innerRing.at(i) ) ) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 void AreaAnnotation::setupRegionsLists( GeoPainter *painter )
