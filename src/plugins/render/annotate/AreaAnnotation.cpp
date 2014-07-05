@@ -1021,6 +1021,9 @@ bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
     }
 
     GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
+    GeoDataLinearRing initialOuterRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> initialInnerRings = polygon->innerBoundaries();
+
     GeoDataLinearRing &outerRing = polygon->outerBoundary();
     QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
@@ -1055,6 +1058,14 @@ bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
                                                     outerRing.at(outerIndex), 0.5 );
             outerRing.at(outerIndex) = m_resultingCoords;
             outerRing.remove( m_firstMergedNode.first );
+
+            if ( !isValidPolygon() ) {
+                polygon->outerBoundary() = initialOuterRing;
+                polygon->innerBoundaries() = initialInnerRings;
+                m_firstMergedNode = QPair<int, int>( -1, -1 );
+                m_request = InvalidShapeWarning;
+                return true;
+            }
 
             m_secondMergedNode = QPair<int, int>( outerIndex, -1 );
         }

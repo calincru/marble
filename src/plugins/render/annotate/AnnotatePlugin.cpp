@@ -579,7 +579,6 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
             handleRequests( mouseEvent, item );
 
-            m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
             return true;
         }
     }
@@ -686,17 +685,20 @@ bool AnnotatePlugin::handleMovingSelectedItem( QMouseEvent *mouseEvent )
 void AnnotatePlugin::handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     Q_UNUSED( mouseEvent );
-
     // Store a pointer to the item for possible following move events.
     m_movedItem = item;
+
+    // Update the item's placemark.
+    m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
 }
 
 void AnnotatePlugin::handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     Q_UNUSED( mouseEvent );
-
     // The item gets 'deselected' (from moving) at mouse release.
     m_movedItem = 0;
+
+    // Update the item's placemark.
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
 }
 
@@ -719,6 +721,12 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
                                   QString( "Operation not permitted" ),
                                   QString( "Cannot merge two nodes from two different inner "
                                            "boundaries" ) );
+        } else if ( area->request() == AreaAnnotation::InvalidShapeWarning ) {
+            QMessageBox::warning( m_marbleWidget,
+                                  QString( "Operation not permitted" ),
+                                  QString( "Cannot merge the selected nodes. Most probably "
+                                           "this would make the polygon's outer boundary to not "
+                                           "contain all its inner boundary nodes." ) );
         } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
             m_graphicsItems.removeAll( area );
             m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
@@ -1047,26 +1055,33 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 void AnnotatePlugin::deselectNodes()
 {
     m_rmbSelectedArea->deselectAllNodes();
+
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
+    }
 }
 
 void AnnotatePlugin::deleteSelectedNodes()
 {
     m_rmbSelectedArea->deleteAllSelectedNodes();
 
-    if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
-        removePolygon();        
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
+        removePolygon();
     } else if ( m_rmbSelectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
                               QString( "Operation not permitted" ),
                               QString( "Cannot delete one of the selected nodes. Most probably "
                                        "this would make the polygon's outer boundary to not "
-                                       " contain all its inner boundary nodes." ) );
+                                       "contain all its inner boundary nodes." ) );
     }
 }
 
 void AnnotatePlugin::removePolygon()
 {
     m_lastItem = 0;
+    m_movedItem = 0;
 
     m_graphicsItems.removeAll( m_rmbSelectedArea );
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
@@ -1121,13 +1136,19 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 void AnnotatePlugin::selectNode()
 {
     m_rmbSelectedArea->changeClickedNodeSelection();
+
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
+    }
 }
 
 void AnnotatePlugin::deleteNode()
 {
     m_rmbSelectedArea->deleteClickedNode();
 
-    if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
         removePolygon();
     } else if ( m_rmbSelectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
