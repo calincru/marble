@@ -579,6 +579,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
             handleRequests( mouseEvent, item );
 
+            m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
             return true;
         }
     }
