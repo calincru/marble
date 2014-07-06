@@ -1059,6 +1059,8 @@ bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
             if ( !isValidPolygon() ) {
                 polygon->outerBoundary() = initialOuterRing;
                 polygon->innerBoundaries() = initialInnerRings;
+                m_outerNodesList.at(m_firstMergedNode.first).setFlag( PolygonNode::NodeIsMerged,  false );
+
                 m_firstMergedNode = QPair<int, int>( -1, -1 );
                 m_request = InvalidShapeWarning;
                 return true;
