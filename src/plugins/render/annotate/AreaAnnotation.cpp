@@ -1128,7 +1128,7 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
     if ( index != -1 && !m_adjustingNode ) {
         Q_ASSERT( m_virtualHovered == index );
 
-        GeoDataLinearRing newRing;
+        GeoDataLinearRing newRing( Tessellate );
         QList<PolygonNode> newList;
         for ( int i = index; i < index + outerRing.size(); ++i ) {
             newRing.append( outerRing.at(i % outerRing.size()) );
