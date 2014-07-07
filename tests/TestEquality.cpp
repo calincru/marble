@@ -5,7 +5,7 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2014      Cruceru Calin     <crucerucalincristian@gmail.com>
+// Copyright 2014      Calin Cruceru     <crucerucalincristian@gmail.com>
 // Copyright 2014      Sanjiban Bairagya <sanjiban22393@gmail.com>
 // Copyright 2014      Abhinav Gangwar   <abhgang@gmail.com>
 //
