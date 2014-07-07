@@ -113,6 +113,7 @@ TourWidgetPrivate::TourWidgetPrivate( TourWidget *parent )
     QObject::connect( m_tourUi.m_actionOpenTour, SIGNAL( triggered() ), q, SLOT( openFile() ) );
     QObject::connect( m_tourUi.m_actionSaveTour, SIGNAL( triggered() ), q, SLOT( saveTour() ) );
     QObject::connect( m_tourUi.m_actionSaveTourAs, SIGNAL( triggered() ), q, SLOT( saveTourAs() ) );
+    QObject::connect( &m_playback, SIGNAL(centerOn(GeoDataCoordinates)), q, SLOT(centerOn(GeoDataCoordinates)) );
 }
 
 TourWidget::TourWidget( QWidget *parent, Qt::WindowFlags flags )
@@ -343,15 +344,7 @@ TourWidget::~TourWidget()
 
 void TourWidget::setMarbleWidget( MarbleWidget *widget )
 {
-    if (d->m_widget) {
-        disconnect(&d->m_playback, SIGNAL(centerOn(GeoDataCoordinates)), d->m_widget, SLOT(centerOn(GeoDataCoordinates)));
-    }
-
     d->m_widget = widget;
-
-    if (d->m_widget) {
-        connect(&d->m_playback, SIGNAL(centerOn(GeoDataCoordinates)), d->m_widget, SLOT(centerOn(GeoDataCoordinates)));
-    }
     d->m_delegate = new TourItemDelegate( d->m_tourUi.m_listView, d->m_widget );
     d->m_tourUi.m_listView->setItemDelegate( d->m_delegate );
 }
@@ -394,9 +387,7 @@ void TourWidget::stopPlaying()
 
 void TourWidget::handleSliderMove( int value )
 {
-    int max = d->m_tourUi.m_slider->maximum();
-    double fraction = value * 1.0 / max;
-    d->m_playback.seek( fraction );
+    d->m_playback.seek( value / 100.0 );
 }
 
 void TourWidgetPrivate::openFile()
@@ -456,9 +447,7 @@ void TourWidgetPrivate::mapCenterOn( const QModelIndex &index )
 void TourWidgetPrivate::addFlyTo()
 {
     GeoDataFlyTo *flyTo = new GeoDataFlyTo();
-    GeoDataLookAt *lookAt = new GeoDataLookAt();
-    lookAt->setCoordinates( m_widget->focusPoint() );
-    flyTo->setView( lookAt );
+    flyTo->setView( new GeoDataLookAt( m_widget->lookAt() ) );
     GeoDataObject *rootObject =  rootIndexObject();
     if ( rootObject->nodeType() == GeoDataTypes::GeoDataPlaylistType ) {
         GeoDataPlaylist *playlist = static_cast<GeoDataPlaylist*>( rootObject );
@@ -579,7 +568,7 @@ void TourWidgetPrivate::updateRootIndex()
         }
         m_playback.setMarbleWidget( m_widget );
         m_playback.setTour( tour );
-        m_playback.setupProgressBar( m_tourUi.m_slider );
+        m_tourUi.m_slider->setMaximum( m_playback.duration() * 100 );
         QObject::connect( &m_playback, SIGNAL( centerOn( GeoDataCoordinates ) ),
                          m_widget, SLOT( centerOn( GeoDataCoordinates ) ) );
         QObject::connect( &m_playback, SIGNAL( progressChanged( double ) ),
@@ -608,6 +597,16 @@ void TourWidget::deleteSelected()
     if ( feature ) {
         emit featureUpdated( feature );
         d->updateRootIndex();
+    }
+}
+
+void TourWidget::centerOn( const GeoDataCoordinates &coordinates )
+{
+    if ( d->m_widget ) {
+        GeoDataLookAt lookat;
+        lookat.setCoordinates( coordinates );
+        lookat.setRange( coordinates.altitude() );
+        d->m_widget->flyTo( lookat, Instant );
     }
 }
 
@@ -707,7 +706,7 @@ bool TourWidgetPrivate::saveTourAs(const QString &filename)
         QFile file( filename );
         if ( file.open( QIODevice::WriteOnly ) ) {
             GeoWriter writer;
-            writer.setDocumentType( kml::kmlTag_nameSpace22 );
+            writer.setDocumentType( kml::kmlTag_nameSpaceOgc22 );
             if ( writer.write( &file, m_model.rootDocument() ) ) {
                 file.close();
                 m_tourUi.m_actionSaveTour->setEnabled( false );

@@ -14,15 +14,14 @@
 #include <QList>
 #include <QSlider>
 #include <qurl.h>
+#include <QtCore/qnamespace.h>
 
 #include "MarbleDebug.h"
 #include "MarbleWidget.h"
+#include "PopupLayer.h"
 #include "GeoDataTour.h"
-#include "GeoDataTourPrimitive.h"
 #include "GeoDataFlyTo.h"
 #include "GeoDataLookAt.h"
-#include "GeoDataCamera.h"
-#include "GeoDataWait.h"
 #include "GeoDataTourControl.h"
 #include "GeoDataSoundCue.h"
 #include "GeoDataAnimatedUpdate.h"
@@ -33,6 +32,8 @@
 #include "PlaybackTourControlItem.h"
 #include "PlaybackSoundCueItem.h"
 #include "PlaybackAnimatedUpdateItem.h"
+#include "SerialTrack.h"
+#include "ParallelTrack.h"
 
 namespace Marble
 {
@@ -40,40 +41,37 @@ namespace Marble
 class TourPlaybackPrivate
 {
 public:
-    TourPlaybackPrivate(TourPlayback *q);
+    TourPlaybackPrivate();
+    ~TourPlaybackPrivate();
 
-    const GeoDataTour  *m_tour;
+    const GeoDataTour *m_tour;
     bool m_pause;
-    SerialTrack *m_mainTrack;
+    SerialTrack m_mainTrack;
     QList<ParallelTrack*> m_parallelTracks;
-    GeoDataCoordinates m_coordinates;
     GeoDataFlyTo m_mapCenter;
     MarbleWidget *m_widget;
-    QSlider *m_slider;
-
-protected:
-    TourPlayback *q_ptr;
-
-private:
-    Q_DECLARE_PUBLIC(TourPlayback)
 };
 
-TourPlaybackPrivate::TourPlaybackPrivate(TourPlayback* q) :
+TourPlaybackPrivate::TourPlaybackPrivate() :
     m_tour( &GeoDataTour::null ),
     m_pause( false ),
-    m_mainTrack( new SerialTrack),
-    q_ptr( q )
+    m_mainTrack()
 {
     // do nothing
 }
 
+TourPlaybackPrivate::~TourPlaybackPrivate()
+{
+    qDeleteAll(m_parallelTracks);
+}
+
 TourPlayback::TourPlayback(QObject *parent) :
     QObject(parent),
-    d(new TourPlaybackPrivate(this))
+    d(new TourPlaybackPrivate())
 {
-    connect( mainTrack(), SIGNAL( centerOn( GeoDataCoordinates ) ), this, SIGNAL( centerOn( GeoDataCoordinates ) ) );
-    connect( mainTrack(), SIGNAL( progressChanged( double ) ), this, SIGNAL( progressChanged( double ) ) );
-    connect( mainTrack(), SIGNAL( finished() ), this, SLOT( finishedSlot() ) );
+    connect( &d->m_mainTrack, SIGNAL( centerOn( GeoDataCoordinates ) ), this, SIGNAL( centerOn( GeoDataCoordinates ) ) );
+    connect( &d->m_mainTrack, SIGNAL( progressChanged( double ) ), this, SIGNAL( progressChanged( double ) ) );
+    connect( &d->m_mainTrack, SIGNAL( finished() ), this, SLOT( stopTour() ) );
 }
 
 TourPlayback::~TourPlayback()
@@ -81,17 +79,26 @@ TourPlayback::~TourPlayback()
     delete d;
 }
 
-void TourPlayback::finishedSlot()
+void TourPlayback::stopTour()
 {
-    foreach( ParallelTrack* track, d->m_parallelTracks) {
+    foreach( ParallelTrack* track, d->m_parallelTracks ){
         track->stop();
         track->setPaused( false );
     }
 }
 
-SerialTrack* TourPlayback::mainTrack()
+void TourPlayback::showBalloon( GeoDataPlacemark* placemark )
 {
-    return d->m_mainTrack;
+    GeoDataPoint* point = static_cast<GeoDataPoint*>( placemark->geometry() );
+    d->m_widget->popupLayer()->setCoordinates( point->coordinates(), Qt::AlignRight | Qt::AlignVCenter );
+    d->m_widget->popupLayer()->setContent( placemark->description() );
+    d->m_widget->popupLayer()->setVisible( true );
+    d->m_widget->popupLayer()->setSize( QSizeF( 480, 500 ) );
+}
+
+void TourPlayback::hideBalloon()
+{
+    d->m_widget->popupLayer()->setVisible( false );
 }
 
 bool TourPlayback::isPlaying() const
@@ -104,15 +111,10 @@ void TourPlayback::setMarbleWidget(MarbleWidget* widget)
     d->m_widget = widget;
 }
 
-void TourPlayback::setupProgressBar( QSlider *slider )
-{
-    slider->setMaximum( d->m_mainTrack->duration() * 100 );
-    d->m_slider = slider;
-}
-
 void TourPlayback::setTour(const GeoDataTour *tour)
 {
-    d->m_mainTrack->clear();
+    d->m_mainTrack.clear();
+    qDeleteAll( d->m_parallelTracks );
     d->m_parallelTracks.clear();
     if (tour) {
         d->m_tour = tour;
@@ -125,19 +127,19 @@ void TourPlayback::setTour(const GeoDataTour *tour)
         const GeoDataTourPrimitive* primitive = d->m_tour->playlist()->primitive( i );
         if( primitive->nodeType() == GeoDataTypes::GeoDataFlyToType ){
             const GeoDataFlyTo *flyTo = dynamic_cast<const GeoDataFlyTo*>(primitive);
-            d->m_mainTrack->append( new PlaybackFlyToItem( flyTo ) );
+            d->m_mainTrack.append( new PlaybackFlyToItem( flyTo ) );
             delay += flyTo->duration();
         }
         else if( primitive->nodeType() == GeoDataTypes::GeoDataWaitType ){
             const GeoDataWait *wait = dynamic_cast<const GeoDataWait*>(primitive);
 
-            d->m_mainTrack->append( new PlaybackWaitItem( wait ) );
+            d->m_mainTrack.append( new PlaybackWaitItem( wait ) );
             delay += wait->duration();
         }
         else if( primitive->nodeType() == GeoDataTypes::GeoDataTourControlType ){
             const GeoDataTourControl *tourControl = dynamic_cast<const GeoDataTourControl*>(primitive);
 
-            d->m_mainTrack->append( new PlaybackTourControlItem( tourControl ) );
+            d->m_mainTrack.append( new PlaybackTourControlItem( tourControl ) );
         }
         else if( primitive->nodeType() == GeoDataTypes::GeoDataSoundCueType ){
             const GeoDataSoundCue *soundCue = dynamic_cast<const GeoDataSoundCue*>(primitive);
@@ -152,22 +154,26 @@ void TourPlayback::setTour(const GeoDataTour *tour)
             ParallelTrack *track = new ParallelTrack( item );
             track->setDelayBeforeTrackStarts( delay );
             d->m_parallelTracks.append( track );
+            connect( track, SIGNAL( balloonHidden()), this, SLOT( hideBalloon() ) );
+            connect( track, SIGNAL( balloonShown( GeoDataPlacemark* ) ), this, SLOT( showBalloon( GeoDataPlacemark* ) ) );
         }
     }
     Q_ASSERT( d->m_widget );
-    d->m_mapCenter.setView( new GeoDataLookAt( d->m_widget->lookAt() ) );
+    GeoDataLookAt* lookat = new GeoDataLookAt( d->m_widget->lookAt() );
+    lookat->setAltitude( lookat->range() );
+    d->m_mapCenter.setView( lookat );
     PlaybackFlyToItem* mapCenterItem = new PlaybackFlyToItem( &d->m_mapCenter );
     PlaybackFlyToItem* before = mapCenterItem;
-    for ( int i=0; i<d->m_mainTrack->size(); ++i ) {
-        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack->at(i) );
+    for ( int i=0; i<d->m_mainTrack.size(); ++i ) {
+        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack.at(i) );
         if ( item ) {
             item->setBefore( before );
             before = item;
         }
     }
     PlaybackFlyToItem* next = 0;
-    for ( int i=d->m_mainTrack->size()-1; i>=0; --i ) {
-        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack->at(i) );
+    for ( int i=d->m_mainTrack.size()-1; i>=0; --i ) {
+        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack.at(i) );
         if ( item ) {
             item->setNext( next );
             next = item;
@@ -178,9 +184,10 @@ void TourPlayback::setTour(const GeoDataTour *tour)
 void TourPlayback::play()
 {
     d->m_pause = false;
-    GeoDataCoordinates coords = d->m_widget->focusPoint();
-    d->m_mapCenter.setView( new GeoDataLookAt( d->m_widget->lookAt() ) );
-    mainTrack()->play();
+    GeoDataLookAt* lookat = new GeoDataLookAt( d->m_widget->lookAt() );
+    lookat->setAltitude( lookat->range() );
+    d->m_mapCenter.setView( lookat );
+    d->m_mainTrack.play();
     foreach( ParallelTrack* track, d->m_parallelTracks) {
         track->play();
     }
@@ -189,7 +196,7 @@ void TourPlayback::play()
 void TourPlayback::pause()
 {
     d->m_pause = true;
-    mainTrack()->pause();
+    d->m_mainTrack.pause();
     foreach( ParallelTrack* track, d->m_parallelTracks) {
         track->pause();
     }
@@ -198,20 +205,25 @@ void TourPlayback::pause()
 void TourPlayback::stop()
 {
     d->m_pause = true;
-    d->m_mainTrack->stop();
+    d->m_mainTrack.stop();
     foreach( ParallelTrack* track, d->m_parallelTracks) {
         track->stop();
     }
+    hideBalloon();
 }
 
-void TourPlayback::seek( double t )
+void TourPlayback::seek( double value )
 {
-    Q_ASSERT( t >= 0.0 && t <= 1.0 );
-    double const offset = t * mainTrack()->duration();
-    mainTrack()->seek( offset );
+    double const offset = qBound( 0.0, value, d->m_mainTrack.duration() );
+    d->m_mainTrack.seek( offset );
     foreach( ParallelTrack* track, d->m_parallelTracks ){
         track->seek( offset );
     }
+}
+
+double TourPlayback::duration() const
+{
+    return d->m_mainTrack.duration();
 }
 
 } // namespace Marble

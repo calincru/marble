@@ -1,14 +1,21 @@
 [Desktop Entry]
 Type=Service
 Name=GPX Geographic Data
+Name[da]=GPX geografiske data
+Name[es]=Datos geográficos GPX
+Name[fi]=GPX-paikkatieto
+Name[fr]=Données géographiques GPX
+Name[it]=Dati geografici GPX
 Name[nds]=GPX-Geodaten
 Name[nl]=GPX Geographic Data
+Name[pl]=Dane geograficzne GPX
 Name[pt]=Dados Geográficos em GPX
 Name[pt_BR]=Dados geográficos em GPX
 Name[sk]=Zemepisné dáta GPX
 Name[sv]=GPX geografisk data
 Name[uk]=географічні дані GPX
 Name[x-test]=xxGPX Geographic Dataxx
+Name[zh_TW]=GPX 地理資料
 
 X-KDE-ServiceTypes=ThumbCreator
 MimeType=application/x-gpx+xml;

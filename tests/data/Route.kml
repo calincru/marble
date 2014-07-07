@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://earth.google.com/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
   <Document>
     <Folder>
       <name>Route Request</name>
       <Placemark>
         <ExtendedData>
-          <Data name="routingVisited" displayName="Visited">
+          <Data name="routingVisited">
+            <displayName>Visited</displayName>
             <value>false</value>
           </Data>
         </ExtendedData>

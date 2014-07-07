@@ -12,53 +12,42 @@
 #define TOURPLAYBACK_H
 
 #include <QObject>
-#include <QSlider>
 
 #include "marble_export.h"
-#include "GeoDataFlyTo.h"
-#include "GeoDataWait.h"
-#include "GeoDataTourControl.h"
-#include "GeoDataSoundCue.h"
-#include "GeoDataAnimatedUpdate.h"
-#include "SerialTrack.h"
-#include "ParallelTrack.h"
 
 namespace Marble
 {
 
 class MarbleWidget;
-
 class GeoDataCoordinates;
 class GeoDataTour;
-class GeoDataTourPrimitive;
+class GeoDataPlacemark;
 
 class TourPlaybackPrivate;
-class SerialTrack;
-class ParallelTrack;
-class PlaybackItem;
-class PlaybackFlyToItem;
-class PlaybackWaitItem;
-class PlaybackTourControlItem;
-class PlaybackSoundCueItem;
-class PlaybackAnimatedUpdateItem;
 
 class MARBLE_EXPORT TourPlayback : public QObject
 {
     Q_OBJECT
 public:
-    explicit TourPlayback(QObject *parent);
+    explicit TourPlayback(QObject *parent=0);
     ~TourPlayback();
 
-    bool isPlaying() const;
-
     void setTour(const GeoDataTour *tour);
-    void setupProgressBar( QSlider *slider );
     void setMarbleWidget( MarbleWidget *widget );
+
+    /** Tour duration in seconds */
+    double duration() const;
+    bool isPlaying() const;
 
     void play();
     void pause();
     void stop();
-    void seek( double t );
+
+    /**
+     * Seek to the given timestamp (in seconds)
+     * @param offset Target timestamp in seconds in the range 0..duration()
+     */
+    void seek( double offset );
 
 Q_SIGNALS:
     void finished();
@@ -67,14 +56,13 @@ Q_SIGNALS:
     void centerOn( const GeoDataCoordinates &coordinates );
     void progressChanged( double );
 
-public Q_SLOTS:
-    void finishedSlot();
-    //void stopPlaying();
+private Q_SLOTS:
+    void stopTour();
+    void hideBalloon();
+    void showBalloon( GeoDataPlacemark* );
 
 private:
     TourPlaybackPrivate * const d;
-    SerialTrack* mainTrack();
-    friend class TourPlaybackPrivate;
 };
 
 } // namespace Marble

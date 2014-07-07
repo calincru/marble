@@ -20,7 +20,7 @@ namespace Marble
 {
 
 static GeoTagWriterRegistrar s_writerData( GeoTagWriter::QualifiedName( GeoDataTypes::GeoDataDataType,
-                                                                            kml::kmlTag_nameSpace22 ),
+                                                                            kml::kmlTag_nameSpaceOgc22 ),
                                                new KmlDataTagWriter() );
 
 
@@ -31,9 +31,7 @@ bool KmlDataTagWriter::write( const GeoNode *node,
 
     writer.writeStartElement( kml::kmlTag_Data );
     writer.writeAttribute( "name", data->name() );
-    if ( !data->displayName().isEmpty() ) {
-        writer.writeAttribute( "displayName", data->displayName() );
-    }
+    writer.writeOptionalElement( kml::kmlTag_displayName, data->displayName() );
     writer.writeElement( "value", data->value().toString() );
     writer.writeEndElement();
 

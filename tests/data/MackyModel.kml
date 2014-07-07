@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://earth.google.com/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
   <Placemark>
     <Model>
       <altitudeMode>relativeToGround</altitudeMode>
@@ -29,8 +29,8 @@
       </Link>
       <ResourceMap>
         <Alias>
-          <sourceHref>../files/CU-Macky-4sideturretnoCulling.jpg</sourceHref>
           <targetHref>../files/CU-Macky-4sideturretnoCulling.jpg</targetHref>
+          <sourceHref>../files/CU-Macky-4sideturretnoCulling.jpg</sourceHref>
         </Alias>
       </ResourceMap>
     </Model>

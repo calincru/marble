@@ -38,9 +38,12 @@ namespace GeoDataTypes
 GEODATA_EXPORT extern const char* GeoDataAliasType;
 GEODATA_EXPORT extern const char* GeoDataAnimatedUpdateType;
 GEODATA_EXPORT extern const char* GeoDataCameraType;
+GEODATA_EXPORT extern const char* GeoDataChangeType;
 GEODATA_EXPORT extern const char* GeoDataColorStyleType;
 GEODATA_EXPORT extern const char* GeoDataContainerType;
+GEODATA_EXPORT extern const char* GeoDataCreateType;
 GEODATA_EXPORT extern const char* GeoDataDataType;
+GEODATA_EXPORT extern const char* GeoDataDeleteType;
 GEODATA_EXPORT extern const char* GeoDataDocumentType;
 GEODATA_EXPORT extern const char* GeoDataExtendedDataType;
 GEODATA_EXPORT extern const char* GeoDataFeatureType;

@@ -21,7 +21,7 @@ namespace Marble
 
 static GeoTagWriterRegistrar s_writerPlaylist(
         GeoTagWriter::QualifiedName( GeoDataTypes::GeoDataPlaylistType,
-                                     kml::kmlTag_nameSpace22 ),
+                                     kml::kmlTag_nameSpaceOgc22 ),
         new KmlPlaylistTagWriter );
 
 bool KmlPlaylistTagWriter::write( const GeoNode *node, GeoWriter& writer ) const
@@ -53,6 +53,9 @@ void KmlPlaylistTagWriter::writeTourPrimitive( const GeoNode *primitive, GeoWrit
     }
     else if ( primitive->nodeType() == GeoDataTypes::GeoDataSoundCueType ) {
         writeSoundCue( static_cast<const GeoDataSoundCue*>(primitive), writer );
+    }
+    else if ( primitive->nodeType() == GeoDataTypes::GeoDataAnimatedUpdateType ) {
+        writeElement( primitive, writer );
     }
 }
 

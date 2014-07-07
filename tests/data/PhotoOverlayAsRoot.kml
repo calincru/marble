@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://earth.google.com/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
   <PhotoOverlay>
     <rotation>13.314</rotation>
     <ViewVolume>
-      <near>1500</near>
       <leftFov>-60</leftFov>
       <rightFov>60</rightFov>
       <bottomFov>-45</bottomFov>
       <topFov>45</topFov>
+      <near>1500</near>
     </ViewVolume>
     <ImagePyramid>
       <tileSize>219</tileSize>
