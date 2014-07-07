@@ -31,7 +31,7 @@ namespace Marble {
 class PolygonNode {
 
 public:
-    PolygonNode( QRegion region );
+    explicit PolygonNode( QRegion region );
     ~PolygonNode();
 
     enum PolyNodeFlag {
@@ -126,7 +126,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     m_regionsInitialized( false ),
     m_request( NoRequest ),
     m_interactingObj( InteractingNothing ),
-    m_virtualHovered( -1 )
+    m_virtualHovered( -1, -1 )
 {
     // nothing to do
 }
@@ -159,18 +159,21 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
 {
     if ( state() == SceneGraphicsItem::Editing ) {
         return outerNodeContains( point ) != -1 || polygonContains( point ) ||
-               innerNodeContains( point ) != QPair<int, int>(-1, -1);
+               innerNodeContains( point ) != QPair<int, int>( -1, -1 );
 
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         return polygonContains( point ) && outerNodeContains( point ) == -1 &&
-               innerNodeContains( point ) == QPair<int, int>(-1, -1);
+               innerNodeContains( point ) == QPair<int, int>( -1, -1 );
 
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         return outerNodeContains( point ) != -1 ||
-               innerNodeContains( point ) != QPair<int, int>(-1, -1);
+               innerNodeContains( point ) != QPair<int, int>( -1, -1 );
 
     } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
-        return polygonContains( point ) || virtualNodeContains( point ) != -1;
+        return virtualNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
+               innerNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
+               outerNodeContains( point ) != -1 ||
+               polygonContains( point );
     }
 
     return false;
@@ -183,7 +186,7 @@ void AreaAnnotation::itemChanged( const SceneGraphicsItem *other )
     // So far we only deal with item changes when hovering virtual nodes, so that
     // they do not remain hovered when changing the item we interact with.
     if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
-        m_virtualHovered = -1;
+        m_virtualHovered = QPair<int, int>( -1, -1 );
     }
 }
 
@@ -458,9 +461,10 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
 
         m_firstMergedNode = QPair<int, int>( -1, -1 );
     } else if ( previousState == SceneGraphicsItem::AddingPolygonNodes ) {
-        m_virtualNodesList.clear();
-        m_virtualHovered = -1;
-        m_adjustingNode = false;
+        m_outerVirtualNodes.clear();
+        m_innerVirtualNodes.clear();
+        m_virtualHovered = QPair<int, int>( -1, -1 );
+        m_adjustedNode = -2;
     }
 
     // Dealing with cases when entering a state has an effect on this item, or
@@ -474,8 +478,8 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
         m_firstMergedNode = QPair<int, int>( -1, -1 );
         m_secondMergedNode = QPair<int, int>( -1, -1 );
     } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
-        m_virtualHovered = -1;
-        m_adjustingNode = false;
+        m_virtualHovered = QPair<int, int>( -1, -1 );
+        m_adjustedNode = -2;
     }
 }
 
@@ -588,22 +592,44 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
         // virtual node has just been clicked, so make sure its corresponding region is added to the
         // PolygonNodes list as well.
         if ( m_outerNodesList.size() < outerRing.size() ) {
-            m_outerNodesList.append( painter->regionFromEllipse( outerRing.last(), regularDim, regularDim ) );
+            QRegion newRegion = painter->regionFromEllipse( outerRing.last(), regularDim, regularDim );
+            m_outerNodesList.append( PolygonNode( newRegion ) );
+        }
+
+        for ( int i = 0; i < innerRings.size(); ++i ) {
+            if ( m_innerNodesList.at(i).size() < innerRings.at(i).size() ) {
+                QRegion newRegion = painter->regionFromEllipse( innerRings.at(i).last(),
+                                                                regularDim, regularDim );
+                m_innerNodesList[i].append( PolygonNode( newRegion ) );
+                break;
+            }
         }
 
         // All we have to do next is to update the virtual nodes list based on polygon's outer boundary.
         // It is done here and not in the updateRegions method (althought it would work as well) to
         // avoid creating this virtual nodes list even when not being in the 'Adding Nodes' state, which
         // might create overhead.
-        m_virtualNodesList.clear();
-
+        m_outerVirtualNodes.clear();
         QRegion firstRegion( painter->regionFromEllipse( outerRing.at(0).interpolate(
                                              outerRing.last(), 0.5 ), hoveredDim, hoveredDim ) );
-        m_virtualNodesList.append( PolygonNode( firstRegion ) );
+        m_outerVirtualNodes.append( PolygonNode( firstRegion ) );
         for ( int i = 0; i < outerRing.size() - 1; ++i ) {
             QRegion newRegion( painter->regionFromEllipse( outerRing.at(i).interpolate(
                                              outerRing.at(i+1), 0.5 ), hoveredDim, hoveredDim ) );
-            m_virtualNodesList.append( PolygonNode( newRegion ) );
+            m_outerVirtualNodes.append( PolygonNode( newRegion ) );
+        }
+
+        m_innerVirtualNodes.clear();
+        for ( int i = 0; i < innerRings.size(); ++i ) {
+            m_innerVirtualNodes.append( QList<PolygonNode>() );
+            QRegion firstRegion( painter->regionFromEllipse( innerRings.at(i).at(0).interpolate(
+                                             innerRings.at(i).last(), 0.5 ), hoveredDim, hoveredDim ) );
+            m_innerVirtualNodes[i].append( PolygonNode( firstRegion ) );
+            for ( int j = 0; j < innerRings.at(i).size() - 1; ++j ) {
+                QRegion newRegion( painter->regionFromEllipse( innerRings.at(i).at(j).interpolate(
+                                             innerRings.at(i).at(j+1), 0.5 ), hoveredDim, hoveredDim ) );
+                m_innerVirtualNodes[i].append( PolygonNode( newRegion ) );
+            }
         }
     }
 }
@@ -697,17 +723,31 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
         }
     }
 
-    if ( m_virtualHovered != -1 ) {
+    if ( m_virtualHovered != QPair<int, int>( -1, -1 ) ) {
+        int i = m_virtualHovered.first;
+        int j = m_virtualHovered.second;
+
         painter->setBrush( hoveredColor );
 
-        GeoDataCoordinates newCoords;
-        if ( m_virtualHovered ) {
-            newCoords = outerRing.at(m_virtualHovered).interpolate(
-                                  outerRing.at(m_virtualHovered - 1), 0.5 );
+        if ( i != -1 && j == -1 ) {
+            GeoDataCoordinates newCoords;
+            if ( i ) {
+                newCoords = outerRing.at(i).interpolate( outerRing.at(i - 1), 0.5 );
+            } else {
+                newCoords = outerRing.at(0).interpolate( outerRing.last(), 0.5 );
+            }
+            painter->drawEllipse( newCoords, d_hoveredDim, d_hoveredDim );
         } else {
-            newCoords = outerRing.at(0).interpolate( outerRing.last(), 0.5 );
+            Q_ASSERT( i != -1 && j != -1 );
+
+            GeoDataCoordinates newCoords;
+            if ( j ) {
+                newCoords = innerRings.at(i).at(j).interpolate( innerRings.at(i).at(j - 1), 0.5 );
+            } else {
+                newCoords = innerRings.at(i).at(0).interpolate( innerRings.at(i).last(), 0.5 );
+            }
+            painter->drawEllipse( newCoords, d_hoveredDim, d_hoveredDim );
         }
-        painter->drawEllipse( newCoords, d_hoveredDim, d_hoveredDim );
     }
 }
 
@@ -727,23 +767,31 @@ QPair<int, int> AreaAnnotation::innerNodeContains( const QPoint &point ) const
     for ( int i = 0; i < m_innerNodesList.size(); ++i ) {
         for ( int j = 0; j < m_innerNodesList.at(i).size(); ++j ) {
             if ( m_innerNodesList.at(i).at(j).containsPoint( point ) ) {
-                return QPair<int, int>(i, j);
+                return QPair<int, int>( i, j );
             }
         }
     }
 
-    return QPair<int, int>(-1, -1);
+    return QPair<int, int>( -1, -1 );
 }
 
-int AreaAnnotation::virtualNodeContains( const QPoint &point ) const
+QPair<int, int> AreaAnnotation::virtualNodeContains( const QPoint &point ) const
 {
-    for ( int i = 0; i < m_virtualNodesList.size(); ++i ) {
-        if ( m_virtualNodesList.at(i).containsPoint( point ) ) {
-            return i;
+    for ( int i = 0; i < m_outerVirtualNodes.size(); ++i ) {
+        if ( m_outerVirtualNodes.at(i).containsPoint( point ) ) {
+            return QPair<int, int>( i, -1 );
         }
     }
 
-    return -1;
+    for ( int i = 0; i < m_innerVirtualNodes.size(); ++i ) {
+        for ( int j = 0; j < m_innerVirtualNodes.at(i).size(); ++j ) {
+            if ( m_innerVirtualNodes.at(i).at(j).containsPoint( point ) ) {
+                return QPair<int, int>( i, j );
+            }
+        }
+    }
+
+    return QPair<int, int>( -1, -1 );
 }
 
 int AreaAnnotation::innerBoundsContain( const QPoint &point ) const
@@ -1121,35 +1169,61 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 
     GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
     GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
     // If a virtual node has just been clicked, add it to the polygon's outer boundary
     // and start 'adjusting' its position.
-    int index = virtualNodeContains( mouseEvent->pos() );
-    if ( index != -1 && !m_adjustingNode ) {
+    QPair<int, int> index = virtualNodeContains( mouseEvent->pos() );
+    if ( index != QPair<int, int>( -1, -1 ) && m_adjustedNode == -2 ) {
         Q_ASSERT( m_virtualHovered == index );
+        int i = index.first;
+        int j = index.second;
 
-        GeoDataLinearRing newRing( Tessellate );
-        QList<PolygonNode> newList;
-        for ( int i = index; i < index + outerRing.size(); ++i ) {
-            newRing.append( outerRing.at(i % outerRing.size()) );
-            newList.append( m_outerNodesList.at(i % m_outerNodesList.size()) );
+        if ( i != -1 && j == -1 ) {
+            GeoDataLinearRing newRing( Tessellate );
+            QList<PolygonNode> newList;
+            for ( int k = i; k < i + outerRing.size(); ++k ) {
+                newRing.append( outerRing.at(k % outerRing.size()) );
+                newList.append( m_outerNodesList.at(k % m_outerNodesList.size()) );
+            }
+            GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
+            newRing.append( newCoords );
+
+            polygon->outerBoundary() = newRing;
+            m_outerNodesList = newList;
+            m_adjustedNode = -1;
+        } else {
+            Q_ASSERT( i != -1 && j != -1 );
+
+            GeoDataLinearRing newRing( Tessellate );
+            QList<PolygonNode> newList;
+            for ( int k = j; k < j + innerRings.at(i).size(); ++k ) {
+                newRing.append( innerRings.at(i).at(k % innerRings.at(i).size()) );
+                newList.append( m_innerNodesList.at(i).at(k % m_innerNodesList.at(i).size() ) );
+            }
+            GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
+            newRing.append( newCoords );
+
+            polygon->innerBoundaries()[i] = newRing;
+            m_innerNodesList[i] = newList;
+            m_adjustedNode = i;
         }
-        GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
-        newRing.append( newCoords );
 
-        polygon->outerBoundary() = newRing;
-        m_outerNodesList = newList;
-
-        m_virtualHovered = -1;
-        m_adjustingNode = true;
+        m_virtualHovered = QPair<int, int>( -1, -1 );
         return true;
     }
 
     // If a virtual node which has been previously clicked and selected to become a
     // 'real node' is clicked one more time, it stops from being 'adjusted'.
     int outerIndex = outerNodeContains( mouseEvent->pos() );
-    if ( outerIndex != -1 && m_adjustingNode ) {
-        m_adjustingNode = false;
+    if ( outerIndex != -1 && m_adjustedNode != -2 ) {
+        m_adjustedNode = -2;
+        return true;
+    }
+
+    QPair<int,int> innerIndex = innerNodeContains( mouseEvent->pos() );
+    if ( innerIndex != QPair<int, int>( -1, -1 ) && m_adjustedNode != -2 ) {
+        m_adjustedNode = -2;
         return true;
     }
 
@@ -1159,28 +1233,32 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 {
     Q_ASSERT( mouseEvent->button() == Qt::NoButton );
-
     // If we are adjusting a virtual node which has just been clicked and became real, just
     // change its coordinates when moving it, as we do with nodes in Editing state on move.
-    if ( m_adjustingNode ) {
+    if ( m_adjustedNode != -2 ) {
         // The virtual node which has just been added is always the last within
-        // GeoDataLinearRing's container.
+        // GeoDataLinearRing's container.qreal lon, lat;
         qreal lon, lat;
         m_viewport->geoCoordinates( mouseEvent->pos().x(),
                                     mouseEvent->pos().y(),
                                     lon, lat,
                                     GeoDataCoordinates::Radian );
         const GeoDataCoordinates newCoords( lon, lat );
-
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
-        GeoDataLinearRing &outerRing = polygon->outerBoundary();
 
-        outerRing.last() = newCoords;
+        if ( m_adjustedNode == -1 ) {
+            polygon->outerBoundary().last() = newCoords;
+        } else {
+            Q_ASSERT( m_adjustedNode >= 0 );
+            polygon->innerBoundaries()[m_adjustedNode].last() = newCoords;
+        }
+
         return true;
+
     // If we are hovering a virtual node, store its index in order to be painted in drawNodes
     // method.
     } else {
-        int index = virtualNodeContains( mouseEvent->pos() );
+        QPair<int, int> index = virtualNodeContains( mouseEvent->pos() );
         m_virtualHovered = index;
         return true;
     }
@@ -1193,7 +1271,7 @@ bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 bool AreaAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
 {
     Q_UNUSED( mouseEvent );
-    return !m_adjustingNode;
+    return m_adjustedNode == -2;
 }
 
 }

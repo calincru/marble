@@ -243,6 +243,7 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
         m_polygonPlacemark->setGeometry( polygon );
         m_polygonPlacemark->setParent( m_annotationDocument );
         m_polygonPlacemark->setStyleUrl( "#polygon" );
+        m_polygonPlacemark->setName( QString("New Polygon") );
 
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
         announceStateChanged( SceneGraphicsItem::DrawingPolygon );

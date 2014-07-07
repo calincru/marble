@@ -178,7 +178,7 @@ private:
      */
     int outerNodeContains( const QPoint &point ) const;
     QPair<int, int> innerNodeContains( const QPoint &point ) const;
-    int virtualNodeContains( const QPoint &point ) const;
+    QPair<int, int> virtualNodeContains( const QPoint &point ) const;
     int innerBoundsContain( const QPoint &point ) const;
     bool polygonContains( const QPoint &point ) const;
 
@@ -230,8 +230,9 @@ private:
     MarbleWidgetRequest   m_request;
 
     QList<PolygonNode>          m_outerNodesList;
+    QList<PolygonNode>          m_outerVirtualNodes;
     QList< QList<PolygonNode> > m_innerNodesList;
-    QList<PolygonNode>          m_virtualNodesList;
+    QList< QList<PolygonNode> > m_innerVirtualNodes;
     QList<QRegion>              m_boundariesList;
 
     // Used in the Editing state
@@ -250,8 +251,9 @@ private:
     GeoDataCoordinates m_resultingCoords;
 
     // Used in Adding Nodes state
-    int  m_virtualHovered;
-    bool m_adjustingNode;
+    QPair<int, int> m_virtualHovered;
+    // FIXME: Add enum inspite of int.
+    int             m_adjustedNode;
 };
 
 }
