@@ -1083,7 +1083,7 @@ void AnnotatePlugin::deleteSelectedNodes()
         QMessageBox::warning( m_marbleWidget,
                               QString( "Operation not permitted" ),
                               QString( "Cannot delete one of the selected nodes. Most probably "
-                                       "this would make the polygon's outer boundary to not "
+                                       "this would make the polygon's outer boundary not "
                                        "contain all its inner boundary nodes." ) );
     }
 }
@@ -1131,8 +1131,8 @@ void AnnotatePlugin::setupNodeRmbMenu()
 
 void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
 {
-    // Check whether the node is already selected; we change the text of the
-    // action accordingly.
+    // Check whether the node is already selected; we change the text of the action
+    // accordingly.
     if ( area->clickedNodeIsSelected() ) {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Deselect Node") );
     } else {
@@ -1164,8 +1164,8 @@ void AnnotatePlugin::deleteNode()
         QMessageBox::warning( m_marbleWidget,
                               QString( "Operation not permitted" ),
                               QString( "Cannot delete one of the selected nodes. Most probably "
-                                       "this would make the polygon's outer boundary to not "
-                                       " contain all its inner boundary nodes." ) );
+                                       "this would make the polygon's outer boundary not "
+                                       "contain all its inner boundary nodes." ) );
     }
 }
 
