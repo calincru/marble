@@ -28,6 +28,7 @@
 
 namespace Marble {
 
+
 class PolygonNode {
 
 public:

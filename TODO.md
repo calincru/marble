@@ -9,5 +9,4 @@ To ADD:
 - adding nodes (the structure is done, there are still a few problems):
     -> in the end, maybe take into consideration showing the virtual node
     everywhere on a polygon's side.
-    -> showing virtual nodes on inner boundary lines.
 - a more friendly user interface;
