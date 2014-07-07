@@ -252,7 +252,16 @@ private:
 
     // Used in Adding Nodes state
     QPair<int, int> m_virtualHovered;
-    // FIXME: Add enum inspite of int.
+
+    // It can have the following values:
+    //     -> -2 - means there is no node being adjusted;
+    //     -> -1 - means the node which is being adjusted is a node from polygon's
+    //             outer boundary (more exactly, the last; see below);
+    //     -> i  - means the node which is being adjusted is a node from the i'th
+    //             inner boundary (more exactly, the last one; see below).
+    // Due to the way the node appending is done (by rotating the vector which
+    // contains the coordinates), we can be sure that the node we want to adjust
+    // is everytime the last one.
     int             m_adjustedNode;
 };
 
