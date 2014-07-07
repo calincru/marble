@@ -403,7 +403,6 @@ void AnnotatePlugin::clearAnnotations()
                                               QMessageBox::Yes | QMessageBox::Cancel );
 
     if ( result == QMessageBox::Yes ) {
-        // It gets deleted three lines further, when calling qDeleteAll().
         m_lastItem = 0;
         m_movedItem = 0;
         delete m_polygonPlacemark;
@@ -531,7 +530,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         return false;
     }
 
-    // Deal with adding placemarks and polygons;
+    // Deal with adding placemarks and polygons.
     if ( ( m_addingPlacemark && handleAddingPlacemark( mouseEvent ) ) ||
          ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) ) {
         return true;
@@ -543,9 +542,9 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         handleReleaseOverlay( mouseEvent );
     }
 
-    // It is important to deal with the MouseMove event here because it changes the state of the selected
-    // item irrespective of the longitude/latitude the cursor moved to (excepting when it is outside the
-    // globe, which is treated above).
+    // It is important to deal with the MouseMove event here because it changes the state of the
+    // selected item irrespective of the longitude/latitude the cursor moved to (excepting when
+    // it is outside the globe, which is treated above).
     if ( mouseEvent->type() == QEvent::MouseMove && m_movedItem &&
          handleMovingSelectedItem( mouseEvent ) ) {
         return true;
@@ -569,13 +568,12 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         }
 
         if ( item->sceneEvent( event ) ) {
-            // Make sure this is zeroed when removing the polygon by the rmb menu below.
             m_lastItem = item;
 
             if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
                 handleSuccessfulPressEvent( mouseEvent, item );
             } else if ( mouseEvent->type() == QEvent::MouseMove ) {
-                handleSuccessfulHover( mouseEvent, item );
+                handleSuccessfulHoverEvent( mouseEvent, item );
             } else if ( mouseEvent->type() == QEvent::MouseButtonRelease ) {
                 handleSuccessfulReleaseEvent( mouseEvent, item );
             }
@@ -661,7 +659,6 @@ void AnnotatePlugin::handleReleaseOverlay( QMouseEvent *mouseEvent )
             if ( mouseEvent->button() == Qt::LeftButton ) {
                 if ( m_removingItem ) {
                     m_marbleWidget->model()->treeModel()->removeFeature( overlay );
-                    emit itemRemoved();
                 } else {
                     displayOverlayFrame( overlay );
                 }
@@ -694,7 +691,7 @@ void AnnotatePlugin::handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneG
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
 }
 
-void AnnotatePlugin::handleSuccessfulHover( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+void AnnotatePlugin::handleSuccessfulHoverEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     Q_UNUSED( mouseEvent );
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
@@ -966,6 +963,8 @@ void AnnotatePlugin::editOverlay()
 
 void AnnotatePlugin::removeOverlay()
 {
+    m_lastItem = 0;
+
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbOverlay );
     clearOverlayFrames();
 }

@@ -158,7 +158,7 @@ private:
     void handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    void handleSuccessfulHover( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleSuccessfulHoverEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     void handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void announceStateChanged( SceneGraphicsItem::ActionState newState );
@@ -192,9 +192,6 @@ private:
 
     bool m_addingPlacemark;
     bool m_drawingPolygon;
-    bool m_addingPolygonHole;
-    bool m_mergingNodes;
-    bool m_addingNodes;
     bool m_addingOverlay;
     bool m_removingItem;
     bool m_isInitialized;

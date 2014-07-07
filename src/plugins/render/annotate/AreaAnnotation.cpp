@@ -20,7 +20,6 @@
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
-#include "GeoDataStyle.h"
 
 // Qt
 #include <qmath.h>
@@ -147,12 +146,12 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
     if ( !m_regionsInitialized ) {
         setupRegionsLists( painter );
         m_regionsInitialized = true;
+    } else {
+        applyChanges( painter );
+        updateRegions( painter );
     }
 
-    applyChanges( painter );
-    updateRegions( painter );
     drawNodes( painter );
-
     painter->restore();
 }
 
@@ -423,7 +422,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 
 void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState )
 {
-    // Dealing with cases when exiting a state has an effect on the scene graphic items.
+    // Dealing with cases when exiting a state has an effect on this item.
     if ( previousState == SceneGraphicsItem::Editing ) {
         m_clickedNodeIndexes = QPair<int, int>( -1, -1 );
     } else if ( previousState == SceneGraphicsItem::AddingPolygonHole ) {
@@ -464,7 +463,7 @@ void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState 
         m_adjustingNode = false;
     }
 
-    // Dealing with cases when entering a state has an effect on scene graphic items, or
+    // Dealing with cases when entering a state has an effect on this item, or
     // initializations are needed.
     if ( state() == SceneGraphicsItem::Editing ) {
         m_interactingObj = InteractingNothing;
@@ -506,7 +505,7 @@ void AreaAnnotation::setupRegionsLists( GeoPainter *painter )
     const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
 
-    // Add the outer boundary nodes
+    // Add the outer boundary nodes.
     QVector<GeoDataCoordinates>::ConstIterator itBegin = outerRing.begin();
     QVector<GeoDataCoordinates>::ConstIterator itEnd = outerRing.end();
 
@@ -515,7 +514,7 @@ void AreaAnnotation::setupRegionsLists( GeoPainter *painter )
         m_outerNodesList.append( newNode );
     }
 
-    // Add the outer boundary to the boundaries list
+    // Add the outer boundary to the boundaries list.
     m_boundariesList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
 }
 
@@ -1198,4 +1197,3 @@ bool AreaAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
 }
 
 }
-
