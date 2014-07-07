@@ -5,7 +5,6 @@ To FIX:
 - the problem regarding moving the polygon around poles (and moving in general
   which changes polygon's shape).
 
-
 To ADD:
 - adding nodes (the structure is done, there are still a few problems):
     -> in the end, maybe take into consideration showing the virtual node
