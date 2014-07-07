@@ -9,20 +9,17 @@
 // Copyright 2013      Thibaut Gridel <tgridel@free.fr>
 //
 
+// Self
 #include "PlacemarkTextAnnotation.h"
 
-
+// Marble
 #include "AbstractProjection.h"
 #include "GeoDataPlacemark.h"
-#include "GeoDocument.h"
 #include "GeoPainter.h"
 #include "GeoWidgetBubble.h"
 #include "ViewportParams.h"
 #include "MarbleDirs.h"
-#include "MarbleDebug.h"
 #include "SceneGraphicsTypes.h"
-
-#include <QPixmap>
 
 
 namespace Marble
