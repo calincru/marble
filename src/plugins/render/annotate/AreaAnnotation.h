@@ -240,7 +240,6 @@ private:
         InteractingNode,
         InteractingPolygon
     };
-    
     GeoDataCoordinates       m_movedPointCoords;
     QPair<int, int>          m_clickedNodeIndexes;
     EditingInteractingObject m_interactingObj;

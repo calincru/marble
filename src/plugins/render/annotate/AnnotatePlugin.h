@@ -16,14 +16,11 @@
 
 #include "RenderPlugin.h"
 #include "SceneGraphicsItem.h"
-#include "GeoDataLatLonBox.h"
 #include "GeoDataGroundOverlay.h"
-#include "GeoDataPolygon.h"
 #include "GroundOverlayFrame.h"
 #include "AreaAnnotation.h"
 
 #include <QObject>
-#include <QErrorMessage>
 #include <QMenu>
 #include <QSortFilterProxyModel>
 

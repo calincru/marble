@@ -33,7 +33,6 @@
 #include "MarbleModel.h"
 #include "MarblePlacemarkModel.h"
 #include "MarbleWidget.h"
-#include "MarbleWidgetInputHandler.h"
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
@@ -46,7 +45,6 @@
 #include <QNetworkRequest>
 #include <QMessageBox>
 #include <QtAlgorithms>
-#include <QMessageBox>
 #include <QColor>
 
 
