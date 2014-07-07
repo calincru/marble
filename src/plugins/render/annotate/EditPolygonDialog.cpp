@@ -12,11 +12,12 @@
 #include "EditPolygonDialog.h"
 #include "ui_EditPolygonDialog.h"
 
+// Qt
+#include <QColorDialog>
+
 // Marble
 #include "GeoDataStyle.h"
 
-// Qt
-#include <QColorDialog>
 
 namespace Marble {
 

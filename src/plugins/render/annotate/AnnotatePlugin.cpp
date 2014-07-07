@@ -13,6 +13,16 @@
 // Self
 #include "AnnotatePlugin.h"
 
+// Qt
+#include <QFileDialog>
+#include <QAction>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QMessageBox>
+#include <QtAlgorithms>
+#include <QColor>
+
 // Marble
 #include "MarbleDebug.h"
 #include "AbstractProjection.h"
@@ -36,16 +46,6 @@
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
-
-// Qt
-#include <QFileDialog>
-#include <QAction>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include <QMessageBox>
-#include <QtAlgorithms>
-#include <QColor>
 
 
 namespace Marble

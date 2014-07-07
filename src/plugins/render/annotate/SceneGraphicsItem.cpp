@@ -9,7 +9,10 @@
 // Copyright 2013      Thibaut Gridel <tgridel@free.fr>
 //
 
+// Self
 #include "SceneGraphicsItem.h"
+
+// Marble
 #include "GeoDataPlacemark.h"
 
 

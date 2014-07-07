@@ -11,12 +11,12 @@
 #ifndef MARBLE_EDITPOLYGONDIALOG_H
 #define MARBLE_EDITPOLYGONDIALOG_H
 
-
 #include <QDialog>
 #include <QColor>
 
 #include "MarbleGlobal.h"
 #include "GeoDataPlacemark.h"
+
 
 namespace Marble {
 

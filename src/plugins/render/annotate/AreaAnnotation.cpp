@@ -13,6 +13,10 @@
 // Self
 #include "AreaAnnotation.h"
 
+// Qt
+#include <qmath.h>
+#include <QPair>
+
 // Marble
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
@@ -20,10 +24,6 @@
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
-
-// Qt
-#include <qmath.h>
-#include <QPair>
 
 
 namespace Marble {

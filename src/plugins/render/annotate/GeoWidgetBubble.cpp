@@ -9,14 +9,16 @@
 // Copyright 2013      Thibaut Gridel <tgridel@free.fr>
 //
 
+// Self
 #include "GeoWidgetBubble.h"
 
-#include "TextEditor.h"
-
-#include "MarbleColors.h"
-
+// Qt
 #include <QPainter>
 #include <QWidget>
+
+// Marble
+#include "TextEditor.h"
+#include "MarbleColors.h"
 
 
 namespace Marble

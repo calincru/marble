@@ -8,6 +8,7 @@
 // Copyright 2013      Adrian Draghici <draghici.adrian.b@gmail.com>
 //
 
+// Self
 #include "EditGroundOverlayDialog.h"
 #include "ui_EditGroundOverlayDialog.h"
 

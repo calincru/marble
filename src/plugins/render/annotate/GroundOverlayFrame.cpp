@@ -8,8 +8,10 @@
 // Copyright 2013      Adrian Draghici <draghici.adrian.b@gmail.com>
 //
 
+// Self
 #include "GroundOverlayFrame.h"
 
+// Marble
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
 #include "GeoPainter.h"
