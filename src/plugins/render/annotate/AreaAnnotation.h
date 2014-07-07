@@ -5,9 +5,9 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009      Andrew Manson            <g.real.ate@gmail.com>
-// Copyright 2013      Thibaut Gridel           <tgridel@free.fr>
-// Copyright 2014      Calin-Cristian Cruceru   <crucerucalincristian@gmail.com>
+// Copyright 2009      Andrew Manson  <g.real.ate@gmail.com>
+// Copyright 2013      Thibaut Gridel <tgridel@free.fr>
+// Copyright 2014      Calin Cruceru  <crucerucalincristian@gmail.com>
 //
 
 #ifndef AREAANNOTATION_H
@@ -16,14 +16,17 @@
 #include "SceneGraphicsItem.h"
 #include "GeoDataCoordinates.h"
 
-#include <QPair>
 
 namespace Marble
 {
 
-class GeoDataPlacemark;
 class PolygonNode;
 
+/**
+ * @brief The AreaAnnotation class controls everything related to Polygons Editing Mode.
+ * It includes polygons actions implementation and, at the same time, deals with painting
+ * polygons on the map according to user's preference or to some particular states.
+ */
 class AreaAnnotation : public SceneGraphicsItem
 {
 public:
@@ -161,12 +164,12 @@ private:
     QPair<int, int>          m_clickedNodeIndexes;
     EditingInteractingObject m_interactingObj;
 
-    // used in Merging Nodes state
+    // Used in Merging Nodes state
     QPair<int, int>    m_firstMergedNode;
     QPair<int, int>    m_secondMergedNode;
     GeoDataCoordinates m_resultingCoords;
 
-    // used in Adding Nodes state
+    // Used in Adding Nodes state
     int  m_virtualHovered;
     bool m_adjustingNode;
 };

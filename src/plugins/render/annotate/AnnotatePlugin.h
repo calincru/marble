@@ -5,9 +5,9 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009       Andrew Manson           <g.real.ate@gmail.com>
-// Copyright 2013       Thibaut Gridel          <tgridel@free.fr>
-// Copyright 2014       Calin-Cristian Cruceru  <crucerucalincristian@gmail.com>
+// Copyright 2009       Andrew Manson  <g.real.ate@gmail.com>
+// Copyright 2013       Thibaut Gridel <tgridel@free.fr>
+// Copyright 2014       Calin Cruceru  <crucerucalincristian@gmail.com>
 //
 
 
@@ -154,12 +154,12 @@ private:
     bool handleAddingPolygon( QMouseEvent *mouseEvent );
     bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
-    void handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-    void handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-
     void handleRemovingItem( SceneGraphicsItem *item );
-
     void handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+
+    void handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleSuccessfulHover( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
+    void handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void announceStateChanged( SceneGraphicsItem::ActionState newState );
 

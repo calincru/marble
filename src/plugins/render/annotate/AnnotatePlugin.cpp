@@ -5,9 +5,9 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009       Andrew Manson           <g.real.ate@gmail.com>
-// Copyright 2013       Thibaut Gridel          <tgridel@free.fr>
-// Copyright 2014       Calin-Cristian Cruceru  <crucerucalincristian@gmail.com>
+// Copyright 2009       Andrew Manson  <g.real.ate@gmail.com>
+// Copyright 2013       Thibaut Gridel <tgridel@free.fr>
+// Copyright 2014       Calin Cruceru  <crucerucalincristian@gmail.com>
 //
 
 // Self
@@ -49,7 +49,6 @@
 #include <QMessageBox>
 #include <QColor>
 
-#include <QDebug>
 
 namespace Marble
 {
@@ -149,7 +148,7 @@ QList<PluginAuthor> AnnotatePlugin::pluginAuthors() const
     return QList<PluginAuthor>()
             << PluginAuthor( "Andrew Manson", "<g.real.ate@gmail.com>" )
             << PluginAuthor( "Thibaut Gridel", "<tgridel@free.fr>" )
-            << PluginAuthor( "Calin-Cristian Cruceru", "<crucerucalincristian@gmail.com>" );
+            << PluginAuthor( "Calin Cruceru", "<crucerucalincristian@gmail.com>" );
 }
 
 QIcon AnnotatePlugin::icon() const
@@ -316,7 +315,9 @@ void AnnotatePlugin::addOverlay()
 	}
 
 	GeoDataGroundOverlay *overlay = new GeoDataGroundOverlay();
-	EditGroundOverlayDialog *dialog = new EditGroundOverlayDialog( overlay, m_marbleWidget->textureLayer(), m_marbleWidget );
+    EditGroundOverlayDialog *dialog = new EditGroundOverlayDialog( overlay,
+                                                                   m_marbleWidget->textureLayer(),
+                                                                   m_marbleWidget );
 	dialog->exec();
 
 	m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, overlay );
@@ -556,10 +557,10 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
             continue;
         }
 
-        // notify the previous item we interacted with about the change.
-        //if ( m_lastItem && m_lastItem != item ) {
-        //    m_lastItem->itemChanged( item );
-        //}
+        // Notify the previous item we interacted with about the change.
+        if ( m_lastItem && m_lastItem != item ) {
+            m_lastItem->itemChanged( item );
+        }
 
         if ( m_removingItem && mouseEvent->button() == Qt::LeftButton &&
              mouseEvent->type() == QEvent::MouseButtonRelease ) {
@@ -569,17 +570,17 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
         if ( item->sceneEvent( event ) ) {
             // Make sure this is zeroed when removing the polygon by the rmb menu below.
-            // m_lastItem = item;
+            m_lastItem = item;
 
             if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
                 handleSuccessfulPressEvent( mouseEvent, item );
+            } else if ( mouseEvent->type() == QEvent::MouseMove ) {
+                handleSuccessfulHover( mouseEvent, item );
             } else if ( mouseEvent->type() == QEvent::MouseButtonRelease ) {
                 handleSuccessfulReleaseEvent( mouseEvent, item );
             }
 
             handleRequests( mouseEvent, item );
-
-            m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
             return true;
         }
     }
@@ -693,6 +694,12 @@ void AnnotatePlugin::handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneG
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
 }
 
+void AnnotatePlugin::handleSuccessfulHover( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
+{
+    Q_UNUSED( mouseEvent );
+    m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
+}
+
 void AnnotatePlugin::handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     Q_UNUSED( mouseEvent );
@@ -716,19 +723,21 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),
                                   QString( "Cannot merge a node from polygon's outer boundary "
-                                           "with a node from one of its inner boundaries" ) );
+                                           "with a node from one of its inner boundaries." ) );
         } else if ( area->request() == AreaAnnotation::InnerInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),
                                   QString( "Cannot merge two nodes from two different inner "
-                                           "boundaries" ) );
+                                           "boundaries." ) );
         } else if ( area->request() == AreaAnnotation::InvalidShapeWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),
                                   QString( "Cannot merge the selected nodes. Most probably "
-                                           "this would make the polygon's outer boundary to not "
+                                           "this would make the polygon's outer boundary not "
                                            "contain all its inner boundary nodes." ) );
         } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
+            m_lastItem = 0;
+
             m_graphicsItems.removeAll( area );
             m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
 
@@ -768,11 +777,12 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
         clearOverlayFrames();
     }
 
-    //if ( m_lastItem ) {
+    if ( m_lastItem ) {
         // 0 means interacting with something that is not an annotate plugin item.
-    //    m_lastItem->itemChanged( 0 );
-    //    m_lastItem = 0;
-    //}
+        m_lastItem->itemChanged( 0 );
+        m_marbleWidget->model()->treeModel()->updateFeature( m_lastItem->placemark() );
+        m_lastItem = 0;
+    }
 }
 
 void AnnotatePlugin::setupActions( MarbleWidget *widget )
