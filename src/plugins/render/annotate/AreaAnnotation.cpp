@@ -134,7 +134,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
 
 AreaAnnotation::~AreaAnnotation()
 {
-    // nothing to do so far
+    // nothing to do
 }
 
 void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )

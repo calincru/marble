@@ -38,16 +38,16 @@ public:
      */
     virtual const char *graphicType() const;
 
-private:
-    GeoWidgetBubble *bubble;
-    QList<QRegion>   m_regionList;
-
 protected:
     virtual bool mousePressEvent( QMouseEvent *event );
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
 
     virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
+
+private:
+    GeoWidgetBubble *bubble;
+    QList<QRegion>   m_regionList;
 };
 
 }

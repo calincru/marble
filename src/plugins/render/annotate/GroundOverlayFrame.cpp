@@ -22,12 +22,14 @@
 namespace Marble
 {
 
-GroundOverlayFrame::GroundOverlayFrame( GeoDataPlacemark *placemark, GeoDataGroundOverlay *overlay, TextureLayer *textureLayer )
-    : SceneGraphicsItem( placemark ),
-      m_overlay( overlay ),
-      m_textureLayer( textureLayer ),
-      m_movedPoint( -1 ),
-      m_viewport( 0 )
+GroundOverlayFrame::GroundOverlayFrame( GeoDataPlacemark *placemark,
+                                        GeoDataGroundOverlay *overlay,
+                                        TextureLayer *textureLayer ) :
+    SceneGraphicsItem( placemark ),
+    m_overlay( overlay ),
+    m_textureLayer( textureLayer ),
+    m_movedPoint( -1 ),
+    m_viewport( 0 )
 {
     update();
 }
