@@ -218,7 +218,7 @@ void AreaAnnotation::deleteAllSelectedNodes()
     if ( state() != SceneGraphicsItem::Editing ) {
         return;
     }
-     
+
     GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
     GeoDataLinearRing &outerRing = polygon->outerBoundary();
     QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
