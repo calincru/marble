@@ -180,7 +180,7 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
     return false;
 }
 
-void AreaAnnotation::itemChanged( const SceneGraphicsItem *other )
+void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 {
     Q_UNUSED( other );
 
@@ -424,7 +424,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
     return false;
 }
 
-void AreaAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState )
+void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
 {
     // Dealing with cases when exiting a state has an effect on this item.
     if ( previousState == SceneGraphicsItem::Editing ) {

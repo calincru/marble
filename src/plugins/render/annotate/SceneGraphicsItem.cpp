@@ -41,7 +41,7 @@ void SceneGraphicsItem::setState( ActionState state )
 {
     ActionState previousState = m_state;
     m_state = state;
-    stateChanged( previousState );
+    dealWithStateChange( previousState );
 }
 
 const GeoDataPlacemark *SceneGraphicsItem::placemark() const

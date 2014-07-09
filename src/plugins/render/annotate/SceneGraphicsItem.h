@@ -61,7 +61,7 @@ public:
      * and deals with changes that occur when this item is no longer the item we interact
      * with (by means of mouse events - so far).
      */
-    virtual void itemChanged( const SceneGraphicsItem *other ) = 0;
+    virtual void dealWithItemChange( const SceneGraphicsItem *other ) = 0;
 
     /**
      * @brief Returns the current state.
@@ -69,7 +69,7 @@ public:
     ActionState state() const;
 
     /**
-     * @brief Sets the ActionState of this item. This also calls stateChanged() with
+     * @brief Sets the ActionState of this item. This also calls dealWithStateChange() with
      * a parameter: the previous state.
      */
     void setState( ActionState state );
@@ -106,7 +106,7 @@ protected:
     virtual bool mouseMoveEvent( QMouseEvent *event ) = 0;
     virtual bool mouseReleaseEvent( QMouseEvent *event ) = 0;
 
-    virtual void stateChanged( SceneGraphicsItem::ActionState previousState ) = 0;
+    virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState ) = 0;
 
 private:
     ActionState       m_state;

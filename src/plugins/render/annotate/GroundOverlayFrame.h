@@ -35,7 +35,7 @@ public:
 
     virtual bool containsPoint( const QPoint &eventPos ) const;
 
-    virtual void itemChanged( const SceneGraphicsItem *other );
+    virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
@@ -48,7 +48,7 @@ protected:
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
 
-    virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
+    virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState );
 private:
     GeoDataGroundOverlay *m_overlay;
     TextureLayer         *m_textureLayer;

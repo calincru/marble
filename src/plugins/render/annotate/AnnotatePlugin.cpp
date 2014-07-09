@@ -557,7 +557,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
         // Notify the previous item we interacted with about the change.
         if ( m_lastItem && m_lastItem != item ) {
-            m_lastItem->itemChanged( item );
+            m_lastItem->dealWithItemChange( item );
         }
 
         if ( m_removingItem && mouseEvent->button() == Qt::LeftButton &&
@@ -775,7 +775,7 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
 
     if ( m_lastItem ) {
         // 0 means interacting with something that is not an annotate plugin item.
-        m_lastItem->itemChanged( 0 );
+        m_lastItem->dealWithItemChange( 0 );
         m_marbleWidget->model()->treeModel()->updateFeature( m_lastItem->placemark() );
         m_lastItem = 0;
     }

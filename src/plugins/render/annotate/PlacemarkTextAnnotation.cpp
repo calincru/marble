@@ -68,7 +68,7 @@ bool PlacemarkTextAnnotation::containsPoint( const QPoint &eventPos ) const
     return false;
 }
 
-void PlacemarkTextAnnotation::itemChanged( const SceneGraphicsItem *other )
+void PlacemarkTextAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 {
     Q_UNUSED( other );
 }
@@ -97,7 +97,7 @@ bool PlacemarkTextAnnotation::mouseReleaseEvent( QMouseEvent *event )
     return true;
 }
 
-void PlacemarkTextAnnotation::stateChanged( SceneGraphicsItem::ActionState previousState )
+void PlacemarkTextAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
 {
     Q_UNUSED( previousState );
 }

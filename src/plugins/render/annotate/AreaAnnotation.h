@@ -66,9 +66,9 @@ public:
 
     /**
      * @brief It is used so far to remove the hover effect while being in the
-     * AddingPolygonNodes state (@see SceneGraphicsItem::itemChanged documentation).
+     * AddingPolygonNodes state (@see SceneGraphicsItem::dealWithItemChange documentation).
      */
-    virtual void itemChanged( const SceneGraphicsItem *other );
+    virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
     /**
      * @brief Returns the widget request.
@@ -127,7 +127,7 @@ protected:
      * @brief Protected method which applies the Polygons modifications when changing
      * states.
      */
-    virtual void stateChanged( SceneGraphicsItem::ActionState previousState );
+    virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState );
 
 private:
     /**

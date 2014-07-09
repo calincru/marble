@@ -63,7 +63,7 @@ bool GroundOverlayFrame::containsPoint( const QPoint &eventPos ) const
     return false;
 }
 
-void GroundOverlayFrame::itemChanged( const SceneGraphicsItem *other )
+void GroundOverlayFrame::dealWithItemChange( const SceneGraphicsItem *other )
 {
     Q_UNUSED( other );
 }
@@ -205,7 +205,7 @@ void GroundOverlayFrame::rotateAroundCenter( qreal lon, qreal lat, qreal &rotate
     GeoDataCoordinates::normalizeLonLat( rotatedLon, rotatedLat );
 }
 
-void GroundOverlayFrame::stateChanged( SceneGraphicsItem::ActionState previousState )
+void GroundOverlayFrame::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
 {
     Q_UNUSED( previousState );
 }
