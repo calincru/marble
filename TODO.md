@@ -6,6 +6,7 @@ To FIX:
   which changes polygon's shape).
 
 To ADD:
+
 - adding nodes (the structure is done, there are still a few problems):
     -> in the end, maybe take into consideration showing the virtual node
     everywhere on a polygon's side.
