@@ -533,7 +533,11 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     if ( ( m_addingPlacemark && handleAddingPlacemark( mouseEvent ) ) ||
          ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) ) {
         return true;
-    }
+    } else if ( ( m_addingPlacemark || m_drawingPolygon ) &&
+                mouseEvent->type() == QEvent::MouseMove ) {
+        m_marbleWidget->setCursor( Qt::PointingHandCursor );
+        return true;
+    } // Polish this a little bit
 
     // It is important to deal with Ground Overlay mouse release event here because it uses the
     // texture layer in order to make the rendering more efficient.
@@ -546,6 +550,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     // it is outside the globe, which is treated above).
     if ( mouseEvent->type() == QEvent::MouseMove && m_movedItem &&
          handleMovingSelectedItem( mouseEvent ) ) {
+        setupCursor( m_movedItem );
         return true;
     }
 
@@ -568,6 +573,8 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
         if ( item->sceneEvent( event ) ) {
             m_lastItem = item;
+
+            setupCursor( item );
 
             if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
                 handleSuccessfulPressEvent( mouseEvent, item );
@@ -1176,6 +1183,14 @@ void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newSta
     }
 }
 
+void AnnotatePlugin::setupCursor( SceneGraphicsItem *item )
+{
+    if ( item->state() == SceneGraphicsItem::AddingPolygonNodes ) {
+        m_marbleWidget->setCursor( Qt::CrossCursor );
+    } else { // Maybe use different cursors, but so far I cannot find anything which fits better.
+        m_marbleWidget->setCursor( Qt::PointingHandCursor );
+    }
+}
 
 //void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )
 //{

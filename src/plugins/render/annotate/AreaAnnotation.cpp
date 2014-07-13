@@ -941,8 +941,12 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         m_movedPointCoords = newCoords;
         return true;
-    } // Just need to add a new if ( m_interactingObj = InteractingNothing ) here if you one wants to
-      // handle polygon hovers in Editing state.
+    } else if ( m_interactingObj == InteractingNothing ) {
+        // Don't do anything when hovering while being in the Editing state, but stop the
+        // event from propagating.
+        // TODO: Take into consideration highlight-ing nodes.
+        return true;
+    }
 
     return false;
 }
@@ -1234,6 +1238,9 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 {
     Q_ASSERT( mouseEvent->button() == Qt::NoButton );
+
+    QPair<int, int> index = virtualNodeContains( mouseEvent->pos() );
+
     // If we are adjusting a virtual node which has just been clicked and became real, just
     // change its coordinates when moving it, as we do with nodes in Editing state on move.
     if ( m_adjustedNode != -2 ) {
@@ -1258,8 +1265,7 @@ bool AreaAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 
     // If we are hovering a virtual node, store its index in order to be painted in drawNodes
     // method.
-    } else {
-        QPair<int, int> index = virtualNodeContains( mouseEvent->pos() );
+    } else if ( index != QPair<int, int>( -1, -1 ) ) {
         m_virtualHovered = index;
         return true;
     }
