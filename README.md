@@ -5,19 +5,19 @@ It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and cont
 ## How to install
 
 1. Clone the repository
-```bash
-git clone https://github.com/crucerucalin/marble ~/marble/
-```
+    ```bash
+    git clone https://github.com/crucerucalin/marble ~/marble/
+    ```
 
 2. Create the installation directory
-```bash
-mkdir ~/marble-build
-```
+    ```bash
+    mkdir ~/marble-build
+    ```
 
-3. Run cmake to generate Makefiles
-```bash
-cd ~/marble-build
-cmake ~/marble -DCMAKE_INSTALL_PREFIX=~/marble_bin -DLIB_SUFFIX=64
-```
+3. Run *cmake* to generate Makefiles
+    ```bash
+    cd ~/marble-build
+    cmake ~/marble -DCMAKE_INSTALL_PREFIX=~/marble_bin -DLIB_SUFFIX=64
+    ```
 
-4. Run `make install` to get it installed and that's it. Launch it using `~/marble_bin/bin/marble` if you are on `KDE` or `~/marble_bin/bin/marble-qt` if you only have installed `Qt libraries`.
+4. Run `make install` to get it installed and that's it. Launch it using `~/marble_bin/bin/marble` if you are on *KDE* or `~/marble_bin/bin/marble-qt` if you only have installed *Qt libraries*.
