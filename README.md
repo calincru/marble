@@ -14,12 +14,12 @@ It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and cont
     mkdir ~/marble-build
     ```
 
-3. Run *cmake* to generate Makefiles
+3. Run **cmake** to generate Makefiles
     ```bash
     cd ~/marble-build
     cmake ~/marble -DCMAKE_INSTALL_PREFIX=~/marble_bin -DLIB_SUFFIX=64
     ```
 
-4. Run `make install` to get it installed and that's it. Launch it using `~/marble_bin/bin/marble` if you are on *KDE* or `~/marble_bin/bin/marble-qt` if you only have installed *Qt libraries*.
+4. Run `make install` to get it installed and that's it. Launch it using `~/marble_bin/bin/marble` if you are on *KDE* or `~/marble_bin/bin/marble-qt` if you only have installed **Qt libraries**.
 
-5. To have the *Annotate Plugin* working, make sure that `[plugin_annotation]` from `~/.kde/share/config/marblerc` has both *enabled* and *visible* fields set to *true*.
+5. To have the **Annotate Plugin** working, make sure that `[plugin_annotation]` from `~/.kde/share/config/marblerc` has both *enabled* and *visible* fields set to **true**.
