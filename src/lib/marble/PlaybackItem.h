@@ -17,6 +17,10 @@
 
 namespace Marble
 {
+
+class GeoDataContainer;
+class GeoDataFeature;
+
 class PlaybackItem : public QObject
 {
     Q_OBJECT
@@ -35,6 +39,9 @@ Q_SIGNALS:
     void progressChanged( double seconds );
     void balloonShown( GeoDataPlacemark* );
     void balloonHidden();
+    void updated( GeoDataFeature* );
+    void added( GeoDataContainer *parent, GeoDataFeature *feature, int row );
+    void removed( const GeoDataFeature *feature  );
 };
 }
 #endif
