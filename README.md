@@ -1,6 +1,6 @@
 # Marble - KDE
 
-It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and contains all my work on my GSoC Project.
+It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and contains all my work on my *GSoC Project*. A more detailed description of what my work involves can be found on [my blog](http://calincruceru.wordpress.com/).
 
 ## How to install
 
@@ -21,3 +21,5 @@ It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and cont
     ```
 
 4. Run `make install` to get it installed and that's it. Launch it using `~/marble_bin/bin/marble` if you are on *KDE* or `~/marble_bin/bin/marble-qt` if you only have installed *Qt libraries*.
+
+5. To have the *Annotate Plugin* working, make sure that `[plugin_annotation]` from `~/.kde/share/config/marblerc` has both *enabled* and *visible* fields set to *true*.
