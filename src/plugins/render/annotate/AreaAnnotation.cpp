@@ -25,6 +25,7 @@
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
 
+#include <QDebug>
 
 namespace Marble {
 
@@ -40,6 +41,7 @@ public:
         NodeIsSelected = 0x1,
         NodeIsInnerTmp = 0x2,
         NodeIsMerged = 0x4,
+        NodeIsHighlighted = 0x8
     };
 
     Q_DECLARE_FLAGS(PolyNodeFlags, PolyNodeFlag)
@@ -47,6 +49,7 @@ public:
     bool isSelected() const;
     bool isInnerTmp() const;
     bool isBeingMerged() const;
+    bool isHighlighted() const;
 
     void setFlag( PolyNodeFlag flag, bool enabled = true );
     void setFlags( PolyNodeFlags flags );
@@ -84,6 +87,11 @@ bool PolygonNode::isInnerTmp() const
 bool PolygonNode::isBeingMerged() const
 {
     return m_flags & NodeIsMerged;
+}
+
+bool PolygonNode::isHighlighted() const
+{
+    return m_flags & NodeIsHighlighted;
 }
 
 void PolygonNode::setRegion( QRegion newRegion )
@@ -126,6 +134,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     m_viewport( 0 ),
     m_regionsInitialized( false ),
     m_request( NoRequest ),
+    m_hoveredNode( -1, -1 ),
     m_interactingObj( InteractingNothing ),
     m_virtualHovered( -1, -1 )
 {
@@ -186,7 +195,20 @@ void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 
     // So far we only deal with item changes when hovering virtual nodes, so that
     // they do not remain hovered when changing the item we interact with.
-    if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
+    if ( state() == SceneGraphicsItem::Editing ) {
+        if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
+            int i = m_hoveredNode.first;
+            int j = m_hoveredNode.second;
+
+            if ( j == -1 ) {
+                m_outerNodesList[i].setFlag( PolygonNode::NodeIsHighlighted, false );
+            } else {
+                m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsHighlighted, false );
+            }
+        }
+
+        m_hoveredNode = QPair<int, int>( -1, -1 );
+    } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
         m_virtualHovered = QPair<int, int>( -1, -1 );
     }
 }
@@ -286,6 +308,8 @@ void AreaAnnotation::deleteClickedNode()
 
     int i = m_clickedNodeIndexes.first;
     int j = m_clickedNodeIndexes.second;
+
+    m_hoveredNode = QPair<int, int>( -1, -1 );
 
     if ( i != -1 && j == -1 ) {
         if ( m_outerNodesList.size() <= 3 ) {
@@ -429,6 +453,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
     // Dealing with cases when exiting a state has an effect on this item.
     if ( previousState == SceneGraphicsItem::Editing ) {
         m_clickedNodeIndexes = QPair<int, int>( -1, -1 );
+        m_hoveredNode = QPair<int, int>( -1, -1 );
     } else if ( previousState == SceneGraphicsItem::AddingPolygonHole ) {
         // Check if a polygon hole was being drawn before changing state.
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
@@ -473,6 +498,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
     if ( state() == SceneGraphicsItem::Editing ) {
         m_interactingObj = InteractingNothing;
         m_clickedNodeIndexes = QPair<int, int>( -1, -1 );
+        m_hoveredNode = QPair<int, int>( -1, -1 );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         // Nothing to do so far when entering this state.
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
@@ -699,9 +725,35 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
         } else if ( m_outerNodesList.at(i).isSelected() ) {
             painter->setBrush( selectedColor );
             painter->drawEllipse( outerRing.at(i), d_selectedDim, d_selectedDim );
+
+            if ( m_outerNodesList.at(i).isHighlighted() ) {
+                QPen defaultPen = painter->pen();
+                QPen newPen;
+                newPen.setColor( QColor( 0, 255, 255, 120 ) );
+                newPen.setWidth( defaultPen.width() + 3 );
+
+                painter->setBrush( Qt::NoBrush );
+                painter->setPen( newPen );
+                painter->drawEllipse( outerRing.at(i), d_selectedDim + 2, d_selectedDim + 2 );
+
+                painter->setPen( defaultPen );
+            }
         } else {
             painter->setBrush( regularColor );
             painter->drawEllipse( outerRing.at(i), d_regularDim, d_regularDim );
+
+            if ( m_outerNodesList.at(i).isHighlighted() ) {
+                QPen defaultPen = painter->pen();
+                QPen newPen;
+                newPen.setColor( QColor( 0, 255, 255, 120 ) );
+                newPen.setWidth( defaultPen.width() + 3 );
+
+                painter->setPen( newPen );
+                painter->setBrush( Qt::NoBrush );
+                painter->drawEllipse( outerRing.at(i), d_regularDim + 2, d_regularDim + 2 );
+
+                painter->setPen( defaultPen );
+            }
         }
     }
 
@@ -713,6 +765,19 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
             } else if ( m_innerNodesList.at(i).at(j).isSelected() ) {
                 painter->setBrush( selectedColor );
                 painter->drawEllipse( innerRings.at(i).at(j), d_selectedDim, d_selectedDim );
+
+                if ( m_innerNodesList.at(i).at(j).isHighlighted() ) {
+                    QPen defaultPen = painter->pen();
+                    QPen newPen;
+                    newPen.setColor( QColor( 0, 255, 255, 120 ) );
+                    newPen.setWidth( defaultPen.width() + 3 );
+
+                    painter->setBrush( Qt::NoBrush );
+                    painter->setPen( newPen );
+                    painter->drawEllipse( innerRings.at(i).at(j), d_selectedDim + 2, d_selectedDim + 2 );
+
+                    painter->setPen( defaultPen );
+                }
             } else if ( m_innerNodesList.at(i).at(j).isInnerTmp() ) {
                 // Do not draw inner nodes until the 'process' of adding these nodes ends
                 // (aka while being in the 'Adding Polygon Hole').
@@ -720,6 +785,19 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
             } else {
                 painter->setBrush( regularColor );
                 painter->drawEllipse( innerRings.at(i).at(j), d_regularDim, d_regularDim );
+
+                if ( m_innerNodesList.at(i).at(j).isHighlighted() ) {
+                    QPen defaultPen = painter->pen();
+                    QPen newPen;
+                    newPen.setColor( QColor( 0, 255, 255, 120 ) );
+                    newPen.setWidth( defaultPen.width() + 3 );
+
+                    painter->setBrush( Qt::NoBrush );
+                    painter->setPen( newPen );
+                    painter->drawEllipse( innerRings.at(i).at(j), d_regularDim + 2, d_regularDim + 2 );
+
+                    painter->setPen( defaultPen );
+                }
             }
         }
     }
@@ -942,12 +1020,33 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
         m_movedPointCoords = newCoords;
         return true;
     } else if ( m_interactingObj == InteractingNothing ) {
-        // Don't do anything when hovering while being in the Editing state, but stop the
-        // event from propagating.
-        // TODO: Take into consideration highlight-ing nodes.
+        int outerIndex = outerNodeContains( mouseEvent->pos() );
+        if ( outerIndex != -1 ) {
+            if ( !m_outerNodesList.at(outerIndex).isHighlighted() ) {
+                m_hoveredNode = QPair<int, int>( outerIndex, -1 );
+                m_outerNodesList[outerIndex].setFlag( PolygonNode::NodeIsHighlighted );
+            }
+        } else if ( m_hoveredNode != QPair<int, int>( -1, -1 ) && m_hoveredNode.second == -1 ) {
+            m_outerNodesList[m_hoveredNode.first].setFlag( PolygonNode::NodeIsHighlighted, false );
+            m_hoveredNode = QPair<int, int>( -1, -1 );
+        }
+
+        QPair<int, int> innerIndex = innerNodeContains( mouseEvent->pos() );
+        if ( innerIndex != QPair<int, int>( -1, -1 ) ) {
+            if ( !m_innerNodesList.at(innerIndex.first).at(innerIndex.second).isHighlighted() ) {
+                m_hoveredNode = innerIndex;
+                m_innerNodesList[innerIndex.first][innerIndex.second].setFlag( PolygonNode::NodeIsHighlighted );
+            }
+        } else if ( m_hoveredNode != QPair<int, int>( -1, -1 ) && m_hoveredNode.second != -1 ) {
+            m_innerNodesList[m_hoveredNode.first][m_hoveredNode.second].setFlag( PolygonNode::NodeIsHighlighted,
+                                                                                 false );
+        }
+
         return true;
     }
 
+    // It should not get here because we so far only interact either with nodes or the entire
+    // polygon.
     return false;
 }
 

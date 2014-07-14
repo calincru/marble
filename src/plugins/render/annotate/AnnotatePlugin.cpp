@@ -533,11 +533,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     if ( ( m_addingPlacemark && handleAddingPlacemark( mouseEvent ) ) ||
          ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) ) {
         return true;
-    } else if ( ( m_addingPlacemark || m_drawingPolygon ) &&
-                mouseEvent->type() == QEvent::MouseMove ) {
-        m_marbleWidget->setCursor( Qt::PointingHandCursor );
-        return true;
-    } // Polish this a little bit
+    }
 
     // It is important to deal with Ground Overlay mouse release event here because it uses the
     // texture layer in order to make the rendering more efficient.
@@ -599,50 +595,57 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
 
 bool AnnotatePlugin::handleAddingPlacemark( QMouseEvent *mouseEvent )
 {
-    if ( mouseEvent->button() != Qt::LeftButton ) {
-        return false;
+    if ( mouseEvent->type() == QEvent::MouseMove ) {
+        setupCursor( 0 );
+        return true;
+    } if ( mouseEvent->button() == Qt::LeftButton &&
+           mouseEvent->type() == QEvent::MouseButtonPress ) {
+        qreal lon, lat;
+        m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                        mouseEvent->pos().y(),
+                                        lon, lat,
+                                        GeoDataCoordinates::Radian );
+        const GeoDataCoordinates coords( lon, lat );
+
+
+        GeoDataPlacemark *placemark = new GeoDataPlacemark;
+        placemark->setCoordinate( coords );
+        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
+
+        PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
+        m_graphicsItems.append( textAnnotation );
+
+        emit placemarkAdded();
+        return true;
     }
 
-    qreal lon, lat;
-    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
-                                    mouseEvent->pos().y(),
-                                    lon, lat,
-                                    GeoDataCoordinates::Radian );
-    const GeoDataCoordinates coords( lon, lat );
-
-
-    GeoDataPlacemark *placemark = new GeoDataPlacemark;
-    placemark->setCoordinate( coords );
-    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
-
-    PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
-    m_graphicsItems.append( textAnnotation );
-
-    emit placemarkAdded();
-    return true;
+    return false;
 }
 
 bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
 {
-    if ( mouseEvent->button() != Qt::LeftButton ||
-         mouseEvent->type() != QEvent::MouseButtonPress ) {
-        return false;
+    if ( mouseEvent->type() == QEvent::MouseMove ) {
+        setupCursor( 0 );
+        return true;
+    } else if ( mouseEvent->button() == Qt::LeftButton &&
+                mouseEvent->type() == QEvent::MouseButtonPress ) {
+        qreal lon, lat;
+        m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                        mouseEvent->pos().y(),
+                                        lon, lat,
+                                        GeoDataCoordinates::Radian );
+        const GeoDataCoordinates coords( lon, lat );
+
+
+        m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
+        GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
+        poly->outerBoundary().append( coords );
+        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
+
+        return true;
     }
 
-    qreal lon, lat;
-    m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
-                                    mouseEvent->pos().y(),
-                                    lon, lat,
-                                    GeoDataCoordinates::Radian );
-    const GeoDataCoordinates coords( lon, lat );
-
-
-    m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
-    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
-    poly->outerBoundary().append( coords );
-    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
-
-    return true;
+    return false;
 }
 
 void AnnotatePlugin::handleReleaseOverlay( QMouseEvent *mouseEvent )
@@ -1185,8 +1188,8 @@ void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newSta
 
 void AnnotatePlugin::setupCursor( SceneGraphicsItem *item )
 {
-    if ( item->state() == SceneGraphicsItem::AddingPolygonNodes ) {
-        m_marbleWidget->setCursor( Qt::CrossCursor );
+    if ( !item || item->state() == SceneGraphicsItem::AddingPolygonNodes ) {
+        m_marbleWidget->setCursor( Qt::DragCopyCursor );
     } else { // Maybe use different cursors, but so far I cannot find anything which fits better.
         m_marbleWidget->setCursor( Qt::PointingHandCursor );
     }

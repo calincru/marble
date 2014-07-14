@@ -243,6 +243,7 @@ private:
     };
     GeoDataCoordinates       m_movedPointCoords;
     QPair<int, int>          m_clickedNodeIndexes;
+    QPair<int, int>          m_hoveredNode;
     EditingInteractingObject m_interactingObj;
 
     // Used in Merging Nodes state
