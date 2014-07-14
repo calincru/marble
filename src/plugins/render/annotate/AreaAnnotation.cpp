@@ -1177,7 +1177,6 @@ bool AreaAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
 {
-    // TODO: Verify if the size becomes smaller than 3.
     if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
     }
