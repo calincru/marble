@@ -24,6 +24,7 @@
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
+#include "MergingNodesAnimation.h"
 
 #include <QDebug>
 
@@ -385,6 +386,11 @@ bool AreaAnnotation::clickedNodeIsSelected() const
            ( i != -1 && j != -1 && m_innerNodesList.at(i).at(j).isSelected() );
 }
 
+QPointer<MergingNodesAnimation> AreaAnnotation::animation()
+{
+    return m_animation;
+}
+
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 {
     if ( !m_viewport || !m_geopainter ) {
@@ -486,6 +492,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
         }
 
         m_firstMergedNode = QPair<int, int>( -1, -1 );
+        delete m_animation;
     } else if ( previousState == SceneGraphicsItem::AddingPolygonNodes ) {
         m_outerVirtualNodes.clear();
         m_innerVirtualNodes.clear();
@@ -504,6 +511,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         m_firstMergedNode = QPair<int, int>( -1, -1 );
         m_secondMergedNode = QPair<int, int>( -1, -1 );
+        m_animation = 0;
     } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
         m_virtualHovered = QPair<int, int>( -1, -1 );
         m_adjustedNode = -2;
@@ -1171,7 +1179,6 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 
     GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
     GeoDataLinearRing initialOuterRing = polygon->outerBoundary();
-    QVector<GeoDataLinearRing> initialInnerRings = polygon->innerBoundaries();
 
     GeoDataLinearRing &outerRing = polygon->outerBoundary();
     QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
@@ -1214,7 +1221,6 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 
             if ( !isValidPolygon() ) {
                 polygon->outerBoundary() = initialOuterRing;
-                polygon->innerBoundaries() = initialInnerRings;
                 m_outerNodesList[m_firstMergedNode.first].setFlag( PolygonNode::NodeIsMerged,  false );
 
                 m_firstMergedNode = QPair<int, int>( -1, -1 );
@@ -1222,7 +1228,13 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
                 return true;
             }
 
+            // Do not modify it here. The animation will modify it.
+            polygon->outerBoundary() = initialOuterRing;
             m_secondMergedNode = QPair<int, int>( outerIndex, -1 );
+
+            delete m_animation;
+            m_animation = new MergingNodesAnimation( this );
+            m_request = StartAnimation;
         }
 
         return true;
@@ -1271,12 +1283,9 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
                 return true;
             }
 
-            m_resultingCoords = innerRings.at(i).at(j).interpolate(
-                                            innerRings.at(i).at(innerIndexes.second), 0.5 );
-            innerRings[i][innerIndexes.second] = m_resultingCoords;
-            innerRings[i].remove( j );
-
             m_secondMergedNode = innerIndexes;
+            m_animation = new MergingNodesAnimation( this );
+            m_request = StartAnimation;
         }
 
         return true;

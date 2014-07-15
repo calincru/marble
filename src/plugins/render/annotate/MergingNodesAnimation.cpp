@@ -19,12 +19,17 @@ namespace Marble {
 MergingNodesAnimation::MergingNodesAnimation( AreaAnnotation *polygon ) :
     m_polygon( polygon )
 {
-    // nothing to do
+    connect( this, SIGNAL(startAnimation()), this, SLOT(animationStarted()) );
 }
 
 MergingNodesAnimation::~MergingNodesAnimation()
 {
     // nothing to do
+}
+
+void MergingNodesAnimation::animationStarted()
+{
+
 }
 
 } // namespace Marble

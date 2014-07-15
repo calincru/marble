@@ -13,6 +13,8 @@
 #ifndef AREAANNOTATION_H
 #define AREAANNOTATION_H
 
+#include <QPointer>
+
 #include "SceneGraphicsItem.h"
 #include "GeoDataCoordinates.h"
 
@@ -21,6 +23,7 @@ namespace Marble
 {
 
 class PolygonNode;
+class MergingNodesAnimation;
 
 /**
  * @brief The AreaAnnotation class controls everything related to Polygons Editing Mode.
@@ -29,6 +32,8 @@ class PolygonNode;
  */
 class AreaAnnotation : public SceneGraphicsItem
 {
+    friend class MergingNodesAnimation;
+
 public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
 
@@ -45,6 +50,7 @@ public:
         InvalidShapeWarning,
         ShowPolygonRmbMenu,
         ShowNodeRmbMenu,
+        StartAnimation,
         RemovePolygonRequest
     };
 
@@ -107,6 +113,8 @@ public:
      * @brief Tests if the last clicked node is selected.
      */
     bool clickedNodeIsSelected() const;
+
+    QPointer<MergingNodesAnimation> animation();
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
@@ -250,6 +258,7 @@ private:
     QPair<int, int>    m_firstMergedNode;
     QPair<int, int>    m_secondMergedNode;
     GeoDataCoordinates m_resultingCoords;
+    QPointer<MergingNodesAnimation> m_animation;
 
     // Used in Adding Nodes state
     QPair<int, int> m_virtualHovered;

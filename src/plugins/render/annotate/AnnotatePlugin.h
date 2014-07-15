@@ -92,6 +92,7 @@ signals:
     void placemarkAdded();
     void overlayAdded();
     void itemRemoved();
+    void startAnimation();
 
 public slots:
     void enableModel( bool enabled );

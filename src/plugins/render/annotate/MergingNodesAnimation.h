@@ -26,10 +26,11 @@ public:
     ~MergingNodesAnimation();
 
 public slots:
-    void startAnimation();
+    void animationStarted();
 
 signals:
     void nodesMoved();
+    void startAnimation();
 
 private:
     AreaAnnotation *m_polygon;

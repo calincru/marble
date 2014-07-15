@@ -46,6 +46,7 @@
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
+#include "MergingNodesAnimation.h"
 
 
 namespace Marble
@@ -726,6 +727,13 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             showPolygonRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
+        } else if ( area->request() == AreaAnnotation::StartAnimation ) {
+            QPointer<MergingNodesAnimation> animation = area->animation();
+
+            connect( this, SIGNAL(startAnimation()), animation, SIGNAL(startAnimation()) );
+            connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
+
+            emit startAnimation();
         } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),
