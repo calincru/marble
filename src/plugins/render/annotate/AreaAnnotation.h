@@ -76,6 +76,8 @@ public:
      */
     virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
+    void setBusy( bool enabled );
+
     /**
      * @brief Returns the widget request.
      */
@@ -235,6 +237,7 @@ private:
     const GeoPainter     *m_geopainter;
     const ViewportParams *m_viewport;
     bool                  m_regionsInitialized;
+    bool                  m_busy;
     MarbleWidgetRequest   m_request;
 
     QList<PolygonNode>          m_outerNodesList;

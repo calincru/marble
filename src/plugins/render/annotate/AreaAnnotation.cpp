@@ -134,6 +134,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     m_geopainter( 0 ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
+    m_busy( false ),
     m_request( NoRequest ),
     m_hoveredNode( -1, -1 ),
     m_interactingObj( InteractingNothing ),
@@ -211,6 +212,15 @@ void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
         m_hoveredNode = QPair<int, int>( -1, -1 );
     } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
         m_virtualHovered = QPair<int, int>( -1, -1 );
+    }
+}
+
+void AreaAnnotation::setBusy( bool enabled )
+{
+    m_busy = enabled;
+
+    if ( !enabled ) {
+        delete m_animation;
     }
 }
 
@@ -393,7 +403,7 @@ QPointer<MergingNodesAnimation> AreaAnnotation::animation()
 
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 {
-    if ( !m_viewport || !m_geopainter ) {
+    if ( !m_viewport || !m_geopainter || m_busy ) {
         return false;
     }
 
@@ -414,7 +424,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
-    if ( !m_viewport || !m_geopainter ) {
+    if ( !m_viewport || !m_geopainter || m_busy ) {
         return false;
     }
 
@@ -435,7 +445,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
-    if ( !m_viewport || !m_geopainter ) {
+    if ( !m_viewport || !m_geopainter || m_busy ) {
         return false;
     }
 
@@ -582,6 +592,8 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
         }
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         // Update the PolygonNodes lists after both nodes to be merged have been selected.
+
+        // TODO
         int ff = m_firstMergedNode.first;
         int fs = m_firstMergedNode.second;
         int sf = m_secondMergedNode.first;

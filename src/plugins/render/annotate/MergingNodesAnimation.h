@@ -12,11 +12,13 @@
 #define MERGINGNODESANIMATION_H
 
 #include <QObject>
+#include <QTimer>
 
 
 namespace Marble {
 
 class AreaAnnotation;
+class GeoDataCoordinates;
 
 class MergingNodesAnimation : public QObject {
 
@@ -25,15 +27,31 @@ public:
     explicit MergingNodesAnimation( AreaAnnotation *polygon );
     ~MergingNodesAnimation();
 
+    enum NodesBoundary {
+        InnerBoundary,
+        OuterBoundary
+    };
+
 public slots:
-    void animationStarted();
+    void startAnimation();
 
 signals:
     void nodesMoved();
-    void startAnimation();
+    void animationFinished();
+
+private slots:
+    void updateNodes();
 
 private:
+    qreal nodesDistance();
+    GeoDataCoordinates newCoords();
+
     AreaAnnotation *m_polygon;
+    QTimer         *m_timer;
+    NodesBoundary   m_boundary;
+
+    static const int   timeOffset;
+    static const qreal distanceOffset;
 };
 
 } // namespace Marble

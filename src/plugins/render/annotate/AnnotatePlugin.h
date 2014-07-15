@@ -92,7 +92,7 @@ signals:
     void placemarkAdded();
     void overlayAdded();
     void itemRemoved();
-    void startAnimation();
+    void animationStarted();
 
 public slots:
     void enableModel( bool enabled );
@@ -125,6 +125,7 @@ private slots:
     void deleteNode();
     void deselectNodes();
     void deleteSelectedNodes();
+    void changeAreaBusy();
 
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
@@ -184,7 +185,7 @@ private:
     SceneGraphicsItem    *m_movedItem;
     SceneGraphicsItem    *m_lastItem;
     GeoDataGroundOverlay *m_rmbOverlay;
-    AreaAnnotation       *m_rmbSelectedArea;
+    AreaAnnotation       *m_selectedArea;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;
