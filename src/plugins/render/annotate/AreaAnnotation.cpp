@@ -1128,18 +1128,6 @@ bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processAddingHoleOnPress( QMouseEvent *mouseEvent )
 {
-    Q_UNUSED( mouseEvent );
-    return true;
-}
-
-bool AreaAnnotation::processAddingHoleOnMove( QMouseEvent *mouseEvent )
-{
-    Q_UNUSED( mouseEvent );
-    return true;
-}
-
-bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
-{
     if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
     }
@@ -1163,19 +1151,19 @@ bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
     return true;
 }
 
+bool AreaAnnotation::processAddingHoleOnMove( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return true;
+}
+
+bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return true;
+}
+
 bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
-{
-    Q_UNUSED( mouseEvent );
-    return true;
-}
-
-bool AreaAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
-{
-    Q_UNUSED( mouseEvent );
-    return true;
-}
-
-bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
 {
     if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
@@ -1295,6 +1283,18 @@ bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
     }
 
     return false;
+}
+
+bool AreaAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return true;
+}
+
+bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return true;
 }
 
 bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
