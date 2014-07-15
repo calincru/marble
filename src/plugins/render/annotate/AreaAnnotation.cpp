@@ -1074,8 +1074,6 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
             return true;
         }
-
-        return false;
     }
 
     // It should not get here because we so far only interact either with nodes or the entire
