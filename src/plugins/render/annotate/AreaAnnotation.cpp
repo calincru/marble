@@ -611,6 +611,9 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
                 m_outerNodesList[sf].setFlag( PolygonNode::NodeIsSelected );
             }
 
+            // Since it will not get here if the object is set to 'busy' (@see above), it will
+            // get here only when the animation has finished which means the first node had been
+            // removed and the coordinates of the second one had been modified.
             if ( m_outerNodesList.at(sf).isSelected() ) {
                 m_outerNodesList[sf].setRegion( painter->regionFromEllipse(
                                                 outerRing.at(sf), selectedDim, selectedDim ) );

@@ -44,7 +44,7 @@ EditPolygonDialog::Private::Private( GeoDataPlacemark *placemark ) :
 
 EditPolygonDialog::Private::~Private()
 {
-    // nothig to do
+
 }
 
 EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *parent ) :
@@ -109,7 +109,7 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 
 EditPolygonDialog::~EditPolygonDialog()
 {
-    // nothing to do
+    delete d;
 }
 
 void EditPolygonDialog::updatePolygon()
