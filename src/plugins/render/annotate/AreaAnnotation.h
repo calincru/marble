@@ -183,6 +183,13 @@ private:
     bool polygonContains( const QPoint &point ) const;
 
     /**
+     * @brief dealWithHovering
+     * @param mouseEvent
+     * @return
+     */
+    bool dealWithHovering( QMouseEvent *mouseEvent );
+
+    /**
      * @brief Each state has its corresponding event handler, since in each state the
      * item may behave differently. These are the event handlers for the Editing state.
      */

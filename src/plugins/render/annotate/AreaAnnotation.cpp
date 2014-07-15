@@ -195,7 +195,7 @@ void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 
     // So far we only deal with item changes when hovering virtual nodes, so that
     // they do not remain hovered when changing the item we interact with.
-    if ( state() == SceneGraphicsItem::Editing ) {
+    if ( state() == SceneGraphicsItem::Editing || state() == SceneGraphicsItem::MergingPolygonNodes ) {
         if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
             int i = m_hoveredNode.first;
             int j = m_hoveredNode.second;
@@ -486,6 +486,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
         }
 
         m_firstMergedNode = QPair<int, int>( -1, -1 );
+        m_hoveredNode = QPair<int, int>( -1, -1 );
     } else if ( previousState == SceneGraphicsItem::AddingPolygonNodes ) {
         m_outerVirtualNodes.clear();
         m_innerVirtualNodes.clear();
@@ -504,6 +505,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         m_firstMergedNode = QPair<int, int>( -1, -1 );
         m_secondMergedNode = QPair<int, int>( -1, -1 );
+        m_hoveredNode = QPair<int, int>( -1, -1 );
     } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
         m_virtualHovered = QPair<int, int>( -1, -1 );
         m_adjustedNode = -2;
@@ -1020,64 +1022,9 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
         m_movedPointCoords = newCoords;
         return true;
     } else if ( m_interactingObj == InteractingNothing ) {
-        int outerIndex = outerNodeContains( mouseEvent->pos() );
-        if ( outerIndex != -1 ) {
-            if ( !m_outerNodesList.at(outerIndex).isHighlighted() ) {
-                // Deal with the case when two nodes are very close to each other.
-                if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
-                    int i = m_hoveredNode.first;
-                    int j = m_hoveredNode.second;
-
-                    if ( j == -1 ) {
-                        m_outerNodesList[i].setFlag( PolygonNode::NodeIsHighlighted, false );
-                    } else {
-                        m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsHighlighted, false );
-                    }
-                }
-
-                m_hoveredNode = QPair<int, int>( outerIndex, -1 );
-                m_outerNodesList[outerIndex].setFlag( PolygonNode::NodeIsHighlighted );
-            }
-
-            return true;
-        } else if ( m_hoveredNode != QPair<int, int>( -1, -1 ) && m_hoveredNode.second == -1 ) {
-            m_outerNodesList[m_hoveredNode.first].setFlag( PolygonNode::NodeIsHighlighted, false );
-            m_hoveredNode = QPair<int, int>( -1, -1 );
-
-            return true;
-        }
-
-        QPair<int, int> innerIndex = innerNodeContains( mouseEvent->pos() );
-        if ( innerIndex != QPair<int, int>( -1, -1 ) ) {
-            if ( !m_innerNodesList.at(innerIndex.first).at(innerIndex.second).isHighlighted() ) {
-                // Deal with the case when two nodes are very close to each other.
-                if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
-                    int i = m_hoveredNode.first;
-                    int j = m_hoveredNode.second;
-
-                    if ( j == -1 ) {
-                        m_outerNodesList[i].setFlag( PolygonNode::NodeIsHighlighted, false );
-                    } else {
-                        m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsHighlighted, false );
-                    }
-                }
-
-                m_hoveredNode = innerIndex;
-                m_innerNodesList[innerIndex.first][innerIndex.second].setFlag( PolygonNode::NodeIsHighlighted );
-            }
-
-            return true;
-        } else if ( m_hoveredNode != QPair<int, int>( -1, -1 ) && m_hoveredNode.second != -1 ) {
-            m_innerNodesList[m_hoveredNode.first][m_hoveredNode.second].setFlag( PolygonNode::NodeIsHighlighted,
-                                                                                 false );
-            m_hoveredNode = QPair<int, int>( -1, -1 );
-
-            return true;
-        }
+        return dealWithHovering( mouseEvent );
     }
 
-    // It should not get here because we so far only interact either with nodes or the entire
-    // polygon.
     return false;
 }
 
@@ -1169,8 +1116,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
 {
-    Q_UNUSED( mouseEvent );
-    return true;
+    return dealWithHovering( mouseEvent );
 }
 
 bool AreaAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
@@ -1408,6 +1354,66 @@ bool AreaAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
 {
     Q_UNUSED( mouseEvent );
     return m_adjustedNode == -2;
+}
+
+bool AreaAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
+{
+    int outerIndex = outerNodeContains( mouseEvent->pos() );
+    if ( outerIndex != -1 ) {
+        if ( !m_outerNodesList.at(outerIndex).isHighlighted() ) {
+            // Deal with the case when two nodes are very close to each other.
+            if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
+                int i = m_hoveredNode.first;
+                int j = m_hoveredNode.second;
+
+                if ( j == -1 ) {
+                    m_outerNodesList[i].setFlag( PolygonNode::NodeIsHighlighted, false );
+                } else {
+                    m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsHighlighted, false );
+                }
+            }
+
+            m_hoveredNode = QPair<int, int>( outerIndex, -1 );
+            m_outerNodesList[outerIndex].setFlag( PolygonNode::NodeIsHighlighted );
+        }
+
+        return true;
+    } else if ( m_hoveredNode != QPair<int, int>( -1, -1 ) && m_hoveredNode.second == -1 ) {
+        m_outerNodesList[m_hoveredNode.first].setFlag( PolygonNode::NodeIsHighlighted, false );
+        m_hoveredNode = QPair<int, int>( -1, -1 );
+
+        return true;
+    }
+
+    QPair<int, int> innerIndex = innerNodeContains( mouseEvent->pos() );
+    if ( innerIndex != QPair<int, int>( -1, -1 ) ) {
+        if ( !m_innerNodesList.at(innerIndex.first).at(innerIndex.second).isHighlighted() ) {
+            // Deal with the case when two nodes are very close to each other.
+            if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
+                int i = m_hoveredNode.first;
+                int j = m_hoveredNode.second;
+
+                if ( j == -1 ) {
+                    m_outerNodesList[i].setFlag( PolygonNode::NodeIsHighlighted, false );
+                } else {
+                    m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsHighlighted, false );
+                }
+            }
+
+            m_hoveredNode = innerIndex;
+            m_innerNodesList[innerIndex.first][innerIndex.second].setFlag( PolygonNode::NodeIsHighlighted );
+        }
+
+        return true;
+    } else if ( m_hoveredNode != QPair<int, int>( -1, -1 ) && m_hoveredNode.second != -1 ) {
+        m_innerNodesList[m_hoveredNode.first][m_hoveredNode.second].setFlag( PolygonNode::NodeIsHighlighted,
+                                                                             false );
+        m_hoveredNode = QPair<int, int>( -1, -1 );
+
+        return true;
+    }
+
+    return false;
 }
 
 }
