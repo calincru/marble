@@ -19,7 +19,6 @@
 #include "MarbleMath.h"
 
 // TODOs:
-// -> modify AreaAnnotation::applyChanges so that it takes into account m_busy.
 // -> finish this
 
 namespace Marble {

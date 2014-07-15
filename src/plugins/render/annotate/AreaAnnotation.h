@@ -260,7 +260,6 @@ private:
     // Used in Merging Nodes state
     QPair<int, int>    m_firstMergedNode;
     QPair<int, int>    m_secondMergedNode;
-    GeoDataCoordinates m_resultingCoords;
     QPointer<MergingNodesAnimation> m_animation;
 
     // Used in Adding Nodes state

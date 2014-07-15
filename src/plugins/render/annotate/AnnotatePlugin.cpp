@@ -307,6 +307,8 @@ void AnnotatePlugin::changeAreaBusy()
 {
     m_selectedArea->setBusy( false );
     m_selectedArea = 0;
+
+    emit repaintNeeded();
 }
 
 void AnnotatePlugin::setRemovingItems( bool enabled )
