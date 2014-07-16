@@ -1123,18 +1123,6 @@ bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processAddingHoleOnPress( QMouseEvent *mouseEvent )
 {
-    Q_UNUSED( mouseEvent );
-    return true;
-}
-
-bool AreaAnnotation::processAddingHoleOnMove( QMouseEvent *mouseEvent )
-{
-    Q_UNUSED( mouseEvent );
-    return true;
-}
-
-bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
-{
     if ( mouseEvent->button() != Qt::LeftButton ) {
         return false;
     }
@@ -1155,6 +1143,18 @@ bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
     }
     innerBounds.last().append( newCoords );
 
+    return true;
+}
+
+bool AreaAnnotation::processAddingHoleOnMove( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return true;
+}
+
+bool AreaAnnotation::processAddingHoleOnRelease( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
     return true;
 }
 
