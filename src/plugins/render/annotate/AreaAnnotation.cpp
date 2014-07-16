@@ -763,7 +763,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
                 if ( m_outerNodesList.at(i).isEditingHighlighted() ) {
                     newPen.setColor( QColor( 0, 255, 255, 120 ) );
                 } else {
-                    newPen.setColor( QColor( 50, 255, 0, 160 ) );
+                    newPen.setColor( QColor( 25, 255, 25, 180 ) );
                 }
 
                 painter->setBrush( Qt::NoBrush );
@@ -785,7 +785,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
                 if ( m_outerNodesList.at(i).isEditingHighlighted() ) {
                     newPen.setColor( QColor( 0, 255, 255, 120 ) );
                 } else {
-                    newPen.setColor( QColor( 50, 255, 0, 160 ) );
+                    newPen.setColor( QColor( 25, 255, 25, 180 ) );
                 }
 
                 painter->setPen( newPen );
@@ -815,7 +815,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
                     if ( m_innerNodesList.at(i).at(j).isEditingHighlighted() ) {
                         newPen.setColor( QColor( 0, 255, 255, 120 ) );
                     } else {
-                        newPen.setColor( QColor( 50, 255, 0, 160 ) );
+                        newPen.setColor( QColor( 25, 255, 25, 180 ) );
                     }
 
                     painter->setBrush( Qt::NoBrush );
@@ -833,7 +833,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
                 painter->drawEllipse( innerRings.at(i).at(j), d_regularDim, d_regularDim );
 
                 if ( m_innerNodesList.at(i).at(j).isEditingHighlighted() ||
-                     m_innerVirtualNodes.at(i).at(j).isMergingHighlighted() ) {
+                     m_innerNodesList.at(i).at(j).isMergingHighlighted() ) {
                     QPen defaultPen = painter->pen();
                     QPen newPen;
                     newPen.setWidth( defaultPen.width() + 3 );
@@ -841,7 +841,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
                     if ( m_innerNodesList.at(i).at(j).isEditingHighlighted() ) {
                         newPen.setColor( QColor( 0, 255, 255, 120 ) );
                     } else {
-                        newPen.setColor( QColor( 50, 255, 0, 160 ) );
+                        newPen.setColor( QColor( 25, 255, 25, 180 ) );
                     }
 
                     painter->setBrush( Qt::NoBrush );
