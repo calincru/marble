@@ -18,11 +18,3 @@ add_subdirectory( maptheme-previewimage )
 add_subdirectory( mapreproject )
 add_subdirectory( speaker-files )
 add_subdirectory( stars )
-
-find_package(Protobuf)
-find_package(ZLIB)
-if(PROTOBUF_FOUND AND ZLIB_FOUND)
-  add_subdirectory( osm-addresses )
-  # osm-sisyphus does not depend on zlib and protobuf, but osm-addresses
-  add_subdirectory( osm-sisyphus )
-endif()
