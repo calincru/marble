@@ -183,7 +183,8 @@ private:
     bool polygonContains( const QPoint &point ) const;
 
     /**
-     * @brief
+     * @brief It is called from processOnMove functions and deals with polygons
+     * hovering.
      */
     bool dealWithHovering( QMouseEvent *mouseEvent );
 
