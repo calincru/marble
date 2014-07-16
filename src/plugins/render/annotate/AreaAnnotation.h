@@ -183,9 +183,7 @@ private:
     bool polygonContains( const QPoint &point ) const;
 
     /**
-     * @brief dealWithHovering
-     * @param mouseEvent
-     * @return
+     * @brief
      */
     bool dealWithHovering( QMouseEvent *mouseEvent );
 
