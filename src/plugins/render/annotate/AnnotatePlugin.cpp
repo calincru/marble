@@ -736,14 +736,15 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
         } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::StartAnimation ) {
+            m_selectedArea = area;
             QPointer<MergingNodesAnimation> animation = area->animation();
 
             connect( this, SIGNAL(animationStarted()), animation, SLOT(startAnimation()) );
             connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
             connect( animation, SIGNAL(animationFinished()), this, SLOT(changeAreaBusy()) );
 
-            emit animationStarted();
             area->setBusy( true );
+            emit animationStarted();
         } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),

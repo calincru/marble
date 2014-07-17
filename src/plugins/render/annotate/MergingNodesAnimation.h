@@ -49,9 +49,6 @@ private:
     AreaAnnotation *m_polygon;
     QTimer         *m_timer;
     NodesBoundary   m_boundary;
-
-    static const int   timeOffset;
-    static const qreal distanceOffset;
 };
 
 } // namespace Marble

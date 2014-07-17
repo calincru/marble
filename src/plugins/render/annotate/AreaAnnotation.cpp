@@ -165,6 +165,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
 
     drawNodes( painter );
     painter->restore();
+    qDebug() << "Iese\n";
 }
 
 bool AreaAnnotation::containsPoint( const QPoint &point ) const
@@ -597,47 +598,25 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
         }
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         // Update the PolygonNodes lists after both nodes after the animation finished its execution.
+
+        // As in the last issue I opened on GitHub, in this method (excepting in the case of Adding
+        // Nodes case, where it would create too much unneccesary overhead creating the virtual nodes
+        // each time paint is called) PolygonNode::setRegion should not be called, since it is done by
+        // the following method (updateNodes). This should only deal with nodes flags and removing/adding
+        // new instances of PolygonNode, but not necessary with a valid qregion.
         int ff = m_firstMergedNode.first;
         int fs = m_firstMergedNode.second;
         int sf = m_secondMergedNode.first;
         int ss = m_secondMergedNode.second;
 
         if ( ff != -1 && fs == -1 && sf != -1 && ss == -1 ) {
-            // Set the "Merged" flag for the second node to false.
             m_outerNodesList[sf].setFlag( PolygonNode::NodeIsMerged, false );
-            // If the first clicked node is selected but the second one is not, make sure the
-            // resulting node is selected as well.
-            if ( m_outerNodesList.at(ff).isSelected() ) {
-                m_outerNodesList[sf].setFlag( PolygonNode::NodeIsSelected );
-            }
-
-            // Since it will not get here if the object is set to 'busy' (@see above), it will
-            // get here only when the animation has finished which means the first node had been
-            // removed and the coordinates of the second one had been modified.
-            if ( m_outerNodesList.at(sf).isSelected() ) {
-                m_outerNodesList[sf].setRegion( painter->regionFromEllipse(
-                                                outerRing.at(sf), selectedDim, selectedDim ) );
-            } else {
-                m_outerNodesList[sf].setRegion( painter->regionFromEllipse(
-                                                outerRing.at(sf), regularDim, regularDim ) );
-            }
             m_outerNodesList.removeAt( ff );
-
             m_firstMergedNode = QPair<int, int>( -1, -1 );
             m_secondMergedNode = QPair<int, int>( -1, -1 );
+
         } else if ( ff != -1 && fs != -1 && sf != -1 && ss != -1 ) {
             m_innerNodesList[sf][ss].setFlag( PolygonNode::NodeIsMerged, false );
-            if ( m_innerNodesList.at(ff).at(fs).isSelected() ) {
-                m_innerNodesList[sf][ss].setFlag( PolygonNode::NodeIsSelected );
-            }
-
-            if ( m_innerNodesList.at(sf).at(ss).isSelected() ) {
-                m_innerNodesList[sf][ss].setRegion( painter->regionFromEllipse(
-                                                    innerRings.at(sf).at(ss), selectedDim, selectedDim ) );
-            } else {
-                m_innerNodesList[sf][ss].setRegion( painter->regionFromEllipse(
-                                                    innerRings.at(sf).at(ss), regularDim, regularDim ) );
-            }
             m_innerNodesList[sf].removeAt( fs );
 
             m_firstMergedNode = QPair<int, int>( -1, -1 );
@@ -1014,7 +993,6 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         const qreal bearing = m_movedPointCoords.bearing( newCoords );
         const qreal distance = distanceSphere( newCoords, m_movedPointCoords );
-
         polygon->outerBoundary().clear();
         polygon->innerBoundaries().clear();
 
