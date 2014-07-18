@@ -163,7 +163,6 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
 
     drawNodes( painter );
     painter->restore();
-    qDebug() << "Iese\n";
 }
 
 bool AreaAnnotation::containsPoint( const QPoint &point ) const

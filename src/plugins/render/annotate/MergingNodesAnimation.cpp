@@ -74,7 +74,6 @@ void MergingNodesAnimation::updateNodes()
         }
 
         emit animationFinished();
-        //m_timer->stop();
     } else {
         if ( m_boundary == OuterBoundary ) {
             GeoDataCoordinates first, second;
@@ -107,9 +106,9 @@ GeoDataCoordinates MergingNodesAnimation::newCoords()
     int second_i = m_polygon->m_secondMergedNode.first;
     int second_j = m_polygon->m_secondMergedNode.second;
 
-    return m_boundary == OuterBoundary ?
+    return ( m_boundary == OuterBoundary ) ?
         outerRing.at(first_i).interpolate( polygon->outerBoundary().at(second_i), 0.5 ) :
-        innerBounds.at(first_i).at(second_i).interpolate( innerBounds.at(first_j).at(second_j), 0.5 );
+        innerBounds.at(first_i).at(first_j).interpolate( innerBounds.at(second_i).at(second_j), 0.5 );
 }
 
 qreal MergingNodesAnimation::nodesDistance()
