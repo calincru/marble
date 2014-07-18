@@ -32,11 +32,7 @@ namespace Marble {
 
 
 class PolygonNode {
-
 public:
-    explicit PolygonNode( QRegion region );
-    ~PolygonNode();
-
     enum PolyNodeFlag {
         NoOption = 0x0,
         NodeIsSelected = 0x1,
@@ -44,8 +40,10 @@ public:
         NodeIsMerged = 0x4,
         NodeIsHighlighted = 0x8
     };
-
     Q_DECLARE_FLAGS(PolyNodeFlags, PolyNodeFlag)
+
+    explicit PolygonNode( QRegion region, PolyNodeFlags flags = 0 );
+    ~PolygonNode();
 
     bool isSelected() const;
     bool isInnerTmp() const;
@@ -63,9 +61,9 @@ private:
     PolyNodeFlags m_flags;
 };
 
-PolygonNode::PolygonNode( QRegion region ) :
+PolygonNode::PolygonNode( QRegion region, PolyNodeFlags flags ) :
     m_region( region ),
-    m_flags( NoOption )
+    m_flags( flags )
 {
     // nothing to do
 }
@@ -587,36 +585,35 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
             m_innerNodesList.append( QList<PolygonNode>() );
         }
 
-        // If meanwhile a new node has been added, append it to the most recent inner boundary from
-        // the inner boundaries regions list.
+        // If meanwhile a new node has been added, add an 'empty' PolygonNode object in the list,
+        // so that its region to be adjusted in updateRegions();
         if ( m_innerNodesList.size() &&
              m_innerNodesList.last().size() < innerRings.last().size() ) {
-            PolygonNode newNode = PolygonNode( painter->regionFromEllipse(
-                                               innerRings.last().last(), regularDim, regularDim ) );
-            newNode.setFlag( PolygonNode::NodeIsInnerTmp );
-            m_innerNodesList.last().append( newNode );
+            m_innerNodesList.last().append( PolygonNode( QRegion(), PolygonNode::NodeIsInnerTmp ) );
         }
     } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
         // Update the PolygonNodes lists after both nodes after the animation finished its execution.
-
-        // As in the last issue I opened on GitHub, in this method (excepting in the case of Adding
-        // Nodes case, where it would create too much unneccesary overhead creating the virtual nodes
-        // each time paint is called) PolygonNode::setRegion should not be called, since it is done by
-        // the following method (updateNodes). This should only deal with nodes flags and removing/adding
-        // new instances of PolygonNode, but not necessary with a valid qregion.
         int ff = m_firstMergedNode.first;
         int fs = m_firstMergedNode.second;
         int sf = m_secondMergedNode.first;
         int ss = m_secondMergedNode.second;
 
         if ( ff != -1 && fs == -1 && sf != -1 && ss == -1 ) {
+            // Remove the merging node flag and add the NodeIsSelected flag if either one of the
+            // merged nodes had been selected before.
             m_outerNodesList[sf].setFlag( PolygonNode::NodeIsMerged, false );
+            if ( m_outerNodesList.at(ff).isSelected() ) {
+                m_outerNodesList[sf].setFlag( PolygonNode::NodeIsSelected );
+            }
             m_outerNodesList.removeAt( ff );
+
             m_firstMergedNode = QPair<int, int>( -1, -1 );
             m_secondMergedNode = QPair<int, int>( -1, -1 );
-
         } else if ( ff != -1 && fs != -1 && sf != -1 && ss != -1 ) {
             m_innerNodesList[sf][ss].setFlag( PolygonNode::NodeIsMerged, false );
+            if ( m_innerNodesList.at(ff).at(fs).isSelected() ) {
+                m_innerNodesList[sf][ss].setFlag( PolygonNode::NodeIsSelected );
+            }
             m_innerNodesList[sf].removeAt( fs );
 
             m_firstMergedNode = QPair<int, int>( -1, -1 );
@@ -627,15 +624,12 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
         // virtual node has just been clicked, so make sure its corresponding region is added to the
         // PolygonNodes list as well.
         if ( m_outerNodesList.size() < outerRing.size() ) {
-            QRegion newRegion = painter->regionFromEllipse( outerRing.last(), regularDim, regularDim );
-            m_outerNodesList.append( PolygonNode( newRegion ) );
+            m_outerNodesList.append( PolygonNode( QRegion() ) );
         }
 
         for ( int i = 0; i < innerRings.size(); ++i ) {
             if ( m_innerNodesList.at(i).size() < innerRings.at(i).size() ) {
-                QRegion newRegion = painter->regionFromEllipse( innerRings.at(i).last(),
-                                                                regularDim, regularDim );
-                m_innerNodesList[i].append( PolygonNode( newRegion ) );
+                m_innerNodesList[i].append( PolygonNode( QRegion() ) );
                 break;
             }
         }

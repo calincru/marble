@@ -156,11 +156,10 @@ private:
     void setupRegionsLists( GeoPainter *painter );
 
     /**
-     * @brief This function alongside the event handler methods is where most of nodes
-     * regions changes take place. Since the PolygonNode instances are not created at
-     * each ::paint call (only their associated regions are modified) and since we need
-     * the GeoPainter in order to update these regions, this function completes the
-     * changes from event handlers.
+     * @brief Since the PolygonNode instances are not created at each ::paint call
+     * (only their associated regions are modified) and since we need the GeoPainter
+     * in order to update these regions, this function completes the changes from event
+     * handlers.
      */
     void applyChanges( GeoPainter *painter );
 
