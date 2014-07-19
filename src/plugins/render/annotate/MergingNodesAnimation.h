@@ -65,8 +65,4 @@ private:
 
 } // namespace Marble
 
-
-
-
-
 #endif // MERGINGNODESANIMATION_H

@@ -100,8 +100,8 @@ void MergingNodesAnimation::updateNodes()
 GeoDataCoordinates MergingNodesAnimation::newCoords()
 {
     return ( m_boundary == OuterBoundary ) ?
-        outerRing.at(first_i).interpolate( outerRing.at(second_i), 0.5 ) :
-        innerRings.at(first_i).at(first_j).interpolate( innerRings.at(second_i).at(second_j), 0.5 );
+                outerRing.at(first_i).interpolate( outerRing.at(second_i), 0.5 ) :
+                innerRings.at(first_i).at(first_j).interpolate( innerRings.at(second_i).at(second_j), 0.5 );
 }
 
 qreal MergingNodesAnimation::nodesDistance()
