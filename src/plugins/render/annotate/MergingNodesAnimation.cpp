@@ -24,15 +24,22 @@ namespace Marble {
 
 
 MergingNodesAnimation::MergingNodesAnimation( AreaAnnotation *polygon ) :
-    m_polygon( polygon ),
-    m_timer( new QTimer( this ) )
+    // To avoid long lines and repeated code
+    first_i( polygon->m_firstMergedNode.first ),
+    first_j( polygon->m_firstMergedNode.second ),
+    second_i( polygon->m_secondMergedNode.first ),
+    second_j( polygon->m_secondMergedNode.second ),
+    m_timer( new QTimer( this ) ),
+
+    // To avoid repeating this code section too often
+    outerRing( static_cast<GeoDataPolygon*>( polygon->placemark()->geometry() )->outerBoundary() ),
+    innerRings( static_cast<GeoDataPolygon*>( polygon->placemark()->geometry() )->innerBoundaries() )
 {
-    if ( m_polygon->m_firstMergedNode.second == -1 ) {
-        Q_ASSERT( m_polygon->m_secondMergedNode.second == -1 );
+    if ( first_j == -1 ) {
+        Q_ASSERT( second_j == -1 );
         m_boundary = OuterBoundary;
     } else {
-        Q_ASSERT( m_polygon->m_firstMergedNode.second != -1 &&
-                  m_polygon->m_secondMergedNode.second != -1 );
+        Q_ASSERT( first_j != -1 && second_j != -1 );
         m_boundary = InnerBoundary;
     }
 
@@ -55,22 +62,13 @@ void MergingNodesAnimation::updateNodes()
     static const qreal distanceOffset = 0.005;
     static const qreal ratio = 0.05;
 
-    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( m_polygon->placemark()->geometry() );
-    GeoDataLinearRing &outerRing = polygon->outerBoundary();
-    QVector<GeoDataLinearRing> &innerBounds = polygon->innerBoundaries();
-
-    int first_i = m_polygon->m_firstMergedNode.first;
-    int first_j = m_polygon->m_firstMergedNode.second;
-    int second_i = m_polygon->m_secondMergedNode.first;
-    int second_j = m_polygon->m_secondMergedNode.second;
-
     if ( nodesDistance() <  distanceOffset ) {
         if ( m_boundary == OuterBoundary ) {
             outerRing[second_i] = newCoords();
             outerRing.remove( first_i );
         } else {
-            innerBounds[second_i][second_j] = newCoords();
-            innerBounds[second_i].remove( first_j );
+            innerRings[second_i][second_j] = newCoords();
+            innerRings[second_i].remove( first_j );
         }
 
         emit animationFinished();
@@ -84,11 +82,11 @@ void MergingNodesAnimation::updateNodes()
             outerRing[second_i] = second;
         } else {
             GeoDataCoordinates first, second;
-            first = innerBounds.at(first_i).at(first_j).interpolate( innerBounds.at(second_i).at(second_j), ratio );
-            second = innerBounds.at(second_i).at(second_j).interpolate( innerBounds.at(first_i).at(first_j), ratio );
+            first = innerRings.at(first_i).at(first_j).interpolate( innerRings.at(second_i).at(second_j), ratio );
+            second = innerRings.at(second_i).at(second_j).interpolate( innerRings.at(first_i).at(first_j), ratio );
 
-            innerBounds[first_i][first_j] = first;
-            innerBounds[second_i][second_j] = second;
+            innerRings[first_i][first_j] = first;
+            innerRings[second_i][second_j] = second;
         }
 
         emit nodesMoved();
@@ -97,36 +95,21 @@ void MergingNodesAnimation::updateNodes()
 
 GeoDataCoordinates MergingNodesAnimation::newCoords()
 {
-    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( m_polygon->placemark()->geometry() );
-    GeoDataLinearRing &outerRing = polygon->outerBoundary();
-    QVector<GeoDataLinearRing> &innerBounds = polygon->innerBoundaries();
-
-    int first_i = m_polygon->m_firstMergedNode.first;
-    int first_j = m_polygon->m_firstMergedNode.second;
-    int second_i = m_polygon->m_secondMergedNode.first;
-    int second_j = m_polygon->m_secondMergedNode.second;
-
     return ( m_boundary == OuterBoundary ) ?
-        outerRing.at(first_i).interpolate( polygon->outerBoundary().at(second_i), 0.5 ) :
-        innerBounds.at(first_i).at(first_j).interpolate( innerBounds.at(second_i).at(second_j), 0.5 );
+        outerRing.at(first_i).interpolate( outerRing.at(second_i), 0.5 ) :
+        innerRings.at(first_i).at(first_j).interpolate( innerRings.at(second_i).at(second_j), 0.5 );
 }
 
 qreal MergingNodesAnimation::nodesDistance()
 {
-    GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( m_polygon->placemark()->geometry() );
     GeoDataCoordinates first, second;
 
-    int first_i = m_polygon->m_firstMergedNode.first;
-    int first_j = m_polygon->m_firstMergedNode.second;
-    int second_i = m_polygon->m_secondMergedNode.first;
-    int second_j = m_polygon->m_secondMergedNode.second;
-
     if ( m_boundary == OuterBoundary ) {
-        first = polygon->outerBoundary().at(first_i);
-        second = polygon->outerBoundary().at(second_i);
+        first = outerRing.at(first_i);
+        second = outerRing.at(second_i);
     } else {
-        first = polygon->innerBoundaries().at(first_i).at(first_j);
-        second = polygon->innerBoundaries().at(second_i).at(second_j);
+        first = innerRings.at(first_i).at(first_j);
+        second = innerRings.at(second_i).at(second_j);
     }
 
     return distanceSphere( first, second );

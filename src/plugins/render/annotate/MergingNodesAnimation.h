@@ -19,6 +19,7 @@ namespace Marble {
 
 class AreaAnnotation;
 class GeoDataCoordinates;
+class GeoDataLinearRing;
 
 class MergingNodesAnimation : public QObject {
 
@@ -46,9 +47,16 @@ private:
     qreal nodesDistance();
     GeoDataCoordinates newCoords();
 
-    AreaAnnotation *m_polygon;
+    int first_i;
+    int first_j;
+    int second_i;
+    int second_j;
+
     QTimer         *m_timer;
     NodesBoundary   m_boundary;
+
+    GeoDataLinearRing &outerRing;
+    QVector<GeoDataLinearRing> &innerRings;
 };
 
 } // namespace Marble

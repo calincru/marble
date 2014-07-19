@@ -157,7 +157,6 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         setupRegionsLists( painter );
         m_regionsInitialized = true;
     } else {
-        applyChanges( painter );
         updateRegions( painter );
     }
 
@@ -565,33 +564,18 @@ void AreaAnnotation::setupRegionsLists( GeoPainter *painter )
     m_boundariesList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
 }
 
-void AreaAnnotation::applyChanges( GeoPainter *painter )
+void AreaAnnotation::updateRegions( GeoPainter *painter )
 {
-    const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
-    const GeoDataLinearRing &outerRing = polygon->outerBoundary();
-    const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
-
-    // If the object is busy, do not change the regions lists.
     if ( m_busy ) {
         return;
     }
 
-    if ( state() == SceneGraphicsItem::Editing ) {
-        // Only nodes update is needed, so there is nothing else to do so far.
-    } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
-        // If meanwhile a new inner boundary have been added, append an empty list of PolygonNodes.
-        if ( m_innerNodesList.size() < innerRings.size() ) {
-            m_innerNodesList.append( QList<PolygonNode>() );
-        }
+    const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
+    const GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
-        // If meanwhile a new node has been added, add an 'empty' PolygonNode object in the list,
-        // so that its region to be adjusted in updateRegions();
-        if ( m_innerNodesList.size() &&
-             m_innerNodesList.last().size() < innerRings.last().size() ) {
-            m_innerNodesList.last().append( PolygonNode( QRegion(), PolygonNode::NodeIsInnerTmp ) );
-        }
-    } else if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
-        // Update the PolygonNodes lists after both nodes after the animation finished its execution.
+    if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
+        // Update the PolygonNodes lists after the animation has finished its execution.
         int ff = m_firstMergedNode.first;
         int fs = m_firstMergedNode.second;
         int sf = m_secondMergedNode.first;
@@ -599,7 +583,7 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
 
         if ( ff != -1 && fs == -1 && sf != -1 && ss == -1 ) {
             // Remove the merging node flag and add the NodeIsSelected flag if either one of the
-            // merged nodes had been selected before.
+            // merged nodes had been selected before merging them.
             m_outerNodesList[sf].setFlag( PolygonNode::NodeIsMerged, false );
             if ( m_outerNodesList.at(ff).isSelected() ) {
                 m_outerNodesList[sf].setFlag( PolygonNode::NodeIsSelected );
@@ -619,24 +603,8 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
             m_secondMergedNode = QPair<int, int>( -1, -1 );
         }
     } else if ( state() == SceneGraphicsItem::AddingPolygonNodes ) {
-        // If our outer nodes list has less entries than the polygon's outer boundary, it means that a
-        // virtual node has just been clicked, so make sure its corresponding region is added to the
-        // PolygonNodes list as well.
-        if ( m_outerNodesList.size() < outerRing.size() ) {
-            m_outerNodesList.append( PolygonNode( QRegion() ) );
-        }
-
-        for ( int i = 0; i < innerRings.size(); ++i ) {
-            if ( m_innerNodesList.at(i).size() < innerRings.at(i).size() ) {
-                m_innerNodesList[i].append( PolygonNode( QRegion() ) );
-                break;
-            }
-        }
-
-        // All we have to do next is to update the virtual nodes list based on polygon's outer boundary.
-        // It is done here and not in the updateRegions method (althought it would work as well) to
-        // avoid creating this virtual nodes list even when not being in the 'Adding Nodes' state, which
-        // might create overhead.
+        // Create and update virtual nodes lists when being in the AddingPolgonNodes state, to
+        // avoid overhead in other states.
         m_outerVirtualNodes.clear();
         QRegion firstRegion( painter->regionFromEllipse( outerRing.at(0).interpolate(
                                              outerRing.last(), 0.5 ), hoveredDim, hoveredDim ) );
@@ -660,13 +628,7 @@ void AreaAnnotation::applyChanges( GeoPainter *painter )
             }
         }
     }
-}
 
-void AreaAnnotation::updateRegions( GeoPainter *painter )
-{
-    const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
-    const GeoDataLinearRing &outerRing = polygon->outerBoundary();
-    const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
     // Update the boundaries list.
     m_boundariesList.clear();
@@ -1145,8 +1107,10 @@ bool AreaAnnotation::processAddingHoleOnPress( QMouseEvent *mouseEvent )
     // Check if this is the first node which is being added as a new polygon inner boundary.
     if ( !innerBounds.size() || !m_innerNodesList.last().last().isInnerTmp() ) {
        polygon->innerBoundaries().append( GeoDataLinearRing( Tessellate ) );
+       m_innerNodesList.append( QList<PolygonNode>() );
     }
     innerBounds.last().append( newCoords );
+    m_innerNodesList.last().append( PolygonNode( QRegion(), PolygonNode::NodeIsInnerTmp ) );
 
     return true;
 }
@@ -1207,7 +1171,6 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             }
 
             outerRing.remove( m_firstMergedNode.first );
-
             if ( !isValidPolygon() ) {
                 polygon->outerBoundary() = initialOuterRing;
                 m_outerNodesList[m_firstMergedNode.first].setFlag( PolygonNode::NodeIsMerged,  false );
@@ -1319,31 +1282,27 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 
         if ( i != -1 && j == -1 ) {
             GeoDataLinearRing newRing( Tessellate );
-            QList<PolygonNode> newList;
             for ( int k = i; k < i + outerRing.size(); ++k ) {
                 newRing.append( outerRing.at(k % outerRing.size()) );
-                newList.append( m_outerNodesList.at(k % m_outerNodesList.size()) );
             }
             GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
             newRing.append( newCoords );
+            m_outerNodesList.append( PolygonNode( QRegion() ) );
 
             polygon->outerBoundary() = newRing;
-            m_outerNodesList = newList;
             m_adjustedNode = -1;
         } else {
             Q_ASSERT( i != -1 && j != -1 );
 
             GeoDataLinearRing newRing( Tessellate );
-            QList<PolygonNode> newList;
             for ( int k = j; k < j + innerRings.at(i).size(); ++k ) {
                 newRing.append( innerRings.at(i).at(k % innerRings.at(i).size()) );
-                newList.append( m_innerNodesList.at(i).at(k % m_innerNodesList.at(i).size() ) );
             }
             GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
             newRing.append( newCoords );
+            m_innerNodesList[i].append( PolygonNode( QRegion() ) );
 
             polygon->innerBoundaries()[i] = newRing;
-            m_innerNodesList[i] = newList;
             m_adjustedNode = i;
         }
 

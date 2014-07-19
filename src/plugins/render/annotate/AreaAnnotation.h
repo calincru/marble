@@ -116,6 +116,10 @@ public:
      */
     bool clickedNodeIsSelected() const;
 
+    /**
+     * @brief Returns the animation to be handled by a QObject which can connect signals
+     * and slots.
+     */
     QPointer<MergingNodesAnimation> animation();
 
     /**
@@ -154,14 +158,6 @@ private:
      * @see updateRegions() method for more detailed explanation.
      */
     void setupRegionsLists( GeoPainter *painter );
-
-    /**
-     * @brief Since the PolygonNode instances are not created at each ::paint call
-     * (only their associated regions are modified) and since we need the GeoPainter
-     * in order to update these regions, this function completes the changes from event
-     * handlers.
-     */
-    void applyChanges( GeoPainter *painter );
 
     /**
      * @brief As briefly mentioned above, the PolygonNodes instances are not created at
