@@ -48,19 +48,19 @@ private:
     qreal nodesDistance();
     GeoDataCoordinates newCoords();
 
-    int first_i;
-    int first_j;
-    int second_i;
-    int second_j;
+    const int first_i;
+    const int first_j;
+    const int second_i;
+    const int second_j;
 
     QTimer         *m_timer;
     NodesBoundary   m_boundary;
 
-    GeoDataCoordinates m_firstInitialCoords;
-    GeoDataCoordinates m_secondInitialCoords;
-
     GeoDataLinearRing &outerRing;
     QVector<GeoDataLinearRing> &innerRings;
+
+    GeoDataCoordinates m_firstInitialCoords;
+    GeoDataCoordinates m_secondInitialCoords;
 };
 
 } // namespace Marble

@@ -46,7 +46,6 @@ MergingNodesAnimation::MergingNodesAnimation( AreaAnnotation *polygon ) :
         m_boundary = InnerBoundary;
     }
 
-
     connect( m_timer, SIGNAL(timeout()), this, SLOT(updateNodes()) );
 }
 
@@ -63,8 +62,9 @@ void MergingNodesAnimation::startAnimation()
 
 void MergingNodesAnimation::updateNodes()
 {
-    static const qreal ratio = 0.03;
-    static const qreal distanceOffset = ratio * distanceSphere( m_firstInitialCoords, m_secondInitialCoords) + 0.0001;
+    static const qreal ratio = 0.05;
+    const qreal distanceOffset = distanceSphere( m_firstInitialCoords.interpolate( m_secondInitialCoords, ratio ),
+                                                 m_firstInitialCoords ) + 0.001;
 
     if ( nodesDistance() <  distanceOffset ) {
         if ( m_boundary == OuterBoundary ) {
