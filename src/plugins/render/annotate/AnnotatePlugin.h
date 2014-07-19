@@ -92,7 +92,6 @@ signals:
     void placemarkAdded();
     void overlayAdded();
     void itemRemoved();
-    void animationStarted();
 
 public slots:
     void enableModel( bool enabled );
@@ -125,7 +124,7 @@ private slots:
     void deleteNode();
     void deselectNodes();
     void deleteSelectedNodes();
-    void changeAreaBusy();
+    void setAreaAvailable();
 
 protected:
     bool eventFilter( QObject *watched, QEvent *event );

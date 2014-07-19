@@ -303,7 +303,7 @@ void AnnotatePlugin::setAddingNodes( bool enabled )
     }
 }
 
-void AnnotatePlugin::changeAreaBusy()
+void AnnotatePlugin::setAreaAvailable()
 {
     m_selectedArea->setBusy( false );
     m_selectedArea = 0;
@@ -739,12 +739,11 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             m_selectedArea = area;
             QPointer<MergingNodesAnimation> animation = area->animation();
 
-            connect( this, SIGNAL(animationStarted()), animation, SLOT(startAnimation()) );
             connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
-            connect( animation, SIGNAL(animationFinished()), this, SLOT(changeAreaBusy()) );
+            connect( animation, SIGNAL(animationFinished()), this, SLOT(setAreaAvailable()) );
 
             area->setBusy( true );
-            emit animationStarted();
+            animation->startAnimation();
         } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   QString( "Operation not permitted" ),

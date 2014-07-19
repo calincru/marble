@@ -14,11 +14,12 @@
 #include <QObject>
 #include <QTimer>
 
+#include "GeoDataCoordinates.h"
+
 
 namespace Marble {
 
 class AreaAnnotation;
-class GeoDataCoordinates;
 class GeoDataLinearRing;
 
 class MergingNodesAnimation : public QObject {
@@ -54,6 +55,9 @@ private:
 
     QTimer         *m_timer;
     NodesBoundary   m_boundary;
+
+    GeoDataCoordinates m_firstInitialCoords;
+    GeoDataCoordinates m_secondInitialCoords;
 
     GeoDataLinearRing &outerRing;
     QVector<GeoDataLinearRing> &innerRings;

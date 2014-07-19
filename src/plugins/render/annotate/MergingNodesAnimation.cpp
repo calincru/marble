@@ -18,7 +18,6 @@
 #include "GeoDataPlacemark.h"
 #include "MarbleMath.h"
 
-#include <QDebug>
 
 namespace Marble {
 
@@ -38,10 +37,15 @@ MergingNodesAnimation::MergingNodesAnimation( AreaAnnotation *polygon ) :
     if ( first_j == -1 ) {
         Q_ASSERT( second_j == -1 );
         m_boundary = OuterBoundary;
+        m_firstInitialCoords = outerRing.at( first_i );
+        m_secondInitialCoords = outerRing.at( second_i );
     } else {
         Q_ASSERT( first_j != -1 && second_j != -1 );
+        m_firstInitialCoords = innerRings.at(first_i).at(first_j);
+        m_secondInitialCoords = innerRings.at(second_i).at(second_j);
         m_boundary = InnerBoundary;
     }
+
 
     connect( m_timer, SIGNAL(timeout()), this, SLOT(updateNodes()) );
 }
@@ -53,14 +57,14 @@ MergingNodesAnimation::~MergingNodesAnimation()
 
 void MergingNodesAnimation::startAnimation()
 {
-    static const int timeOffset = 50;
+    static const int timeOffset = 1;
     m_timer->start( timeOffset );
 }
 
 void MergingNodesAnimation::updateNodes()
 {
-    static const qreal distanceOffset = 0.005;
-    static const qreal ratio = 0.05;
+    static const qreal ratio = 0.03;
+    static const qreal distanceOffset = ratio * distanceSphere( m_firstInitialCoords, m_secondInitialCoords) + 0.0001;
 
     if ( nodesDistance() <  distanceOffset ) {
         if ( m_boundary == OuterBoundary ) {
@@ -75,15 +79,15 @@ void MergingNodesAnimation::updateNodes()
     } else {
         if ( m_boundary == OuterBoundary ) {
             GeoDataCoordinates first, second;
-            first = outerRing.at(first_i).interpolate( outerRing.at(second_i), ratio );
-            second = outerRing.at(second_i).interpolate( outerRing.at(first_i), ratio );
+            first = outerRing.at(first_i).interpolate( m_secondInitialCoords, ratio );
+            second = outerRing.at(second_i).interpolate( m_firstInitialCoords, ratio );
 
             outerRing[first_i] = first;
             outerRing[second_i] = second;
         } else {
             GeoDataCoordinates first, second;
-            first = innerRings.at(first_i).at(first_j).interpolate( innerRings.at(second_i).at(second_j), ratio );
-            second = innerRings.at(second_i).at(second_j).interpolate( innerRings.at(first_i).at(first_j), ratio );
+            first = innerRings.at(first_i).at(first_j).interpolate( m_secondInitialCoords, ratio );
+            second = innerRings.at(second_i).at(second_j).interpolate( m_firstInitialCoords, ratio );
 
             innerRings[first_i][first_j] = first;
             innerRings[second_i][second_j] = second;
@@ -102,17 +106,9 @@ GeoDataCoordinates MergingNodesAnimation::newCoords()
 
 qreal MergingNodesAnimation::nodesDistance()
 {
-    GeoDataCoordinates first, second;
-
-    if ( m_boundary == OuterBoundary ) {
-        first = outerRing.at(first_i);
-        second = outerRing.at(second_i);
-    } else {
-        first = innerRings.at(first_i).at(first_j);
-        second = innerRings.at(second_i).at(second_j);
-    }
-
-    return distanceSphere( first, second );
+    return m_boundary == OuterBoundary ?
+                distanceSphere( outerRing.at(first_i), outerRing.at(second_i) ) :
+                distanceSphere( innerRings.at(first_i).at(first_j), innerRings.at(second_i).at(second_j) );
 }
 
 } // namespace Marble
