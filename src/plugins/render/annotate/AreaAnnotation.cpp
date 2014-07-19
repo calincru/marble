@@ -143,7 +143,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
 
 AreaAnnotation::~AreaAnnotation()
 {
-    // nothing to do
+    delete m_animation;
 }
 
 void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )

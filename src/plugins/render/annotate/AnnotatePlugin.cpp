@@ -763,6 +763,7 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
                                            "contain all its inner boundary nodes." ) );
         } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
             m_lastItem = 0;
+            m_movedItem = 0;
 
             m_graphicsItems.removeAll( area );
             m_marbleWidget->model()->treeModel()->removeFeature( area->feature() );
