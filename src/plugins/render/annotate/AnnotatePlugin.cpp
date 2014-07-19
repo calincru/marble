@@ -703,11 +703,16 @@ bool AnnotatePlugin::handleMovingSelectedItem( QMouseEvent *mouseEvent )
 void AnnotatePlugin::handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )
 {
     Q_UNUSED( mouseEvent );
-    // Store a pointer to the item for possible following move events.
-    m_movedItem = item;
 
     // Update the item's placemark.
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
+
+    // Store a pointer to the item for possible following move events only if its state is
+    // either 'Editing' or 'AddingPolygonNodes'.
+    if ( item->state() == SceneGraphicsItem::Editing ||
+         item->state() == SceneGraphicsItem::AddingPolygonNodes ) {
+        m_movedItem = item;
+    }
 }
 
 void AnnotatePlugin::handleSuccessfulHoverEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item )

@@ -26,7 +26,6 @@
 #include "MarbleMath.h"
 #include "MergingNodesAnimation.h"
 
-#include <QDebug>
 
 namespace Marble {
 
