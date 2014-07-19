@@ -1141,18 +1141,17 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
         if ( m_firstMergedNode.first == -1 && m_firstMergedNode.second == -1 ) {
             m_firstMergedNode = QPair<int, int>( outerIndex, -1 );
             m_outerNodesList[outerIndex].setFlag( PolygonNode::NodeIsMerged );
-        // If this is the second node to be merged but it is an inner boundary node, raise
-        // the request for showing warning.
+        // If the first selected node was an inner boundary node, raise the request for showing
+        // warning.
         } else if ( m_firstMergedNode.first != -1 && m_firstMergedNode.second != -1 ) {
             m_request = OuterInnerMergingWarning;
             m_innerNodesList[m_firstMergedNode.first][m_firstMergedNode.second].setFlag(
                                                         PolygonNode::NodeIsMerged, false );
 
             if ( m_hoveredNode.first != -1 ) {
-                // We can be sure that the hovered node is an inner node
+                // We can be sure that the hovered node is an outer node.
                 Q_ASSERT( m_hoveredNode.second == -1 );
-                m_innerNodesList[m_hoveredNode.first][m_hoveredNode.second].setFlag(
-                                                        PolygonNode::NodeIsMergingHighlighted, false );
+                m_outerNodesList[m_hoveredNode.first].setFlag( PolygonNode::NodeIsMergingHighlighted, false );
             }
 
             m_hoveredNode = m_firstMergedNode = QPair<int, int>( -1, -1 );
@@ -1212,15 +1211,14 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
         if ( i == -1 && j == -1 ) {
             m_firstMergedNode = innerIndexes;
             m_innerNodesList[innerIndexes.first][innerIndexes.second].setFlag( PolygonNode::NodeIsMerged );
-        // If this is the second selected node but it is an outer boundary node, raise the request for
-        // showing warning.
+        // If the first selected node has been an outer boundary one, raise the request for showing warning.
         } else if ( i != -1 && j == -1 ) {
             m_request = OuterInnerMergingWarning;
             m_outerNodesList[i].setFlag( PolygonNode::NodeIsMerged, false );
 
             if ( m_hoveredNode.first != -1 ) {
                 // We can now be sure that the highlighted node is a node from polygon's outer boundary
-                Q_ASSERT( m_hoveredNode.second == -1 );
+                Q_ASSERT( m_hoveredNode.second != -1 );
                 m_outerNodesList[m_hoveredNode.first].setFlag( PolygonNode::NodeIsMergingHighlighted, false );
             }
             m_firstMergedNode = QPair<int, int>( -1, -1 );
@@ -1231,8 +1229,8 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
                 m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsMerged, false );
 
                 if ( m_hoveredNode.first != -1 && m_hoveredNode.second != -1 ) {
-                       m_innerNodesList[m_hoveredNode.first][m_hoveredNode.second].setFlag(
-                                                                PolygonNode::NodeIsMergingHighlighted, false );
+                    m_innerNodesList[m_hoveredNode.first][m_hoveredNode.second].setFlag(
+                                                        PolygonNode::NodeIsMergingHighlighted, false );
                 }
 
                 m_hoveredNode = m_firstMergedNode = QPair<int, int>( -1, -1 );
