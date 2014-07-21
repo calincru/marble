@@ -51,6 +51,8 @@ public:
     bool isEditingHighlighted() const;
     bool isMergingHighlighted() const;
 
+    PolyNodeFlags flags() const;
+
     void setFlag( PolyNodeFlag flag, bool enabled = true );
     void setFlags( PolyNodeFlags flags );
     void setRegion( QRegion newRegion );
@@ -102,6 +104,11 @@ bool PolygonNode::isMergingHighlighted() const
 void PolygonNode::setRegion( QRegion newRegion )
 {
     m_region = newRegion;
+}
+
+PolygonNode::PolyNodeFlags PolygonNode::flags() const
+{
+    return m_flags;
 }
 
 void PolygonNode::setFlag( PolyNodeFlag flag, bool enabled )
@@ -1303,11 +1310,15 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 
         if ( i != -1 && j == -1 ) {
             GeoDataLinearRing newRing( Tessellate );
+            QList<PolygonNode> newList;
             for ( int k = i; k < i + outerRing.size(); ++k ) {
                 newRing.append( outerRing.at(k % outerRing.size()) );
+                newList.append( PolygonNode( QRegion(), m_outerNodesList.at(k % outerRing.size()).flags() ) );
             }
             GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
             newRing.append( newCoords );
+
+            m_outerNodesList = newList;
             m_outerNodesList.append( PolygonNode( QRegion() ) );
 
             polygon->outerBoundary() = newRing;
@@ -1316,11 +1327,16 @@ bool AreaAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
             Q_ASSERT( i != -1 && j != -1 );
 
             GeoDataLinearRing newRing( Tessellate );
+            QList<PolygonNode> newList;
             for ( int k = j; k < j + innerRings.at(i).size(); ++k ) {
                 newRing.append( innerRings.at(i).at(k % innerRings.at(i).size()) );
+                newList.append( PolygonNode( QRegion(),
+                                             m_innerNodesList.at(i).at(k % innerRings.at(i).size()).flags() ) );
             }
             GeoDataCoordinates newCoords = newRing.at(0).interpolate( newRing.last(), 0.5 );
             newRing.append( newCoords );
+
+            m_innerNodesList[i] = newList;
             m_innerNodesList[i].append( PolygonNode( QRegion() ) );
 
             polygon->innerBoundaries()[i] = newRing;
