@@ -10,16 +10,22 @@
 
 #include "PlaybackSoundCueItem.h"
 
+#include "GeoDataSoundCue.h"
+
+#ifdef HAVE_PHONON
+#include <phonon/AudioOutput>
+#endif
+
+#include <QUrl>
+
 namespace Marble
 {
 PlaybackSoundCueItem::PlaybackSoundCueItem( const GeoDataSoundCue* soundCue )
 {
     m_soundCue = soundCue;
 #ifdef HAVE_PHONON
-    Phonon::MediaObject *mediaObject = new Phonon::MediaObject( );
-    Phonon::createPath( mediaObject, new Phonon::AudioOutput( Phonon::MusicCategory ) );
-    mediaObject->setCurrentSource( QUrl( soundCue->href() ) );
-    m_mediaObject = mediaObject;
+    Phonon::createPath( &m_mediaObject, new Phonon::AudioOutput( Phonon::MusicCategory, this ) );
+    m_mediaObject.setCurrentSource( QUrl( soundCue->href() ) );
 #endif
 }
 
@@ -28,17 +34,10 @@ const GeoDataSoundCue* PlaybackSoundCueItem::soundCue() const
     return m_soundCue;
 }
 
-#ifdef HAVE_PHONON
-Phonon::MediaObject* PlaybackSoundCueItem::mediaObject()
-{
-    return m_mediaObject;
-}
-#endif
-
 double PlaybackSoundCueItem::duration() const
 {
 #ifdef HAVE_PHONON
-    return m_mediaObject->totalTime() * 1.0 / 1000;
+    return m_mediaObject.totalTime() * 1.0 / 1000;
 #else
     return 0;
 #endif
@@ -47,29 +46,31 @@ double PlaybackSoundCueItem::duration() const
 void PlaybackSoundCueItem::play()
 {
 #ifdef HAVE_PHONON
-    m_mediaObject->play();
+    m_mediaObject.play();
 #endif
 }
 
 void PlaybackSoundCueItem::pause()
 {
 #ifdef HAVE_PHONON
-    m_mediaObject->pause();
+    m_mediaObject.pause();
 #endif
 }
 
 void PlaybackSoundCueItem::seek( double progress )
 {
 #ifdef HAVE_PHONON
-    m_mediaObject->seek( progress * 1000 );
+    m_mediaObject.seek( progress * 1000 );
 #endif
 }
 
 void PlaybackSoundCueItem::stop()
 {
 #ifdef HAVE_PHONON
-    m_mediaObject->stop();
+    m_mediaObject.stop();
 #endif
 }
 
 }
+
+#include "PlaybackSoundCueItem.moc"

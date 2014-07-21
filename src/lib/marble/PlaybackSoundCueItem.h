@@ -12,25 +12,24 @@
 #define PLAYBACKSOUNDCUEITEM_H
 
 #include "PlaybackItem.h"
-#include "GeoDataSoundCue.h"
 
 #include "config-phonon.h"
 
 #ifdef HAVE_PHONON
-#include <Phonon/MediaObject>
-#include <Phonon/AudioOutput>
+#include <phonon/MediaObject>
 #endif
 
 namespace Marble
 {
+
+class GeoDataSoundCue;
+
 class PlaybackSoundCueItem : public PlaybackItem
 {
+    Q_OBJECT
 public:
     PlaybackSoundCueItem( const GeoDataSoundCue* soundCue );
     const GeoDataSoundCue* soundCue() const;
-#ifdef HAVE_PHONON
-    Phonon::MediaObject* mediaObject();
-#endif
     double duration() const;
     void play();
     void pause();
@@ -39,8 +38,9 @@ public:
 private:
     const GeoDataSoundCue* m_soundCue;
 #ifdef HAVE_PHONON
-    Phonon::MediaObject* m_mediaObject;
+    Phonon::MediaObject m_mediaObject;
 #endif
 };
+
 }
 #endif
