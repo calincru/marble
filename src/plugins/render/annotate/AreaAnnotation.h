@@ -76,6 +76,10 @@ public:
      */
     virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
+    /**
+     * @brief Changes the busy state of the object according to @p enabled. It is mostly used
+     * by Annotate Plugin to not send events to this object anymore.
+     */
     void setBusy( bool enabled );
 
     /**

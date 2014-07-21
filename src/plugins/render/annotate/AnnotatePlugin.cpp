@@ -89,16 +89,16 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
 
 AnnotatePlugin::~AnnotatePlugin()
 {
+    for ( int i = 0; i < m_graphicsItems.size(); ++i ) {
+        delete m_graphicsItems[i];
+    }
+
     if ( m_marbleWidget ) {
         m_marbleWidget->model()->treeModel()->removeDocument( m_annotationDocument );
     }
 
     delete m_annotationDocument;
     // delete m_networkAccessManager;
-
-    for ( int i = 0; i < m_graphicsItems.size(); ++i ) {
-        delete m_graphicsItems[i];
-    }
 }
 
 QStringList AnnotatePlugin::backendTypes() const

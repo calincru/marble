@@ -236,6 +236,10 @@ void AreaAnnotation::setBusy( bool enabled )
     m_busy = enabled;
 
     if ( !enabled ) {
+        if ( state() == SceneGraphicsItem::MergingPolygonNodes ) {
+
+        }
+
         delete m_animation;
     }
 }
@@ -1171,6 +1175,8 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
                 return true;
             }
 
+            outerRing[outerIndex] = outerRing.at(m_firstMergedNode.first).interpolate( outerRing.at(outerIndex),
+                                                                                       0.5 );
             outerRing.remove( m_firstMergedNode.first );
             if ( !isValidPolygon() ) {
                 polygon->outerBoundary() = initialOuterRing;
@@ -1186,7 +1192,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
                 return true;
             }
 
-            // Do not modify it here. The animation will modify it.
+            // Do not modify it here. The animation has access to the object. It will modify the polygon.
             polygon->outerBoundary() = initialOuterRing;
 
             m_outerNodesList[outerIndex].setFlag( PolygonNode::NodeIsMerged );
