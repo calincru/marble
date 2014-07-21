@@ -95,6 +95,10 @@ AnnotatePlugin::~AnnotatePlugin()
 
     delete m_annotationDocument;
     // delete m_networkAccessManager;
+
+    for ( int i = 0; i < m_graphicsItems.size(); ++i ) {
+        delete m_graphicsItems[i];
+    }
 }
 
 QStringList AnnotatePlugin::backendTypes() const
