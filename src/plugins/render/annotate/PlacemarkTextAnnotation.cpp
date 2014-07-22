@@ -27,33 +27,27 @@ namespace Marble
 
 PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
-    bubble( new GeoWidgetBubble( placemark ) )
+    m_movingPlacemark( false )
 {
     // nothing to do
 }
 
 PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 {
-    delete bubble;
+    // nothing to do
 }
 
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
+    m_viewport = viewport;
+
     m_regionList.clear();
     painter->drawPixmap( placemark()->coordinate(), QPixmap( MarbleDirs::path( "bitmaps/annotation.png" ) ) );
 
     qreal x, y;
-    bool hidden;
-    bool visible = viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y, hidden );
+    viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
 
     m_regionList.append( QRegion( x -10 , y -10 , 20 , 20 ) );
-
-    if ( visible && !hidden ) {
-        bubble->moveTo( QPoint( x, y ) );
-        bubble->paint( painter );
-    } else {
-        bubble->setHidden(true );
-    }
 }
 
 
@@ -81,19 +75,31 @@ const char *PlacemarkTextAnnotation::graphicType() const
 bool PlacemarkTextAnnotation::mousePressEvent( QMouseEvent* event )
 {
     Q_UNUSED( event );
-    bubble->setHidden( !bubble->isHidden() );
+
+    m_movingPlacemark = true;
     return true;
 }
 
 bool PlacemarkTextAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
-    Q_UNUSED( event );
+    qreal lon, lat;
+    m_viewport->geoCoordinates( event->pos().x(),
+                                event->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
+
+    if ( m_movingPlacemark ) {
+        placemark()->setCoordinate( lon, lat );
+    }
+
     return true;
 }
 
 bool PlacemarkTextAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
     Q_UNUSED( event );
+
+    m_movingPlacemark = false;
     return true;
 }
 

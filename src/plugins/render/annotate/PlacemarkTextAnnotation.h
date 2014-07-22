@@ -46,7 +46,9 @@ protected:
     virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState );
 
 private:
-    GeoWidgetBubble *bubble;
+    const ViewportParams *m_viewport;
+    bool m_movingPlacemark;
+
     QList<QRegion>   m_regionList;
 };
 
