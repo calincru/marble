@@ -320,23 +320,6 @@ void AnnotatePlugin::setRemovingItems( bool enabled )
     m_removingItem = enabled;
 }
 
-void AnnotatePlugin::addOverlay()
-{
-	if ( !m_addingOverlay ) {
-		return;
-	}
-
-	GeoDataGroundOverlay *overlay = new GeoDataGroundOverlay();
-    EditGroundOverlayDialog *dialog = new EditGroundOverlayDialog( overlay,
-                                                                   m_marbleWidget->textureLayer(),
-                                                                   m_marbleWidget );
-	dialog->exec();
-
-	m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, overlay );
-
-	emit overlayAdded();
-}
-
 //void AnnotatePlugin::receiveNetworkReply( QNetworkReply *reply )
 //{
 //    if( reply->error() == QNetworkReply::NoError ) {
@@ -642,6 +625,9 @@ bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
         return true;
     } else if ( mouseEvent->button() == Qt::LeftButton &&
                 mouseEvent->type() == QEvent::MouseButtonPress ) {
+        // Sa splitez aici cand e LeftButton si cand e RightButton, iar cand e RightButton, pur
+        // si simplu iau poly ca mai jos si verific daca contine mouseEvent->pos(). Daca da, pot
+        // arata un meniu cu o optiune gen 'Finish Drawing Polygon'.
         qreal lon, lat;
         m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
                                         mouseEvent->pos().y(),
@@ -986,6 +972,24 @@ void AnnotatePlugin::setupOverlayRmbMenu()
     connect( removeOverlay, SIGNAL(triggered()), this, SLOT(removeOverlay()) );
 }
 
+void AnnotatePlugin::addOverlay()
+{
+	if ( !m_addingOverlay ) {
+		return;
+	}
+
+	GeoDataGroundOverlay *overlay = new GeoDataGroundOverlay();
+    QPointer<EditGroundOverlayDialog> dialog = new EditGroundOverlayDialog(
+                                                                 overlay,
+                                                                 m_marbleWidget->textureLayer(),
+                                                                 m_marbleWidget );
+	dialog->exec();
+    delete dialog;
+
+	m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, overlay );
+	emit overlayAdded();
+}
+
 void AnnotatePlugin::showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y )
 {
     m_rmbOverlay = overlay;
@@ -1010,8 +1014,17 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
 {
     if ( !m_groundOverlayFrames.keys().contains( overlay ) ) {
 
+        // TODO: Sa bag asta intr-un commit separat.
+        // TODO: Eventual sa incerc sa modific GeoDataPolygon sa aplice automat
+        // tesselate la outerboundary. La inner boundary e de ajuns sa creezi
+        // fiecare inner boundary cu GeoDataLinearRing( Tesselate ) pt ca stie sa
+        // aplice, insa nu aplica cand creez polygon la outer, ceea ce ar trebui
+        // sa fie evident
+        GeoDataPolygon *polygon = new GeoDataPolygon( Tessellate );
+        polygon->outerBoundary().setTessellate( true );
+
         GeoDataPlacemark *rectangle_placemark = new GeoDataPlacemark;
-        rectangle_placemark->setGeometry( new GeoDataPolygon );
+        rectangle_placemark->setGeometry( polygon );
         rectangle_placemark->setParent( m_annotationDocument );
         rectangle_placemark->setStyleUrl( "#polygon" );
 
