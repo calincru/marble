@@ -27,7 +27,8 @@ namespace Marble
 
 PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
-    m_movingPlacemark( false )
+    m_movingPlacemark( false ),
+    m_iconFilename( MarbleDirs::path( "bitmaps/annotation.png" ) )
 {
     // nothing to do
 }
@@ -40,18 +41,18 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    painter->drawPixmap( placemark()->coordinate(), QPixmap( MarbleDirs::path( "bitmaps/annotation.png" ) ) );
+    painter->drawPixmap( placemark()->coordinate(), QPixmap( m_iconFilename ) );
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
 
-    m_placemarkRegion = QRegion( x - 10 , y - 10 , 20 , 20 );
+    m_region = QRegion( x - 10 , y - 10 , 20 , 20 );
 }
 
 
 bool PlacemarkTextAnnotation::containsPoint( const QPoint &eventPos ) const
 {
-    return m_placemarkRegion.contains( eventPos );
+    return m_region.contains( eventPos );
 }
 
 void PlacemarkTextAnnotation::dealWithItemChange( const SceneGraphicsItem *other )

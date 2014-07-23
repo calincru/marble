@@ -53,7 +53,13 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
         d->m_textAnnotation->placemark()->setName( tr("Untitled Placemark") );
     }
 
+    d->m_latitude->setRange( -90, 90 );
+    d->m_longitude->setRange( -180, 180 );
+
     d->m_name->setText( d->m_textAnnotation->placemark()->name() );
+    d->m_link->setText( d->m_textAnnotation->m_iconFilename );
+    d->m_latitude->setValue( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) );
+    d->m_longitude->setValue( d->m_textAnnotation->placemark()->coordinate().longitude( GeoDataCoordinates::Degree ) );
 
     // to be continued
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );

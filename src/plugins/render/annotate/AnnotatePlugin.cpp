@@ -49,6 +49,7 @@
 #include "SceneGraphicsTypes.h"
 #include "MergingNodesAnimation.h"
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -686,20 +687,20 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             animation->startAnimation();
         } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
-                                  QString( "Operation not permitted" ),
-                                  QString( "Cannot merge a node from polygon's outer boundary "
-                                           "with a node from one of its inner boundaries." ) );
+                                  tr( "Operation not permitted" ),
+                                  tr( "Cannot merge a node from polygon's outer boundary "
+                                      "with a node from one of its inner boundaries." ) );
         } else if ( area->request() == AreaAnnotation::InnerInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
-                                  QString( "Operation not permitted" ),
-                                  QString( "Cannot merge two nodes from two different inner "
-                                           "boundaries." ) );
+                                  tr( "Operation not permitted" ),
+                                  tr( "Cannot merge two nodes from two different inner "
+                                      "boundaries." ) );
         } else if ( area->request() == AreaAnnotation::InvalidShapeWarning ) {
             QMessageBox::warning( m_marbleWidget,
-                                  QString( "Operation not permitted" ),
-                                  QString( "Cannot merge the selected nodes. Most probably "
-                                           "this would make the polygon's outer boundary not "
-                                           "contain all its inner boundary nodes." ) );
+                                  tr( "Operation not permitted" ),
+                                  tr( "Cannot merge the selected nodes. Most probably "
+                                      "this would make the polygon's outer boundary not "
+                                      "contain all its inner boundary nodes." ) );
         } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
             m_lastItem = 0;
             m_movedItem = 0;
@@ -906,21 +907,21 @@ void AnnotatePlugin::editTextAnnotationRmbMenu()
 {
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
                                                                               m_marbleWidget );
-    dialog->exec();
-    delete dialog;
+    dialog->show();
 }
 
 void AnnotatePlugin::addTextAnnotation()
 {
     GeoDataPlacemark *placemark = new GeoDataPlacemark;
+    placemark->setCoordinate( m_marbleWidget->focusPoint() );
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
+
     PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
     m_graphicsItems.append( textAnnotation );
 
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( textAnnotation, m_marbleWidget );
-    dialog->exec();
-
-    delete dialog;
-    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
+    dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
+    dialog->show();
 }
 
 void AnnotatePlugin::setupGroundOverlayModel()
@@ -980,12 +981,6 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
 {
     if ( !m_groundOverlayFrames.keys().contains( overlay ) ) {
 
-        // TODO: Sa bag asta intr-un commit separat.
-        // TODO: Eventual sa incerc sa modific GeoDataPolygon sa aplice automat
-        // tesselate la outerboundary. La inner boundary e de ajuns sa creezi
-        // fiecare inner boundary cu GeoDataLinearRing( Tesselate ) pt ca stie sa
-        // aplice, insa nu aplica cand creez polygon la outer, ceea ce ar trebui
-        // sa fie evident
         GeoDataPolygon *polygon = new GeoDataPolygon( Tessellate );
         polygon->outerBoundary().setTessellate( true );
 
@@ -1097,10 +1092,10 @@ void AnnotatePlugin::deleteSelectedNodes()
         removePolygon();
     } else if ( m_selectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted" ),
-                              QString( "Cannot delete one of the selected nodes. Most probably "
-                                       "this would make the polygon's outer boundary not "
-                                       "contain all its inner boundary nodes." ) );
+                              tr( "Operation not permitted" ),
+                              tr( "Cannot delete one of the selected nodes. Most probably "
+                                  "this would make the polygon's outer boundary not "
+                                  "contain all its inner boundary nodes." ) );
     }
 }
 
@@ -1173,10 +1168,10 @@ void AnnotatePlugin::deleteNode()
         removePolygon();
     } else if ( m_selectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
-                              QString( "Operation not permitted" ),
-                              QString( "Cannot delete one of the selected nodes. Most probably "
-                                       "this would make the polygon's outer boundary not "
-                                       "contain all its inner boundary nodes." ) );
+                              tr( "Operation not permitted" ),
+                              tr( "Cannot delete one of the selected nodes. Most probably "
+                                  "this would make the polygon's outer boundary not "
+                                  "contain all its inner boundary nodes." ) );
     }
 }
 

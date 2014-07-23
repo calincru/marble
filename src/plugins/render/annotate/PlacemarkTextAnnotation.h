@@ -12,6 +12,8 @@
 #ifndef PLACEMARKTEXTANNOTATION_H
 #define PLACEMARKTEXTANNOTATION_H
 
+#include <QPixmap>
+
 #include "SceneGraphicsItem.h"
 
 
@@ -23,6 +25,8 @@ class TextEditor;
 
 class PlacemarkTextAnnotation : public SceneGraphicsItem
 {
+    friend class EditTextAnnotationDialog;
+
 public:
     explicit PlacemarkTextAnnotation( GeoDataPlacemark *placemark );
     ~PlacemarkTextAnnotation();
@@ -49,7 +53,8 @@ private:
     const ViewportParams *m_viewport;
     bool m_movingPlacemark;
 
-    QRegion   m_placemarkRegion;
+    QRegion m_region;
+    QString m_iconFilename;
 };
 
 }
