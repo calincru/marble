@@ -27,7 +27,7 @@
 #include "MarbleDebug.h"
 #include "AbstractProjection.h"
 #include "EditGroundOverlayDialog.h"
-#include "EditPlacemarkDialog.h"
+#include "EditTextAnnotationDialog.h"
 #include "EditPolygonDialog.h"
 #include "GeoDataDocument.h"
 #include "GeoDataGroundOverlay.h"
@@ -60,6 +60,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_overlayRmbMenu( new QMenu( m_marbleWidget ) ),
       m_polygonRmbMenu( new QMenu( m_marbleWidget ) ),
       m_nodeRmbMenu( new QMenu( m_marbleWidget ) ),
+      m_textAnnotationRmbMenu( new QMenu( m_marbleWidget ) ),
       m_annotationDocument( new GeoDataDocument ),
       m_polygonPlacemark( 0 ),
       m_movedItem( 0 ),
@@ -236,7 +237,6 @@ void AnnotatePlugin::setDrawingPolygon( bool enabled )
         m_polygonPlacemark->setGeometry( polygon );
         m_polygonPlacemark->setParent( m_annotationDocument );
         m_polygonPlacemark->setStyleUrl( "#polygon" );
-        m_polygonPlacemark->setName( QString("Untitled Polygon") );
 
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
         announceStateChanged( SceneGraphicsItem::DrawingPolygon );
@@ -468,6 +468,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
             setupOverlayRmbMenu();
             setupPolygonRmbMenu();
             setupNodeRmbMenu();
+            setupTextAnnotationRmbMenu();
             setupActions( marbleWidget );
 
             m_marbleWidget->model()->treeModel()->addDocument( m_annotationDocument );
@@ -800,11 +801,11 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
         connect( addNodes, SIGNAL(toggled(bool)),
                  this, SLOT(setAddingNodes(bool)) );
 
-        QAction *addPlacemark= new QAction( this );
-        addPlacemark->setText( tr("Add Placemark") );
-        addPlacemark->setIcon( QIcon( ":/icons/draw-placemark.png") );
-        connect( addPlacemark, SIGNAL(triggered()),
-                 this, SLOT(addPlacemark()) );
+        QAction *addTextAnnotation= new QAction( this );
+        addTextAnnotation->setText( tr("Add Placemark") );
+        addTextAnnotation->setIcon( QIcon( ":/icons/draw-placemark.png") );
+        connect( addTextAnnotation, SIGNAL(triggered()),
+                 this, SLOT(addTextAnnotation()) );
 
         QAction *addOverlay = new QAction( this );
         addOverlay->setText( tr("Add Ground Overlay") );
@@ -866,7 +867,7 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
         group->addAction( mergeNodes );
         group->addAction( addNodes );
         group->addAction( polygonEndSeparator );
-        group->addAction( addPlacemark );
+        group->addAction( addTextAnnotation );
         group->addAction( addOverlay );
         group->addAction( removeItemBeginSeparator );
         group->addAction( removeItem );
@@ -888,13 +889,34 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
     emit actionGroupsChanged();
 }
 
-void AnnotatePlugin::addPlacemark()
+void AnnotatePlugin::setupTextAnnotationRmbMenu()
+{
+    QAction *properties = new QAction( tr( "Properties" ), m_textAnnotationRmbMenu );
+    m_textAnnotationRmbMenu->addAction( properties );
+    connect( properties, SIGNAL(triggered()), this, SLOT(editTextAnnotationRmbMenu()) );
+}
+
+void AnnotatePlugin::showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y )
+{
+    m_selectedTextAnnotation = placemark;
+    m_textAnnotationRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
+}
+
+void AnnotatePlugin::editTextAnnotationRmbMenu()
+{
+    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
+                                                                              m_marbleWidget );
+    dialog->exec();
+    delete dialog;
+}
+
+void AnnotatePlugin::addTextAnnotation()
 {
     GeoDataPlacemark *placemark = new GeoDataPlacemark;
     PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
     m_graphicsItems.append( textAnnotation );
 
-    QPointer<EditPlacemarkDialog> dialog = new EditPlacemarkDialog( placemark, m_marbleWidget );
+    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( textAnnotation, m_marbleWidget );
     dialog->exec();
 
     delete dialog;
@@ -978,27 +1000,6 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         m_graphicsItems.append( frame );
         m_groundOverlayFrames.insert( overlay, frame );
     }
-}
-
-void AnnotatePlugin::setupPlacemarkRmbMenu()
-{
-    QAction *properties = new QAction( tr( "Properties" ), m_placemarkRmbMenu );
-    m_placemarkRmbMenu->addAction( properties );
-    connect( properties, SIGNAL(triggered()), this, SLOT(editPlacemark()) );
-}
-
-void AnnotatePlugin::showPlacemarkRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y )
-{
-    m_selectedPlacemark = placemark;
-    m_placemarkRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
-}
-
-void AnnotatePlugin::editPlacemark()
-{
-    QPointer<EditPlacemarkDialog> dialog = new EditPlacemarkDialog( m_selectedPlacemark->placemark(),
-                                                                    m_marbleWidget );
-    dialog->exec();
-    delete dialog;
 }
 
 void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )

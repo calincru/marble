@@ -40,26 +40,18 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-
-    m_regionList.clear();
     painter->drawPixmap( placemark()->coordinate(), QPixmap( MarbleDirs::path( "bitmaps/annotation.png" ) ) );
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
 
-    m_regionList.append( QRegion( x - 10 , y - 10 , 20 , 20 ) );
+    m_placemarkRegion = QRegion( x - 10 , y - 10 , 20 , 20 );
 }
 
 
 bool PlacemarkTextAnnotation::containsPoint( const QPoint &eventPos ) const
 {
-    foreach ( const QRegion &region, m_regionList ) {
-        if ( region.contains( eventPos ) ) {
-            return true;
-        }
-    }
-
-    return false;
+    return m_placemarkRegion.contains( eventPos );
 }
 
 void PlacemarkTextAnnotation::dealWithItemChange( const SceneGraphicsItem *other )

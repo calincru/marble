@@ -17,14 +17,18 @@
 namespace Marble {
 
 class GeoDataPlacemark;
+class PlacemarkTextAnnotation;
 
-class EditPlacemarkDialog : public QDialog
+class EditTextAnnotationDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    EditPlacemarkDialog( GeoDataPlacemark *placemark, QWidget *parent = 0 );
-    ~EditPlacemarkDialog();
+    EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent = 0 );
+    ~EditTextAnnotationDialog();
+
+private slots:
+    void loadIconFile();
 
 private:
     class Private;

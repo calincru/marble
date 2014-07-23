@@ -102,7 +102,7 @@ public slots:
     void setRemovingItems( bool );
 
     void addOverlay();
-    void addPlacemark();
+    void addTextAnnotation();
 
     //    void receiveNetworkReply( QNetworkReply* );
     //    void downloadOsmFile();
@@ -112,7 +112,7 @@ public slots:
     void loadAnnotationFile();
 
 private slots:
-    void editPlacemark();
+    void editTextAnnotationRmbMenu();
 
     void editOverlay();
     void removeOverlay();
@@ -132,8 +132,8 @@ protected:
 private:
     void setupActions( MarbleWidget *marbleWidget );
 
-    void setupPlacemarkRmbMenu();
-    void showPlacemarkRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y );
+    void setupTextAnnotationRmbMenu();
+    void showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y );
 
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
@@ -170,10 +170,10 @@ private:
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
 
-    QMenu *m_placemarkRmbMenu;
     QMenu *m_overlayRmbMenu;
     QMenu *m_polygonRmbMenu;
     QMenu *m_nodeRmbMenu;
+    QMenu *m_textAnnotationRmbMenu;
 
     QList<QActionGroup*>    m_actions;
     QList<QActionGroup*>    m_toolbarActions;
@@ -189,7 +189,7 @@ private:
 
     GeoDataGroundOverlay    *m_rmbOverlay;
     AreaAnnotation          *m_selectedArea;
-    PlacemarkTextAnnotation *m_selectedPlacemark;
+    PlacemarkTextAnnotation *m_selectedTextAnnotation;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;

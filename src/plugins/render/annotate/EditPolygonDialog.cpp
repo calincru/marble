@@ -53,6 +53,10 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 {
     d->setupUi( this );
 
+    if ( d->m_placemark->name().isNull() ) {
+        d->m_placemark->setName( tr("Untitled Polygon") );
+    }
+
     d->m_name->setText( placemark->name() );
     d->m_description->setText( placemark->description() );
     d->m_linesWidth->setRange( 0.1, 5.0 );

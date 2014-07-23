@@ -49,7 +49,7 @@ private:
     const ViewportParams *m_viewport;
     bool m_movingPlacemark;
 
-    QList<QRegion>   m_regionList;
+    QRegion   m_placemarkRegion;
 };
 
 }
