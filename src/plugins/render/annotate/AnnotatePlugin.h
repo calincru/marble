@@ -112,6 +112,8 @@ public slots:
     void loadAnnotationFile();
 
 private slots:
+    void editPlacemark();
+
     void editOverlay();
     void removeOverlay();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
@@ -130,11 +132,13 @@ protected:
 private:
     void setupActions( MarbleWidget *marbleWidget );
 
+    void setupPlacemarkRmbMenu();
+    void showPlacemarkRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y );
+
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
     void showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y );
     void displayOverlayEditDialog( GeoDataGroundOverlay *overlay );
-    void displayPolygonEditDialog( GeoDataPlacemark *placemark );
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
@@ -166,6 +170,7 @@ private:
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
 
+    QMenu *m_placemarkRmbMenu;
     QMenu *m_overlayRmbMenu;
     QMenu *m_polygonRmbMenu;
     QMenu *m_nodeRmbMenu;
@@ -178,11 +183,13 @@ private:
     GeoDataDocument*          m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
-    GeoDataPlacemark     *m_polygonPlacemark;
-    SceneGraphicsItem    *m_movedItem;
-    SceneGraphicsItem    *m_lastItem;
-    GeoDataGroundOverlay *m_rmbOverlay;
-    AreaAnnotation       *m_selectedArea;
+    GeoDataPlacemark        *m_polygonPlacemark;
+    SceneGraphicsItem       *m_movedItem;
+    SceneGraphicsItem       *m_lastItem;
+
+    GeoDataGroundOverlay    *m_rmbOverlay;
+    AreaAnnotation          *m_selectedArea;
+    PlacemarkTextAnnotation *m_selectedPlacemark;
 
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;

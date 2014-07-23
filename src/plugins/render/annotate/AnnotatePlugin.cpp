@@ -980,6 +980,27 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
     }
 }
 
+void AnnotatePlugin::setupPlacemarkRmbMenu()
+{
+    QAction *properties = new QAction( tr( "Properties" ), m_placemarkRmbMenu );
+    m_placemarkRmbMenu->addAction( properties );
+    connect( properties, SIGNAL(triggered()), this, SLOT(editPlacemark()) );
+}
+
+void AnnotatePlugin::showPlacemarkRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y )
+{
+    m_selectedPlacemark = placemark;
+    m_placemarkRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
+}
+
+void AnnotatePlugin::editPlacemark()
+{
+    QPointer<EditPlacemarkDialog> dialog = new EditPlacemarkDialog( m_selectedPlacemark->placemark(),
+                                                                    m_marbleWidget );
+    dialog->exec();
+    delete dialog;
+}
+
 void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
 {
     QPointer<EditGroundOverlayDialog> dialog = new EditGroundOverlayDialog(
@@ -1096,12 +1117,7 @@ void AnnotatePlugin::removePolygon()
 
 void AnnotatePlugin::editPolygon()
 {
-    displayPolygonEditDialog( m_selectedArea->placemark() );
-}
-
-void AnnotatePlugin::displayPolygonEditDialog( GeoDataPlacemark *placemark )
-{
-    EditPolygonDialog *dialog = new EditPolygonDialog( placemark, m_marbleWidget );
+    EditPolygonDialog *dialog = new EditPolygonDialog( m_selectedArea->placemark(), m_marbleWidget );
 
     connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
              this, SIGNAL(repaintNeeded()) );
