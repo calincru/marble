@@ -90,21 +90,19 @@ public:
 
 signals:
     void placemarkAdded();
-    void overlayAdded();
     void itemRemoved();
 
 public slots:
     void enableModel( bool enabled );
 
-    void setAddingPlacemark( bool );
     void setDrawingPolygon( bool );
     void setAddingPolygonHole( bool );
     void setMergingNodes( bool );
     void setAddingNodes( bool );
-    void setAddingOverlay( bool );
     void setRemovingItems( bool );
 
     void addOverlay();
+    void addPlacemark();
 
     //    void receiveNetworkReply( QNetworkReply* );
     //    void downloadOsmFile();
@@ -189,9 +187,7 @@ private:
     //    QNetworkAccessManager* m_networkAccessManager;
     //    QErrorMessage m_errorMessage;
 
-    bool m_addingPlacemark;
     bool m_drawingPolygon;
-    bool m_addingOverlay;
     bool m_removingItem;
     bool m_isInitialized;
 };

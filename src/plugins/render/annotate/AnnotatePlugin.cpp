@@ -27,6 +27,7 @@
 #include "MarbleDebug.h"
 #include "AbstractProjection.h"
 #include "EditGroundOverlayDialog.h"
+#include "EditPlacemarkDialog.h"
 #include "EditPolygonDialog.h"
 #include "GeoDataDocument.h"
 #include "GeoDataGroundOverlay.h"
@@ -64,7 +65,6 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_movedItem( 0 ),
       m_lastItem( 0 ),
       // m_networkAccessManager( 0 ),
-      m_addingPlacemark( false ),
       m_drawingPolygon( false ),
       m_removingItem( false ),
       m_isInitialized( false )
@@ -170,7 +170,6 @@ void AnnotatePlugin::initialize()
         delete m_movedItem;
         m_movedItem = 0;
 
-        m_addingPlacemark = false;
         m_drawingPolygon = false;
         m_removingItem = false;
         m_isInitialized = true;
@@ -225,17 +224,6 @@ void AnnotatePlugin::enableModel( bool enabled )
     }
 }
 
-void AnnotatePlugin::setAddingPlacemark( bool enabled )
-{
-    m_addingPlacemark = enabled;
-
-    if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::AddingPlacemark );
-    } else {
-        announceStateChanged( SceneGraphicsItem::Editing );
-    }
-}
-
 void AnnotatePlugin::setDrawingPolygon( bool enabled )
 {
     m_drawingPolygon = enabled;
@@ -273,17 +261,6 @@ void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
     if ( enabled ) {
         announceStateChanged( SceneGraphicsItem::AddingPolygonHole );
-    } else {
-        announceStateChanged( SceneGraphicsItem::Editing );
-    }
-}
-
-void AnnotatePlugin::setAddingOverlay( bool enabled )
-{
-	m_addingOverlay = enabled;
-
-    if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::AddingOverlay );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -525,9 +502,8 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         return false;
     }
 
-    // Deal with adding placemarks and polygons.
-    if ( ( m_addingPlacemark && handleAddingPlacemark( mouseEvent ) ) ||
-         ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) ) {
+    // Deal with polygons.
+    if ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) {
         return true;
     }
 
@@ -589,35 +565,6 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     return false;
 }
 
-bool AnnotatePlugin::handleAddingPlacemark( QMouseEvent *mouseEvent )
-{
-    if ( mouseEvent->type() == QEvent::MouseMove ) {
-        setupCursor( 0 );
-        return true;
-    } if ( mouseEvent->button() == Qt::LeftButton &&
-           mouseEvent->type() == QEvent::MouseButtonPress ) {
-        qreal lon, lat;
-        m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
-                                        mouseEvent->pos().y(),
-                                        lon, lat,
-                                        GeoDataCoordinates::Radian );
-        const GeoDataCoordinates coords( lon, lat );
-
-
-        GeoDataPlacemark *placemark = new GeoDataPlacemark;
-        placemark->setCoordinate( coords );
-        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
-
-        PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
-        m_graphicsItems.append( textAnnotation );
-
-        emit placemarkAdded();
-        return true;
-    }
-
-    return false;
-}
-
 bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
 {
     if ( mouseEvent->type() == QEvent::MouseMove ) {
@@ -625,9 +572,6 @@ bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
         return true;
     } else if ( mouseEvent->button() == Qt::LeftButton &&
                 mouseEvent->type() == QEvent::MouseButtonPress ) {
-        // Sa splitez aici cand e LeftButton si cand e RightButton, iar cand e RightButton, pur
-        // si simplu iau poly ca mai jos si verific daca contine mouseEvent->pos(). Daca da, pot
-        // arata un meniu cu o optiune gen 'Finish Drawing Polygon'.
         qreal lon, lat;
         m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
                                         mouseEvent->pos().y(),
@@ -825,10 +769,6 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
         selectItem->setCheckable( true );
         selectItem->setChecked( true );
         selectItem->setIcon( QIcon( ":/icons/hand.png") );
-        connect( this, SIGNAL(placemarkAdded()),
-                 selectItem, SLOT(toggle()) );
-        connect( this, SIGNAL(overlayAdded()),
-                 selectItem, SLOT(toggle()) );
         connect( this, SIGNAL(itemRemoved()),
                  selectItem, SLOT(toggle()) );
 
@@ -862,18 +802,14 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
 
         QAction *addPlacemark= new QAction( this );
         addPlacemark->setText( tr("Add Placemark") );
-        addPlacemark->setCheckable( true );
         addPlacemark->setIcon( QIcon( ":/icons/draw-placemark.png") );
-        connect( addPlacemark, SIGNAL(toggled(bool)),
-                 this, SLOT(setAddingPlacemark(bool)) );
+        connect( addPlacemark, SIGNAL(triggered()),
+                 this, SLOT(addPlacemark()) );
 
         QAction *addOverlay = new QAction( this );
         addOverlay->setText( tr("Add Ground Overlay") );
-        addOverlay->setCheckable( true );
         addOverlay->setIcon( QIcon( ":/icons/draw-overlay.png") );
-        connect( addOverlay, SIGNAL(toggled(bool)),
-                 this, SLOT(setAddingOverlay(bool)) );
-        connect( addOverlay, SIGNAL(toggled(bool)),
+        connect( addOverlay, SIGNAL(triggered()),
                  this, SLOT(addOverlay()) );
 
         QAction *removeItem = new QAction( this );
@@ -952,6 +888,19 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
     emit actionGroupsChanged();
 }
 
+void AnnotatePlugin::addPlacemark()
+{
+    GeoDataPlacemark *placemark = new GeoDataPlacemark;
+    PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
+    m_graphicsItems.append( textAnnotation );
+
+    QPointer<EditPlacemarkDialog> dialog = new EditPlacemarkDialog( placemark, m_marbleWidget );
+    dialog->exec();
+
+    delete dialog;
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
+}
+
 void AnnotatePlugin::setupGroundOverlayModel()
 {
     m_groundOverlayModel.setSourceModel( m_marbleWidget->model()->groundOverlayModel() );
@@ -974,20 +923,15 @@ void AnnotatePlugin::setupOverlayRmbMenu()
 
 void AnnotatePlugin::addOverlay()
 {
-	if ( !m_addingOverlay ) {
-		return;
-	}
-
-	GeoDataGroundOverlay *overlay = new GeoDataGroundOverlay();
+    GeoDataGroundOverlay *overlay = new GeoDataGroundOverlay();
     QPointer<EditGroundOverlayDialog> dialog = new EditGroundOverlayDialog(
                                                                  overlay,
                                                                  m_marbleWidget->textureLayer(),
                                                                  m_marbleWidget );
-	dialog->exec();
-    delete dialog;
+    dialog->exec();
 
-	m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, overlay );
-	emit overlayAdded();
+    delete dialog;
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, overlay );
 }
 
 void AnnotatePlugin::showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y )

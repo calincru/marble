@@ -21,6 +21,7 @@
 #include "MarbleDirs.h"
 #include "SceneGraphicsTypes.h"
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -39,6 +40,7 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
+    qDebug() << "Nu ajunge aici\n";
     m_viewport = viewport;
 
     m_regionList.clear();
@@ -47,7 +49,7 @@ void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
 
-    m_regionList.append( QRegion( x -10 , y -10 , 20 , 20 ) );
+    m_regionList.append( QRegion( x - 10 , y - 10 , 20 , 20 ) );
 }
 
 
