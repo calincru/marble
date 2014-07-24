@@ -920,7 +920,9 @@ void AnnotatePlugin::addTextAnnotation()
     m_graphicsItems.append( textAnnotation );
 
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( textAnnotation, m_marbleWidget );
-    connect( dialog, SIGNAL(textAnnotationModified(GeoDataFeature*)),
+    connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
+             this, SIGNAL(repaintNeeded()) );
+    connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
@@ -1123,6 +1125,7 @@ void AnnotatePlugin::editPolygon()
     connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
 
+    dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
 }
 

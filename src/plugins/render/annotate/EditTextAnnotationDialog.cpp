@@ -70,15 +70,24 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     d->m_latitude->setRange( -90, 90 );
     d->m_longitude->setRange( -180, 180 );
 
+
     // Setup name, icon link and latitude/longitude values.
     d->m_name->setText( textAnnotation->placemark()->name() );
     d->m_link->setText( textAnnotation->m_iconFilename );
+
     d->m_latitude->setValue( textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) );
+    connect( d->m_latitude, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
     d->m_longitude->setValue( textAnnotation->placemark()->coordinate().longitude( GeoDataCoordinates::Degree ) );
+    connect( d->m_longitude, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
+
 
     // Adjust icon and label scales.
     d->m_iconScale->setValue( textAnnotation->placemark()->style()->iconStyle().scale() );
+    connect( d->m_iconScale, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
+
     d->m_labelScale->setValue( textAnnotation->placemark()->style()->labelStyle().scale() );
+    connect( d->m_labelScale, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
+
 
     // Adjust the current color of the two push buttons' pixmap to resemble the label and icon colors.
     const GeoDataLabelStyle labelStyle = textAnnotation->placemark()->style()->labelStyle();
@@ -100,12 +109,14 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     d->m_labelColorDialog->setCurrentColor( labelStyle.color() );
     connect( d->m_labelButton, SIGNAL(clicked()), d->m_labelColorDialog, SLOT(exec()) );
     connect( d->m_labelColorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateLabelDialog(const QColor&)) );
+    connect( d->m_labelColorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateTextAnnotation()) );
 
     d->m_iconColorDialog = new QColorDialog( this );
     d->m_iconColorDialog->setOption( QColorDialog::ShowAlphaChannel );
     d->m_iconColorDialog->setCurrentColor( iconStyle.color() );
     connect( d->m_iconButton, SIGNAL(clicked()), d->m_iconColorDialog, SLOT(exec()) );
     connect( d->m_iconColorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateIconDialog(const QColor&)) );
+    connect( d->m_iconColorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateTextAnnotation()) );
 
 
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );
@@ -121,10 +132,11 @@ EditTextAnnotationDialog::~EditTextAnnotationDialog()
     delete d;
 }
 
-void EditTextAnnotationDialog::modifyTextAnnotation()
+void EditTextAnnotationDialog::updateTextAnnotation()
 {
 
-    emit textAnnotationModified( d->m_textAnnotation->placemark() );
+
+    emit textAnnotationUpdated( d->m_textAnnotation->placemark() );
 }
 
 void EditTextAnnotationDialog::loadIconFile()

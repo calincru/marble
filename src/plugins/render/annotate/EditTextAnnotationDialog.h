@@ -28,19 +28,17 @@ public:
     EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent = 0 );
     ~EditTextAnnotationDialog();
 
-public slots:
-
-
 private slots:
-    void modifyTextAnnotation();
     void loadIconFile();
     void checkFields();
+
+    void updateTextAnnotation();
 
     void updateLabelDialog( const QColor &color );
     void updateIconDialog( const QColor &color );
 
 signals:
-    void textAnnotationModified( GeoDataFeature *feature );
+    void textAnnotationUpdated( GeoDataFeature *feature );
 
 private:
     class Private;
