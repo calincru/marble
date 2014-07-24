@@ -29,6 +29,7 @@ public:
 
 private slots:
     void loadIconFile();
+    void checkFields();
 
 private:
     class Private;

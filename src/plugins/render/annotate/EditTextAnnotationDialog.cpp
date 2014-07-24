@@ -14,11 +14,14 @@
 
 // Qt
 #include <QFileDialog>
+#include <QMessageBox>
+#include <QFileInfo>
 
 // Marble
 #include "GeoDataPlacemark.h"
 #include "PlacemarkTextAnnotation.h"
 
+#include <QDebug>
 
 namespace Marble {
 
@@ -53,6 +56,9 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
         d->m_textAnnotation->placemark()->setName( tr("Untitled Placemark") );
     }
 
+    // What should be the maximum size?
+    d->m_labelSize->setRange( 0.1, 5 );
+    d->m_iconSize->setRange( 0.1, 5 );
     d->m_latitude->setRange( -90, 90 );
     d->m_longitude->setRange( -180, 180 );
 
@@ -63,6 +69,7 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 
     // to be continued
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );
+    connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
 }
 
 EditTextAnnotationDialog::~EditTextAnnotationDialog()
@@ -81,6 +88,28 @@ void EditTextAnnotationDialog::loadIconFile()
     }
 
     d->m_link->setText( filename );
+}
+
+void EditTextAnnotationDialog::checkFields()
+{
+    if ( d->m_name->text().isEmpty() ) {
+        QMessageBox::warning( this,
+                              tr( "No name specified" ),
+                              tr( "Please specify a name for this placemark." ) );
+    }
+
+    if ( d->m_link->text().isEmpty() ) {
+        QMessageBox::warning( this,
+                              tr( "No image specified" ),
+                              tr( "Please specify an icon for this placemark." ) );
+    }
+
+    QFileInfo fileInfo( d->m_link->text() );
+    if ( !fileInfo.exists() ) {
+        QMessageBox::warning( this,
+                              tr( "Invalid icon path" ),
+                              tr( "Please specify a valid path for the icon file." ) );
+    }
 }
 
 }
