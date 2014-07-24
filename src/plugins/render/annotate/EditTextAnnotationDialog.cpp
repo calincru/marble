@@ -175,10 +175,6 @@ void EditTextAnnotationDialog::updateTextAnnotation()
     QFileInfo fileInfo( d->m_link->text() );
     if ( fileInfo.exists() ) {
         newStyle->iconStyle().setIconPath( d->m_link->text() );
-    } else {
-        QMessageBox::warning( this,
-                              tr( "Invalid icon path" ),
-                              tr( "Please specify a valid path for the icon file." ) );
     }
 
     newStyle->iconStyle().setScale( d->m_iconScale->value() );
@@ -212,19 +208,17 @@ void EditTextAnnotationDialog::checkFields()
         QMessageBox::warning( this,
                               tr( "No name specified" ),
                               tr( "Please specify a name for this placemark." ) );
-    }
-
-    if ( d->m_link->text().isEmpty() ) {
+    } else if ( d->m_link->text().isEmpty() ) {
         QMessageBox::warning( this,
                               tr( "No image specified" ),
                               tr( "Please specify an icon for this placemark." ) );
-    }
-
-    QFileInfo fileInfo( d->m_link->text() );
-    if ( !fileInfo.exists() ) {
-        QMessageBox::warning( this,
-                              tr( "Invalid icon path" ),
-                              tr( "Please specify a valid path for the icon file." ) );
+    } else {
+        QFileInfo fileInfo( d->m_link->text() );
+        if ( !fileInfo.exists() ) {
+            QMessageBox::warning( this,
+                                  tr( "Invalid icon path" ),
+                                  tr( "Please specify a valid path for the icon file." ) );
+        }
     }
 }
 
