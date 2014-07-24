@@ -67,14 +67,23 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     d->m_latitude->setValue( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) );
     d->m_longitude->setValue( d->m_textAnnotation->placemark()->coordinate().longitude( GeoDataCoordinates::Degree ) );
 
-    // to be continued
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );
     connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
+
+    // Ensure that the dialog gets deleted when closing it (either when clicking OK or
+    // Close).
+    connect( this, SIGNAL(finished(int)), SLOT(deleteLater()) );
 }
 
 EditTextAnnotationDialog::~EditTextAnnotationDialog()
 {
     delete d;
+}
+
+void EditTextAnnotationDialog::modifyTextAnnotation()
+{
+
+    emit textAnnotationModified( d->m_textAnnotation->placemark() );
 }
 
 void EditTextAnnotationDialog::loadIconFile()

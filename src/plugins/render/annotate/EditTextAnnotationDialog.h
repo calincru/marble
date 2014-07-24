@@ -16,6 +16,7 @@
 
 namespace Marble {
 
+class GeoDataFeature;
 class GeoDataPlacemark;
 class PlacemarkTextAnnotation;
 
@@ -27,9 +28,16 @@ public:
     EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent = 0 );
     ~EditTextAnnotationDialog();
 
+public slots:
+
+
 private slots:
+    void modifyTextAnnotation();
     void loadIconFile();
     void checkFields();
+
+signals:
+    void textAnnotationModified( GeoDataFeature *feature );
 
 private:
     class Private;

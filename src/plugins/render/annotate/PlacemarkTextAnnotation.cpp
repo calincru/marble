@@ -12,15 +12,20 @@
 // Self
 #include "PlacemarkTextAnnotation.h"
 
+// Qt
+#include <QImage>
+
 // Marble
 #include "AbstractProjection.h"
 #include "GeoDataPlacemark.h"
+#include "GeoDataStyle.h"
 #include "GeoPainter.h"
 #include "GeoWidgetBubble.h"
 #include "ViewportParams.h"
 #include "MarbleDirs.h"
 #include "SceneGraphicsTypes.h"
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -30,7 +35,10 @@ PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) 
     m_movingPlacemark( false ),
     m_iconFilename( MarbleDirs::path( "bitmaps/annotation.png" ) )
 {
-    // nothing to do
+    GeoDataStyle *newStyle = new GeoDataStyle( *placemark->style() );
+    newStyle->iconStyle().setIcon( QImage( m_iconFilename ) );
+
+    placemark->setStyle( newStyle );
 }
 
 PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
@@ -41,14 +49,13 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    painter->drawPixmap( placemark()->coordinate(), QPixmap( m_iconFilename ) );
+    painter->drawImage( placemark()->coordinate(), placemark()->style()->iconStyle().icon() );
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
 
     m_region = QRegion( x - 10 , y - 10 , 20 , 20 );
 }
-
 
 bool PlacemarkTextAnnotation::containsPoint( const QPoint &eventPos ) const
 {

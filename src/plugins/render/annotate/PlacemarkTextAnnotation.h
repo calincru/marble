@@ -12,7 +12,6 @@
 #ifndef PLACEMARKTEXTANNOTATION_H
 #define PLACEMARKTEXTANNOTATION_H
 
-#include <QPixmap>
 
 #include "SceneGraphicsItem.h"
 
