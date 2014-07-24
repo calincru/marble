@@ -33,12 +33,9 @@ namespace Marble
 PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_movingPlacemark( false ),
-    m_iconFilename( MarbleDirs::path( "bitmaps/annotation.png" ) )
+    m_iconFilename( MarbleDirs::path( "bitmaps/default_location.png" ) )
 {
-    GeoDataStyle *newStyle = new GeoDataStyle( *placemark->style() );
-    newStyle->iconStyle().setIcon( QImage( m_iconFilename ) );
-
-    placemark->setStyle( newStyle );
+    // nothing to do
 }
 
 PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
