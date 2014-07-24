@@ -146,7 +146,6 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     m_viewport( 0 ),
     m_regionsInitialized( false ),
     m_busy( false ),
-    m_request( NoRequest ),
     m_hoveredNode( -1, -1 ),
     m_interactingObj( InteractingNothing ),
     m_virtualHovered( -1, -1 )
@@ -251,11 +250,6 @@ void AreaAnnotation::setBusy( bool enabled )
     }
 }
 
-AreaAnnotation::MarbleWidgetRequest AreaAnnotation::request() const
-{
-    return m_request;
-}
-
 void AreaAnnotation::deselectAllNodes()
 {
     if ( state() != SceneGraphicsItem::Editing ) {
@@ -292,7 +286,7 @@ void AreaAnnotation::deleteAllSelectedNodes()
     for ( int i = 0; i < outerRing.size(); ++i ) {
         if ( m_outerNodesList.at(i).isSelected() ) {
             if ( m_outerNodesList.size() <= 3 ) {
-                m_request = RemovePolygonRequest;
+                setRequest( SceneGraphicsItem::RemovePolygonRequest );
                 return;
             }
 
@@ -324,7 +318,7 @@ void AreaAnnotation::deleteAllSelectedNodes()
         polygon->innerBoundaries() = initialInnerRings;
         m_outerNodesList = initialOuterNodes;
         m_innerNodesList = initialInnerNodes;
-        m_request = InvalidShapeWarning;
+        setRequest( SceneGraphicsItem::InvalidShapeWarning );
     }
 }
 
@@ -351,7 +345,7 @@ void AreaAnnotation::deleteClickedNode()
 
     if ( i != -1 && j == -1 ) {
         if ( m_outerNodesList.size() <= 3 ) {
-            m_request = RemovePolygonRequest;
+            setRequest( SceneGraphicsItem::RemovePolygonRequest );
             return;
         }
 
@@ -373,7 +367,7 @@ void AreaAnnotation::deleteClickedNode()
         polygon->innerBoundaries() = initialInnerRings;
         m_outerNodesList = initialOuterNodes;
         m_innerNodesList = initialInnerNodes;
-        m_request = InvalidShapeWarning;
+        setRequest( SceneGraphicsItem::InvalidShapeWarning );
     }
 }
 
@@ -434,7 +428,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
         return false;
     }
 
-    m_request = NoRequest;
+    setRequest( SceneGraphicsItem::NoRequest );
 
     if ( state() == SceneGraphicsItem::Editing ) {
         return processEditingOnPress( event );
@@ -455,7 +449,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return false;
     }
 
-    m_request = NoRequest;
+    setRequest( SceneGraphicsItem::NoRequest );
 
     if ( state() == SceneGraphicsItem::Editing ) {
         return processEditingOnMove( event );
@@ -476,7 +470,7 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return false;
     }
 
-    m_request = NoRequest;
+    setRequest( SceneGraphicsItem::NoRequest );
 
     if ( state() == SceneGraphicsItem::Editing ) {
         return processEditingOnRelease( event );
@@ -939,7 +933,7 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
         m_clickedNodeIndexes = QPair<int, int>( outerIndex, -1 );
 
         if ( mouseEvent->button() == Qt::RightButton ) {
-            m_request = ShowNodeRmbMenu;
+            setRequest( SceneGraphicsItem::ShowNodeRmbMenu );
         } else {
             m_interactingObj = InteractingNode;
         }
@@ -953,7 +947,7 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
         m_clickedNodeIndexes = innerIndexes;
 
         if ( mouseEvent->button() == Qt::RightButton ) {
-            m_request = ShowNodeRmbMenu;
+            setRequest( SceneGraphicsItem::ShowNodeRmbMenu );
         } else {
             m_interactingObj = InteractingNode;
         }
@@ -964,7 +958,7 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     // then check if the interior of the polygon (excepting its 'holes') contains this point.
     if ( polygonContains( mouseEvent->pos() ) ) {
         if ( mouseEvent->button() == Qt::RightButton ) {
-            m_request = ShowPolygonRmbMenu;
+            setRequest( SceneGraphicsItem::ShowPolygonRmbMenu );
         } else {
             m_interactingObj = InteractingPolygon;
         }
@@ -1154,7 +1148,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
         // If the first selected node was an inner boundary node, raise the request for showing
         // warning.
         } else if ( m_firstMergedNode.first != -1 && m_firstMergedNode.second != -1 ) {
-            m_request = OuterInnerMergingWarning;
+            setRequest( SceneGraphicsItem::OuterInnerMergingWarning );
             m_innerNodesList[m_firstMergedNode.first][m_firstMergedNode.second].setFlag(
                                                         PolygonNode::NodeIsMerged, false );
 
@@ -1178,7 +1172,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             // If two nodes which form a triangle are merged, the whole triangle should be
             // destroyed.
             if ( outerRing.size() <= 3 ) {
-                m_request = RemovePolygonRequest;
+                setRequest( SceneGraphicsItem::RemovePolygonRequest );
                 return true;
             }
 
@@ -1195,7 +1189,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
                 }
 
                 m_hoveredNode = m_firstMergedNode = QPair<int, int>( -1, -1 );
-                m_request = InvalidShapeWarning;
+                setRequest( SceneGraphicsItem::InvalidShapeWarning );
                 return true;
             }
 
@@ -1207,7 +1201,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 
             delete m_animation;
             m_animation = new MergingNodesAnimation( this );
-            m_request = StartAnimation;
+            setRequest( SceneGraphicsItem::StartAnimation );
         }
 
         return true;
@@ -1225,7 +1219,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             m_innerNodesList[innerIndexes.first][innerIndexes.second].setFlag( PolygonNode::NodeIsMerged );
         // If the first selected node has been an outer boundary one, raise the request for showing warning.
         } else if ( i != -1 && j == -1 ) {
-            m_request = OuterInnerMergingWarning;
+            setRequest( SceneGraphicsItem::OuterInnerMergingWarning );
             m_outerNodesList[i].setFlag( PolygonNode::NodeIsMerged, false );
 
             if ( m_hoveredNode.first != -1 ) {
@@ -1237,7 +1231,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
         } else {
             Q_ASSERT( i != -1 && j != -1 );
             if ( i != innerIndexes.first ) {
-                m_request = InnerInnerMergingWarning;
+                setRequest( SceneGraphicsItem::InnerInnerMergingWarning );
                 m_innerNodesList[i][j].setFlag( PolygonNode::NodeIsMerged, false );
 
                 if ( m_hoveredNode.first != -1 && m_hoveredNode.second != -1 ) {
@@ -1270,7 +1264,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             m_secondMergedNode = innerIndexes;
 
             m_animation = new MergingNodesAnimation( this );
-            m_request = StartAnimation;
+            setRequest( SceneGraphicsItem::StartAnimation );
         }
 
         return true;

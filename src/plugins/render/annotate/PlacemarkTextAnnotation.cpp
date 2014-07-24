@@ -32,10 +32,12 @@ namespace Marble
 
 PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
-    m_movingPlacemark( false ),
-    m_iconFilename( MarbleDirs::path( "bitmaps/default_location.png" ) )
+    m_movingPlacemark( false )
 {
-    // nothing to do
+    GeoDataStyle *newStyle = new GeoDataStyle( *placemark->style() );
+    newStyle->iconStyle().setIcon( QImage() );
+    newStyle->iconStyle().setIconPath( MarbleDirs::path( "bitmaps/default_location.png" ) );
+    placemark->setStyle( newStyle );
 }
 
 PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
@@ -46,7 +48,7 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    painter->drawImage( placemark()->coordinate(), placemark()->style()->iconStyle().icon() );
+    painter->drawImage( placemark()->coordinate(), QImage( placemark()->style()->iconStyle().iconPath() ) );
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
@@ -69,16 +71,29 @@ const char *PlacemarkTextAnnotation::graphicType() const
     return SceneGraphicsTypes::SceneGraphicPlacemark;
 }
 
-bool PlacemarkTextAnnotation::mousePressEvent( QMouseEvent* event )
+bool PlacemarkTextAnnotation::mousePressEvent( QMouseEvent *event )
 {
     Q_UNUSED( event );
 
-    m_movingPlacemark = true;
-    return true;
+    setRequest( SceneGraphicsItem::NoRequest );
+
+    if ( state() == SceneGraphicsItem::Editing ) {
+        if ( event->button() == Qt::LeftButton ) {
+            m_movingPlacemark = true;
+        } else if ( event->button() == Qt::RightButton ) {
+            setRequest( SceneGraphicsItem::ShowPlacemarkRmbMenu );
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 bool PlacemarkTextAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
+    setRequest( SceneGraphicsItem::NoRequest );
+
     qreal lon, lat;
     m_viewport->geoCoordinates( event->pos().x(),
                                 event->pos().y(),
@@ -95,6 +110,7 @@ bool PlacemarkTextAnnotation::mouseMoveEvent( QMouseEvent *event )
 bool PlacemarkTextAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
     Q_UNUSED( event );
+    setRequest( SceneGraphicsItem::NoRequest );
 
     m_movingPlacemark = false;
     return true;

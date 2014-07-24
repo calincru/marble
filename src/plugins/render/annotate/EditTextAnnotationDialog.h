@@ -28,6 +28,9 @@ public:
     EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent = 0 );
     ~EditTextAnnotationDialog();
 
+public slots:
+    void updateDialogFields();
+
 private slots:
     void loadIconFile();
     void checkFields();

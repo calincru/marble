@@ -630,6 +630,11 @@ bool AnnotatePlugin::handleMovingSelectedItem( QMouseEvent *mouseEvent )
     // handler and updating the placemark geometry.
     if ( m_movedItem->sceneEvent( mouseEvent ) ) {
         m_marbleWidget->model()->treeModel()->updateFeature( m_movedItem->placemark() );
+
+        if ( m_movedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
+            emit placemarkMoved();
+        }
+
         return true;
     }
 
@@ -711,7 +716,13 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             delete area->feature();
             delete area;
         }
-   }
+   } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
+        PlacemarkTextAnnotation *textAnnotation = static_cast<PlacemarkTextAnnotation*>( item );
+
+        if ( textAnnotation->request() == SceneGraphicsItem::ShowPlacemarkRmbMenu ) {
+            showTextAnnotationRmbMenu( textAnnotation, mouseEvent->x(), mouseEvent->y() );
+        }
+    }
 }
 
 void AnnotatePlugin::handleRemovingItem( SceneGraphicsItem *item )
@@ -907,6 +918,13 @@ void AnnotatePlugin::editTextAnnotationRmbMenu()
 {
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
                                                                               m_marbleWidget );
+    connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
+             this, SIGNAL(repaintNeeded()) );
+    connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
+             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
+    connect( this, SIGNAL(placemarkMoved()),
+             dialog, SLOT(updateDialogFields()) );
+
     dialog->show();
 }
 
@@ -924,6 +942,8 @@ void AnnotatePlugin::addTextAnnotation()
              this, SIGNAL(repaintNeeded()) );
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
+    connect( this, SIGNAL(placemarkMoved()),
+             dialog, SLOT(updateDialogFields()) );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();

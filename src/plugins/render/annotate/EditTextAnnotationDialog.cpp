@@ -39,6 +39,7 @@ public:
     QColorDialog *m_labelColorDialog;
 
     // Used to restore if the Cancel button is pressed.
+    QString m_initialDescription;
     QString m_initialName;
     QString m_initialLink;
     GeoDataCoordinates m_initialCoords;
@@ -73,9 +74,13 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     // Setup name, icon link and latitude/longitude values.
     d->m_name->setText( textAnnotation->placemark()->name() );
     d->m_initialName = textAnnotation->placemark()->name();
-    d->m_link->setText( textAnnotation->m_iconFilename );
-    d->m_initialLink = textAnnotation->m_iconFilename;
 
+    d->m_link->setText( textAnnotation->placemark()->style()->iconStyle().iconPath() );
+    d->m_initialLink = textAnnotation->placemark()->style()->iconStyle().iconPath();
+    connect( d->m_link, SIGNAL(textEdited(QString)), this, SLOT(updateTextAnnotation()) );
+
+    d->m_description->setText( textAnnotation->placemark()->description() );
+    d->m_initialDescription = d->m_description->toPlainText();
 
     // Initialize the range for label/icon size.
     // FIXME: What should be the maximum size?
@@ -97,10 +102,10 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 
     // Adjust icon and label scales.
     d->m_iconScale->setValue( textAnnotation->placemark()->style()->iconStyle().scale() );
-    connect( d->m_iconScale, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
+    connect( d->m_iconScale, SIGNAL(valueChanged(double)), this, SLOT(updateTextAnnotation()) );
 
     d->m_labelScale->setValue( textAnnotation->placemark()->style()->labelStyle().scale() );
-    connect( d->m_labelScale, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
+    connect( d->m_labelScale, SIGNAL(valueChanged(double)), this, SLOT(updateTextAnnotation()) );
 
 
     // Adjust the current color of the two push buttons' pixmap to resemble the label and icon colors.
@@ -136,6 +141,7 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );
     connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
+    connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updateTextAnnotation()) );
     connect( d->buttonBox, SIGNAL(rejected()), this, SLOT(restoreInitial()) );
 
     // Ensure that the dialog gets deleted when closing it (either when clicking OK or
@@ -148,8 +154,40 @@ EditTextAnnotationDialog::~EditTextAnnotationDialog()
     delete d;
 }
 
+void EditTextAnnotationDialog::updateDialogFields()
+{
+    d->m_latitude->setValue( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) );
+    d->m_longitude->setValue( d->m_textAnnotation->placemark()->coordinate().longitude( GeoDataCoordinates::Degree ) );
+}
+
 void EditTextAnnotationDialog::updateTextAnnotation()
 {
+    d->m_textAnnotation->placemark()->setDescription( d->m_description->toPlainText() );
+    d->m_textAnnotation->placemark()->setName( d->m_name->text() );
+    d->m_textAnnotation->placemark()->setCoordinate( GeoDataCoordinates( d->m_longitude->value(),
+                                                                         d->m_latitude->value(),
+                                                                         0,
+                                                                         GeoDataCoordinates::Degree ) );
+
+
+    GeoDataStyle *newStyle = new GeoDataStyle( *d->m_textAnnotation->placemark()->style() );
+
+    QFileInfo fileInfo( d->m_link->text() );
+    if ( fileInfo.exists() ) {
+        newStyle->iconStyle().setIconPath( d->m_link->text() );
+    } else {
+        QMessageBox::warning( this,
+                              tr( "Invalid icon path" ),
+                              tr( "Please specify a valid path for the icon file." ) );
+    }
+
+    newStyle->iconStyle().setScale( d->m_iconScale->value() );
+    newStyle->labelStyle().setScale( d->m_labelScale->value() );
+
+    newStyle->iconStyle().setColor( d->m_iconColorDialog->currentColor() );
+    newStyle->labelStyle().setColor( d->m_labelColorDialog->currentColor() );
+
+    d->m_textAnnotation->placemark()->setStyle( newStyle );
 
 
     emit textAnnotationUpdated( d->m_textAnnotation->placemark() );
@@ -212,8 +250,15 @@ void EditTextAnnotationDialog::restoreInitial()
         d->m_textAnnotation->placemark()->setName( d->m_initialName );
     }
 
-    if ( d->m_textAnnotation->m_iconFilename != d->m_initialLink ) {
-        d->m_textAnnotation->m_iconFilename = d->m_initialLink;
+    if ( d->m_textAnnotation->placemark()->description() != d->m_initialDescription ) {
+        d->m_textAnnotation->placemark()->setDescription( d->m_initialDescription );
+    }
+
+    if ( d->m_textAnnotation->placemark()->style()->iconStyle().iconPath() != d->m_initialLink ) {
+        GeoDataStyle *newStyle = new GeoDataStyle( *d->m_textAnnotation->placemark()->style() );
+        newStyle->iconStyle().setIconPath( d->m_initialLink );
+
+        d->m_textAnnotation->placemark()->setStyle( newStyle );
     }
 
     if ( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) !=

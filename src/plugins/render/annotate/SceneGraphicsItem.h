@@ -42,6 +42,29 @@ public:
         AddingPolygonHole,
         MergingPolygonNodes,
         AddingPolygonNodes,
+
+        // Placemark specific
+        EditingPlacemark
+    };
+
+    /**
+     * @brief Some events may lead to particular requests to the widget, so it is the
+     * AnnotatePlugin which has to test whether there is any request from this polygon.
+     */
+    enum MarbleWidgetRequest {
+        NoRequest,
+
+        // Polygon specific
+        OuterInnerMergingWarning,
+        InnerInnerMergingWarning,
+        InvalidShapeWarning,
+        ShowPolygonRmbMenu,
+        ShowNodeRmbMenu,
+        StartAnimation,
+        RemovePolygonRequest,
+
+        // Placemark specific
+        ShowPlacemarkRmbMenu
     };
 
     /**
@@ -67,6 +90,16 @@ public:
      * a parameter: the previous state.
      */
     void setState( ActionState state );
+
+    /**
+     * @brief Returns the widget request.
+     */
+    MarbleWidgetRequest request() const;
+
+    /**
+     * @brief Sets the widget request.
+     */
+    void setRequest( MarbleWidgetRequest request );
 
     /**
      * @brief SceneGraphicItem class, when called from one of its derived classes'
@@ -103,8 +136,9 @@ protected:
     virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState ) = 0;
 
 private:
-    ActionState       m_state;
-    GeoDataPlacemark *m_placemark;
+    ActionState         m_state;
+    MarbleWidgetRequest m_request;
+    GeoDataPlacemark   *m_placemark;
 };
 
 }

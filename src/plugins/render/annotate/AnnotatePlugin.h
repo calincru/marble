@@ -91,6 +91,7 @@ public:
 signals:
     void placemarkAdded();
     void itemRemoved();
+    void placemarkMoved();
 
 public slots:
     void enableModel( bool enabled );
