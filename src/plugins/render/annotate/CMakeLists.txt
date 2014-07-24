@@ -23,13 +23,11 @@ set( annotate_SRCS
   EditGroundOverlayDialog.cpp
   EditTextAnnotationDialog.cpp
   EditPolygonDialog.cpp
-  GeoWidgetBubble.cpp
   GroundOverlayFrame.cpp
   MergingNodesAnimation.cpp
   PlacemarkTextAnnotation.cpp
   SceneGraphicsItem.cpp
   SceneGraphicsTypes.cpp
-  TextEditor.cpp
 )
 
 qt_wrap_ui(annotate_SRCS ${annotate_UI})

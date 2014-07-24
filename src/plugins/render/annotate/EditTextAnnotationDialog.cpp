@@ -23,7 +23,6 @@
 #include "GeoDataPlacemark.h"
 #include "PlacemarkTextAnnotation.h"
 
-#include <QDebug>
 
 namespace Marble {
 

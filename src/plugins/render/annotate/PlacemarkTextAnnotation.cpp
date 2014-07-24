@@ -20,7 +20,6 @@
 #include "GeoDataPlacemark.h"
 #include "GeoDataStyle.h"
 #include "GeoPainter.h"
-#include "GeoWidgetBubble.h"
 #include "ViewportParams.h"
 #include "MarbleDirs.h"
 #include "SceneGraphicsTypes.h"

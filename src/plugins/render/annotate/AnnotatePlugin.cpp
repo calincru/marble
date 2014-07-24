@@ -49,7 +49,7 @@
 #include "SceneGraphicsTypes.h"
 #include "MergingNodesAnimation.h"
 
-#include <QDebug>
+
 
 namespace Marble
 {
