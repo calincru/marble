@@ -37,18 +37,27 @@ public:
 
     QColorDialog *m_iconColorDialog;
     QColorDialog *m_labelColorDialog;
+
+    // Used to restore if the Cancel button is pressed.
+    QString m_initialName;
+    QString m_initialLink;
+    GeoDataCoordinates m_initialCoords;
+    GeoDataStyle m_initialStyle;
 };
 
 EditTextAnnotationDialog::Private::Private( PlacemarkTextAnnotation *textAnnotation ) :
     Ui::UiEditTextAnnotationDialog(),
-    m_textAnnotation( textAnnotation )
+    m_textAnnotation( textAnnotation ),
+    m_iconColorDialog( 0 ),
+    m_labelColorDialog( 0 )
 {
     // nothing to do
 }
 
 EditTextAnnotationDialog::Private::~Private()
 {
-    // nothing to do
+    delete m_iconColorDialog;
+    delete m_labelColorDialog;
 }
 
 EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent ) :
@@ -61,6 +70,12 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     if ( textAnnotation->placemark()->name().isNull() ) {
         textAnnotation->placemark()->setName( tr("Untitled Placemark") );
     }
+    // Setup name, icon link and latitude/longitude values.
+    d->m_name->setText( textAnnotation->placemark()->name() );
+    d->m_initialName = textAnnotation->placemark()->name();
+    d->m_link->setText( textAnnotation->m_iconFilename );
+    d->m_initialLink = textAnnotation->m_iconFilename;
+
 
     // Initialize the range for label/icon size.
     // FIXME: What should be the maximum size?
@@ -71,15 +86,14 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     d->m_longitude->setRange( -180, 180 );
 
 
-    // Setup name, icon link and latitude/longitude values.
-    d->m_name->setText( textAnnotation->placemark()->name() );
-    d->m_link->setText( textAnnotation->m_iconFilename );
-
     d->m_latitude->setValue( textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) );
     connect( d->m_latitude, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
     d->m_longitude->setValue( textAnnotation->placemark()->coordinate().longitude( GeoDataCoordinates::Degree ) );
     connect( d->m_longitude, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
-
+    d->m_initialCoords = GeoDataCoordinates( d->m_longitude->value(),
+                                             d->m_latitude->value(),
+                                             0,
+                                             GeoDataCoordinates::Degree );
 
     // Adjust icon and label scales.
     d->m_iconScale->setValue( textAnnotation->placemark()->style()->iconStyle().scale() );
@@ -90,6 +104,7 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 
 
     // Adjust the current color of the two push buttons' pixmap to resemble the label and icon colors.
+    d->m_initialStyle = *textAnnotation->placemark()->style();
     const GeoDataLabelStyle labelStyle = textAnnotation->placemark()->style()->labelStyle();
     const GeoDataIconStyle iconStyle = textAnnotation->placemark()->style()->iconStyle();
 
@@ -121,6 +136,7 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );
     connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
+    connect( d->buttonBox, SIGNAL(rejected()), this, SLOT(restoreInitial()) );
 
     // Ensure that the dialog gets deleted when closing it (either when clicking OK or
     // Close).
@@ -188,6 +204,28 @@ void EditTextAnnotationDialog::updateIconDialog( const QColor &color )
                         d->m_iconButton->iconSize().height() );
     iconPixmap.fill( color );
     d->m_iconButton->setIcon( QIcon( iconPixmap ) );
+}
+
+void EditTextAnnotationDialog::restoreInitial()
+{
+    if ( d->m_textAnnotation->placemark()->name() != d->m_initialName ) {
+        d->m_textAnnotation->placemark()->setName( d->m_initialName );
+    }
+
+    if ( d->m_textAnnotation->m_iconFilename != d->m_initialLink ) {
+        d->m_textAnnotation->m_iconFilename = d->m_initialLink;
+    }
+
+    if ( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) !=
+         d->m_initialCoords.latitude( GeoDataCoordinates::Degree ) ||
+         d->m_textAnnotation->placemark()->coordinate().longitude( GeoDataCoordinates::Degree ) !=
+         d->m_initialCoords.longitude( GeoDataCoordinates::Degree ) ) {
+        d->m_textAnnotation->placemark()->setCoordinate( d->m_initialCoords );
+    }
+
+    if ( *d->m_textAnnotation->placemark()->style() != d->m_initialStyle ) {
+        d->m_textAnnotation->placemark()->setStyle( new GeoDataStyle( d->m_initialStyle ) );
+    }
 }
 
 }

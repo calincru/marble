@@ -37,6 +37,8 @@ private slots:
     void updateLabelDialog( const QColor &color );
     void updateIconDialog( const QColor &color );
 
+    void restoreInitial();
+
 signals:
     void textAnnotationUpdated( GeoDataFeature *feature );
 
