@@ -36,6 +36,9 @@ private slots:
     void loadIconFile();
     void checkFields();
 
+    void updateLabelDialog( const QColor &color );
+    void updateIconDialog( const QColor &color );
+
 signals:
     void textAnnotationModified( GeoDataFeature *feature );
 

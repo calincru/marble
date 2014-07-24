@@ -248,7 +248,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="m_labelColorDialog">
+            <widget class="QPushButton" name="m_labelButton">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -263,6 +263,12 @@
              </property>
              <property name="text">
               <string/>
+             </property>
+             <property name="iconSize">
+              <size>
+               <width>12</width>
+               <height>12</height>
+              </size>
              </property>
             </widget>
            </item>
@@ -294,7 +300,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QDoubleSpinBox" name="m_labelSize">
+            <widget class="QDoubleSpinBox" name="m_labelScale">
              <property name="decimals">
               <number>1</number>
              </property>
@@ -396,7 +402,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="m_iconColorDialog">
+            <widget class="QPushButton" name="m_iconButton">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -411,6 +417,12 @@
              </property>
              <property name="text">
               <string/>
+             </property>
+             <property name="iconSize">
+              <size>
+               <width>12</width>
+               <height>12</height>
+              </size>
              </property>
             </widget>
            </item>
@@ -442,7 +454,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QDoubleSpinBox" name="m_iconSize">
+            <widget class="QDoubleSpinBox" name="m_iconScale">
              <property name="decimals">
               <number>1</number>
              </property>

@@ -53,6 +53,7 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
 {
     d->setupUi( this );
 
+    // If the polygon has just been drawn, assign it a default name.
     if ( d->m_placemark->name().isNull() ) {
         d->m_placemark->setName( tr("Untitled Polygon") );
     }
