@@ -20,15 +20,20 @@ class GeoDataFeature;
 class GeoDataPlacemark;
 class PlacemarkTextAnnotation;
 
+
+/**
+ * @brief The EditTextAnnotationDialog class deals with customizing placemarks.
+ */
 class EditTextAnnotationDialog : public QDialog
 {
     Q_OBJECT
 
 public:
     EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation,
-                              QWidget *parent = 0,
-                              bool restoreEnabled = true );
+                              QWidget *parent = 0 );
     ~EditTextAnnotationDialog();
+
+    void setFirstEditing( bool enabled );
 
 public slots:
     void updateDialogFields();

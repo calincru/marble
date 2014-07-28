@@ -63,9 +63,9 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_nodeRmbMenu( new QMenu( m_marbleWidget ) ),
       m_textAnnotationRmbMenu( new QMenu( m_marbleWidget ) ),
       m_annotationDocument( new GeoDataDocument ),
-      m_polygonPlacemark( 0 ),
       m_movedItem( 0 ),
       m_lastItem( 0 ),
+      m_polygonPlacemark( 0 ),
       // m_networkAccessManager( 0 ),
       m_drawingPolygon( false ),
       m_removingItem( false ),
@@ -98,6 +98,11 @@ AnnotatePlugin::~AnnotatePlugin()
     if ( m_marbleWidget ) {
         m_marbleWidget->model()->treeModel()->removeDocument( m_annotationDocument );
     }
+
+    delete m_overlayRmbMenu;
+    delete m_polygonRmbMenu;
+    delete m_nodeRmbMenu;
+    delete m_textAnnotationRmbMenu;
 
     delete m_annotationDocument;
     // delete m_networkAccessManager;
@@ -937,8 +942,9 @@ void AnnotatePlugin::addTextAnnotation()
     m_graphicsItems.append( m_selectedTextAnnotation );
 
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
-                                                                              m_marbleWidget,
-                                                                              false );
+                                                                              m_marbleWidget );
+    dialog->setFirstEditing( true );
+
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( this, SIGNAL(placemarkMoved()),

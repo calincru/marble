@@ -30,7 +30,7 @@ namespace Marble {
 class EditTextAnnotationDialog::Private : public Ui::UiEditTextAnnotationDialog
 {
 public:
-    Private( PlacemarkTextAnnotation *textAnnotation, bool restoreEnabled );
+    Private( PlacemarkTextAnnotation *textAnnotation );
     ~Private();
 
     PlacemarkTextAnnotation *m_textAnnotation;
@@ -41,7 +41,7 @@ public:
 
     // Used to tell whether the settings before showing the dialog should be restored on
     // pressing the 'Cancel' button or not.
-    bool m_restoreEnabled;
+    bool m_firstEditing;
 
     // Used to restore if the Cancel button is pressed.
     QString m_initialDescription;
@@ -50,12 +50,12 @@ public:
     GeoDataStyle m_initialStyle;
 };
 
-EditTextAnnotationDialog::Private::Private( PlacemarkTextAnnotation *textAnnotation, bool restoreEnabled ) :
+EditTextAnnotationDialog::Private::Private( PlacemarkTextAnnotation *textAnnotation ) :
     Ui::UiEditTextAnnotationDialog(),
     m_textAnnotation( textAnnotation ),
     m_iconColorDialog( 0 ),
     m_labelColorDialog( 0 ),
-    m_restoreEnabled( restoreEnabled )
+    m_firstEditing( false )
 {
     // nothing to do
 }
@@ -66,11 +66,9 @@ EditTextAnnotationDialog::Private::~Private()
     delete m_labelColorDialog;
 }
 
-EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation,
-                                                    QWidget *parent,
-                                                    bool restoreEnabled ) :
+EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent ) :
     QDialog( parent ),
-    d( new Private( textAnnotation, restoreEnabled ) )
+    d( new Private( textAnnotation ) )
 {
     d->setupUi( this );
 
@@ -165,6 +163,11 @@ EditTextAnnotationDialog::~EditTextAnnotationDialog()
     delete d;
 }
 
+void EditTextAnnotationDialog::setFirstEditing( bool enabled )
+{
+    d->m_firstEditing = enabled;
+}
+
 void EditTextAnnotationDialog::updateDialogFields()
 {
     d->m_latitude->setValue( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) );
@@ -253,7 +256,7 @@ void EditTextAnnotationDialog::restoreInitial()
 {
     // Make sure the placemark gets removed if the 'Cancel' button is pressed immediately after
     // the 'Add Placemark' has been clicked.
-    if ( !d->m_restoreEnabled ) {
+    if ( d->m_firstEditing ) {
         emit removeRequested();
         return;
     }

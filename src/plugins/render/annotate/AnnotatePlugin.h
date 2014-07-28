@@ -185,10 +185,10 @@ private:
     GeoDataDocument*          m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
-    GeoDataPlacemark        *m_polygonPlacemark;
     SceneGraphicsItem       *m_movedItem;
     SceneGraphicsItem       *m_lastItem;
 
+    GeoDataPlacemark        *m_polygonPlacemark;
     GeoDataGroundOverlay    *m_rmbOverlay;
     AreaAnnotation          *m_selectedArea;
     PlacemarkTextAnnotation *m_selectedTextAnnotation;
