@@ -40,7 +40,6 @@ public:
     // Used to restore if the Cancel button is pressed.
     QString m_initialDescription;
     QString m_initialName;
-    QString m_initialLink;
     GeoDataCoordinates m_initialCoords;
     GeoDataStyle m_initialStyle;
 };
@@ -66,6 +65,10 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 {
     d->setupUi( this );
 
+    // Store initial style so that it can be restored if the 'Cancel' button is pressed.
+    d->m_initialStyle = *textAnnotation->placemark()->style();
+
+
     // If the placemark has just been created, assign it a default name.
     if ( textAnnotation->placemark()->name().isNull() ) {
         textAnnotation->placemark()->setName( tr("Untitled Placemark") );
@@ -73,10 +76,10 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     // Setup name, icon link and latitude/longitude values.
     d->m_name->setText( textAnnotation->placemark()->name() );
     d->m_initialName = textAnnotation->placemark()->name();
+    connect( d->m_name, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
 
     d->m_link->setText( textAnnotation->placemark()->style()->iconStyle().iconPath() );
-    d->m_initialLink = textAnnotation->placemark()->style()->iconStyle().iconPath();
-    connect( d->m_link, SIGNAL(textEdited(QString)), this, SLOT(updateTextAnnotation()) );
+    connect( d->m_link, SIGNAL(editingFinished()), this, SLOT(updateTextAnnotation()) );
 
     d->m_description->setText( textAnnotation->placemark()->description() );
     d->m_initialDescription = d->m_description->toPlainText();
@@ -98,6 +101,7 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
                                              d->m_latitude->value(),
                                              0,
                                              GeoDataCoordinates::Degree );
+
 
     // Adjust icon and label scales.
     d->m_iconScale->setValue( textAnnotation->placemark()->style()->iconStyle().scale() );
@@ -245,13 +249,6 @@ void EditTextAnnotationDialog::restoreInitial()
 
     if ( d->m_textAnnotation->placemark()->description() != d->m_initialDescription ) {
         d->m_textAnnotation->placemark()->setDescription( d->m_initialDescription );
-    }
-
-    if ( d->m_textAnnotation->placemark()->style()->iconStyle().iconPath() != d->m_initialLink ) {
-        GeoDataStyle *newStyle = new GeoDataStyle( *d->m_textAnnotation->placemark()->style() );
-        newStyle->iconStyle().setIconPath( d->m_initialLink );
-
-        d->m_textAnnotation->placemark()->setStyle( newStyle );
     }
 
     if ( d->m_textAnnotation->placemark()->coordinate().latitude( GeoDataCoordinates::Degree ) !=
