@@ -102,9 +102,10 @@ bool PlacemarkTextAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     if ( m_movingPlacemark ) {
         placemark()->setCoordinate( lon, lat );
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool PlacemarkTextAnnotation::mouseReleaseEvent( QMouseEvent *event )
