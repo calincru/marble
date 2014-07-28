@@ -509,7 +509,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         return false;
     }
 
-    // Deal with polygons.
+    // Deal with adding polygons.
     if ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) {
         return true;
     }
@@ -943,7 +943,7 @@ void AnnotatePlugin::addTextAnnotation()
 
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
                                                                               m_marbleWidget );
-    dialog->setFirstEditing( true );
+    dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );

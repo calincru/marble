@@ -162,7 +162,7 @@ EditTextAnnotationDialog::~EditTextAnnotationDialog()
     delete d;
 }
 
-void EditTextAnnotationDialog::setFirstEditing( bool enabled )
+void EditTextAnnotationDialog::setFirstTimeEditing( bool enabled )
 {
     d->m_firstEditing = enabled;
 }
