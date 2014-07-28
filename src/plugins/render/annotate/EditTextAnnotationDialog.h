@@ -25,7 +25,9 @@ class EditTextAnnotationDialog : public QDialog
     Q_OBJECT
 
 public:
-    EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent = 0 );
+    EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation,
+                              QWidget *parent = 0,
+                              bool restoreEnabled = true );
     ~EditTextAnnotationDialog();
 
 public slots:
@@ -44,6 +46,7 @@ private slots:
 
 signals:
     void textAnnotationUpdated( GeoDataFeature *feature );
+    void removeRequested();
 
 private:
     class Private;

@@ -935,19 +935,35 @@ void AnnotatePlugin::addTextAnnotation()
     placemark->setCoordinate( m_marbleWidget->focusPoint() );
     m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
 
-    PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
-    m_graphicsItems.append( textAnnotation );
+    m_selectedTextAnnotation = new PlacemarkTextAnnotation( placemark );
+    m_graphicsItems.append( m_selectedTextAnnotation );
 
-    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( textAnnotation, m_marbleWidget );
+    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
+                                                                              m_marbleWidget,
+                                                                              false );
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              this, SIGNAL(repaintNeeded()) );
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( this, SIGNAL(placemarkMoved()),
              dialog, SLOT(updateDialogFields()) );
+    connect( dialog, SIGNAL(removeRequested()),
+             this, SLOT(removeTextAnnotation()) );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
+}
+
+void AnnotatePlugin::removeTextAnnotation()
+{
+    m_lastItem = 0;
+    m_movedItem = 0;
+
+    m_graphicsItems.removeAll( m_selectedTextAnnotation );
+    m_marbleWidget->model()->treeModel()->removeFeature( m_selectedTextAnnotation->feature() );
+
+    delete m_selectedTextAnnotation->feature();
+    delete m_selectedTextAnnotation;
 }
 
 void AnnotatePlugin::setupGroundOverlayModel()

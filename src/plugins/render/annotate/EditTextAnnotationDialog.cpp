@@ -29,13 +29,18 @@ namespace Marble {
 class EditTextAnnotationDialog::Private : public Ui::UiEditTextAnnotationDialog
 {
 public:
-    Private( PlacemarkTextAnnotation *textAnnotation );
+    Private( PlacemarkTextAnnotation *textAnnotation, bool restoreEnabled );
     ~Private();
 
     PlacemarkTextAnnotation *m_textAnnotation;
 
+    // Attached to label/icon color selectors.
     QColorDialog *m_iconColorDialog;
     QColorDialog *m_labelColorDialog;
+
+    // Used to tell whether the settings before showing the dialog should be restored on
+    // pressing the 'Cancel' button or not.
+    bool m_restoreEnabled;
 
     // Used to restore if the Cancel button is pressed.
     QString m_initialDescription;
@@ -44,11 +49,12 @@ public:
     GeoDataStyle m_initialStyle;
 };
 
-EditTextAnnotationDialog::Private::Private( PlacemarkTextAnnotation *textAnnotation ) :
+EditTextAnnotationDialog::Private::Private( PlacemarkTextAnnotation *textAnnotation, bool restoreEnabled ) :
     Ui::UiEditTextAnnotationDialog(),
     m_textAnnotation( textAnnotation ),
     m_iconColorDialog( 0 ),
-    m_labelColorDialog( 0 )
+    m_labelColorDialog( 0 ),
+    m_restoreEnabled( restoreEnabled )
 {
     // nothing to do
 }
@@ -59,9 +65,11 @@ EditTextAnnotationDialog::Private::~Private()
     delete m_labelColorDialog;
 }
 
-EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation, QWidget *parent ) :
+EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *textAnnotation,
+                                                    QWidget *parent,
+                                                    bool restoreEnabled ) :
     QDialog( parent ),
-    d( new Private( textAnnotation ) )
+    d( new Private( textAnnotation, restoreEnabled ) )
 {
     d->setupUi( this );
 
@@ -112,7 +120,6 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
 
 
     // Adjust the current color of the two push buttons' pixmap to resemble the label and icon colors.
-    d->m_initialStyle = *textAnnotation->placemark()->style();
     const GeoDataLabelStyle labelStyle = textAnnotation->placemark()->style()->labelStyle();
     const GeoDataIconStyle iconStyle = textAnnotation->placemark()->style()->iconStyle();
 
@@ -243,6 +250,13 @@ void EditTextAnnotationDialog::updateIconDialog( const QColor &color )
 
 void EditTextAnnotationDialog::restoreInitial()
 {
+    // Make sure the placemark gets removed if the 'Cancel' button is pressed immediately after
+    // the 'Add Placemark' has been clicked.
+    if ( !d->m_restoreEnabled ) {
+        emit removeRequested();
+        return;
+    }
+
     if ( d->m_textAnnotation->placemark()->name() != d->m_initialName ) {
         d->m_textAnnotation->placemark()->setName( d->m_initialName );
     }

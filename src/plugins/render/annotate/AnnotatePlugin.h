@@ -114,6 +114,7 @@ public slots:
 
 private slots:
     void editTextAnnotationRmbMenu();
+    void removeTextAnnotation();
 
     void editOverlay();
     void removeOverlay();
