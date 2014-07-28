@@ -42,9 +42,6 @@ public:
         AddingPolygonHole,
         MergingPolygonNodes,
         AddingPolygonNodes,
-
-        // Placemark specific
-        EditingPlacemark
     };
 
     /**
