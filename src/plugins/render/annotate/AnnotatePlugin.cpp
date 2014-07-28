@@ -920,8 +920,6 @@ void AnnotatePlugin::editTextAnnotationRmbMenu()
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
                                                                               m_marbleWidget );
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
-             this, SIGNAL(repaintNeeded()) );
-    connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( this, SIGNAL(placemarkMoved()),
              dialog, SLOT(updateDialogFields()) );
@@ -941,8 +939,6 @@ void AnnotatePlugin::addTextAnnotation()
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_selectedTextAnnotation,
                                                                               m_marbleWidget,
                                                                               false );
-    connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
-             this, SIGNAL(repaintNeeded()) );
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( this, SIGNAL(placemarkMoved()),
@@ -1158,8 +1154,6 @@ void AnnotatePlugin::editPolygon()
 {
     EditPolygonDialog *dialog = new EditPolygonDialog( m_selectedArea->placemark(), m_marbleWidget );
 
-    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
-             this, SIGNAL(repaintNeeded()) );
     connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
 
