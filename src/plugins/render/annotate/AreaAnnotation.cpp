@@ -142,7 +142,6 @@ const QColor AreaAnnotation::hoveredColor = Oxygen::grapeViolet6;
 
 AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
-    m_geopainter( 0 ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
     m_busy( false ),
@@ -161,7 +160,6 @@ AreaAnnotation::~AreaAnnotation()
 void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    m_geopainter = painter;
     Q_ASSERT( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType );
 
     painter->save();
@@ -424,7 +422,7 @@ QPointer<MergingNodesAnimation> AreaAnnotation::animation()
 
 bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 {
-    if ( !m_viewport || !m_geopainter || m_busy ) {
+    if ( !m_viewport || m_busy ) {
         return false;
     }
 
@@ -445,7 +443,7 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
-    if ( !m_viewport || !m_geopainter || m_busy ) {
+    if ( !m_viewport || m_busy ) {
         return false;
     }
 
@@ -466,7 +464,7 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
 
 bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
-    if ( !m_viewport || !m_geopainter || m_busy ) {
+    if ( !m_viewport || m_busy ) {
         return false;
     }
 
@@ -665,9 +663,9 @@ void AreaAnnotation::updateRegions( GeoPainter *painter )
     // Update the boundaries list.
     m_boundariesList.clear();
 
-    m_boundariesList.append( m_geopainter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
+    m_boundariesList.append( painter->regionFromPolygon( outerRing, Qt::OddEvenFill ) );
     foreach ( const GeoDataLinearRing &ring, innerRings ) {
-        m_boundariesList.append( m_geopainter->regionFromPolygon( ring, Qt::OddEvenFill ) );
+        m_boundariesList.append( painter->regionFromPolygon( ring, Qt::OddEvenFill ) );
     }
 
     // Update the outer and inner nodes lists.
@@ -970,7 +968,7 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 {
-    if ( !m_viewport || !m_geopainter ) {
+    if ( !m_viewport ) {
         return false;
     }
 
