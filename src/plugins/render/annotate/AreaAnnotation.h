@@ -219,7 +219,6 @@ private:
     static const QColor mergedColor;
     static const QColor hoveredColor;
 
-    const GeoPainter     *m_geopainter;
     const ViewportParams *m_viewport;
     bool                  m_regionsInitialized;
     bool                  m_busy;
