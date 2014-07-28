@@ -23,6 +23,7 @@
 #include "GeoDataPlacemark.h"
 #include "PlacemarkTextAnnotation.h"
 
+#include <QDebug>
 
 namespace Marble {
 
@@ -275,6 +276,8 @@ void EditTextAnnotationDialog::restoreInitial()
     if ( *d->m_textAnnotation->placemark()->style() != d->m_initialStyle ) {
         d->m_textAnnotation->placemark()->setStyle( new GeoDataStyle( d->m_initialStyle ) );
     }
+
+    emit textAnnotationUpdated( d->m_textAnnotation->placemark() );
 }
 
 }
