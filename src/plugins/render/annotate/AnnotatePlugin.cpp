@@ -992,12 +992,12 @@ void AnnotatePlugin::setupGroundOverlayModel()
 
 void AnnotatePlugin::setupOverlayRmbMenu()
 {
+    QAction *removeOverlay = new QAction( tr( "Remove" ), m_overlayRmbMenu );
     QAction *editOverlay = new QAction( tr( "Properties" ), m_overlayRmbMenu );
-    QAction *removeOverlay = new QAction( tr( "Remove Ground Overlay" ), m_overlayRmbMenu );
 
-    m_overlayRmbMenu->addAction( removeOverlay );
-    m_overlayRmbMenu->addSeparator();
     m_overlayRmbMenu->addAction( editOverlay );
+    m_overlayRmbMenu->addSeparator();
+    m_overlayRmbMenu->addAction( removeOverlay );
 
     connect( editOverlay, SIGNAL(triggered()), this, SLOT(editOverlay()) );
     connect( removeOverlay, SIGNAL(triggered()), this, SLOT(removeOverlay()) );
