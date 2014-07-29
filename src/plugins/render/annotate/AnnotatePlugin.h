@@ -114,23 +114,22 @@ public slots:
 
 private slots:
     void editTextAnnotationRmbMenu();
-    void removeTextAnnotation();
 
     void editOverlay();
     void removeOverlay();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
     void editPolygon();
-    void removePolygon();
     void selectNode();
     void deleteNode();
     void deselectNodes();
     void deleteSelectedNodes();
-    void setAreaAvailable();
+    void setAreaAvailable( AreaAnnotation *targetedArea );
 
     void copyItem();
     void cutItem();
     void pasteItem();
+    void removeRmbSelectedItem();
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
 
@@ -191,11 +190,10 @@ private:
 
     SceneGraphicsItem *m_movedItem;
     SceneGraphicsItem *m_lastItem;
+    SceneGraphicsItem *m_rmbSelectedItem;
 
     GeoDataPlacemark        *m_polygonPlacemark;
     GeoDataGroundOverlay    *m_rmbOverlay;
-    AreaAnnotation          *m_rmbSelectedArea;
-    PlacemarkTextAnnotation *m_selectedTextAnnotation;
 
     GeoDataCoordinates m_fromWhereToCopy;
     SceneGraphicsItem  *m_clipboardItem;

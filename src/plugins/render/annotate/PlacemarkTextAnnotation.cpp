@@ -67,7 +67,8 @@ void PlacemarkTextAnnotation::dealWithItemChange( const SceneGraphicsItem *other
 
 void PlacemarkTextAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination )
 {
-
+    Q_UNUSED( source );
+    placemark()->setCoordinate( destination );
 }
 
 const char *PlacemarkTextAnnotation::graphicType() const
