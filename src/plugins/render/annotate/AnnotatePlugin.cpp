@@ -48,7 +48,7 @@
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
 #include "MergingNodesAnimation.h"
-
+#include "MarbleWidgetPopupMenu.h"
 
 
 namespace Marble
@@ -66,6 +66,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_movedItem( 0 ),
       m_lastItem( 0 ),
       m_polygonPlacemark( 0 ),
+      m_clipboardItem( 0 ),
       // m_networkAccessManager( 0 ),
       m_drawingPolygon( false ),
       m_removingItem( false ),
@@ -292,8 +293,8 @@ void AnnotatePlugin::setAddingNodes( bool enabled )
 
 void AnnotatePlugin::setAreaAvailable()
 {
-    m_selectedArea->setBusy( false );
-    m_selectedArea = 0;
+    m_rmbSelectedArea->setBusy( false );
+    m_rmbSelectedArea = 0;
 
     emit repaintNeeded();
 }
@@ -470,6 +471,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         if ( marbleWidget ) {
             m_marbleWidget = marbleWidget;
 
+            addContextItems();
             setupGroundOverlayModel();
             setupOverlayRmbMenu();
             setupPolygonRmbMenu();
@@ -688,7 +690,7 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
         } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == AreaAnnotation::StartAnimation ) {
-            m_selectedArea = area;
+            m_rmbSelectedArea = area;
             QPointer<MergingNodesAnimation> animation = area->animation();
 
             connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
@@ -907,6 +909,23 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
     emit actionGroupsChanged();
 }
 
+void AnnotatePlugin::addContextItems()
+{
+    MarbleWidgetPopupMenu *menu = m_marbleWidget->popupMenu();
+
+    m_pasteGraphicItem = new QAction( tr( "Paste Graphic Item" ), this );
+    m_pasteGraphicItem->setEnabled( false );
+    connect( m_pasteGraphicItem, SIGNAL(triggered()), SLOT(pasteItem()) );
+
+    QAction *separator = new QAction( this );
+    separator->setSeparator( true );
+
+    if ( ! MarbleGlobal::getInstance()->profiles() & MarbleGlobal::SmallScreen ) {
+        menu->addAction( Qt::RightButton, m_pasteGraphicItem );
+        menu->addAction( Qt::RightButton, separator );
+    }
+}
+
 void AnnotatePlugin::setupTextAnnotationRmbMenu()
 {
     QAction *properties = new QAction( tr( "Properties" ), m_textAnnotationRmbMenu );
@@ -1079,7 +1098,6 @@ void AnnotatePlugin::clearOverlayFrames()
     m_groundOverlayFrames.clear();
 }
 
-
 void AnnotatePlugin::setupPolygonRmbMenu()
 {
     QAction *deselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polygonRmbMenu );
@@ -1089,6 +1107,16 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( deleteAllSelected );
     connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
+
+    m_polygonRmbMenu->addSeparator();
+
+    QAction *cutPolygon = new QAction( tr( "Cut"), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( cutPolygon );
+    connect( cutPolygon, SIGNAL(triggered()), this, SLOT(cutItem()) );
+
+    QAction *copyPolygon = new QAction( tr( "Copy"), m_polygonRmbMenu );
+    m_polygonRmbMenu->addAction( copyPolygon );
+    connect( copyPolygon, SIGNAL(triggered()), this, SLOT(copyItem()) );
 
     QAction *removePolygon = new QAction( tr( "Remove Polygon" ), m_polygonRmbMenu );
     m_polygonRmbMenu->addAction( removePolygon );
@@ -1101,10 +1129,9 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     connect( showEditDialog, SIGNAL(triggered()), this, SLOT(editPolygon()) );
 }
 
-
 void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y )
 {
-    m_selectedArea = selectedArea;
+    m_rmbSelectedArea = selectedArea;
 
     if ( !selectedArea->hasNodesSelected() ) {
         m_polygonRmbMenu->actions().at(1)->setEnabled( false );
@@ -1120,22 +1147,22 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 
 void AnnotatePlugin::deselectNodes()
 {
-    m_selectedArea->deselectAllNodes();
+    m_rmbSelectedArea->deselectAllNodes();
 
-    if ( m_selectedArea->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( m_selectedArea->placemark() );
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
     }
 }
 
 void AnnotatePlugin::deleteSelectedNodes()
 {
-    m_selectedArea->deleteAllSelectedNodes();
+    m_rmbSelectedArea->deleteAllSelectedNodes();
 
-    if ( m_selectedArea->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( m_selectedArea->placemark() );
-    } else if ( m_selectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
         removePolygon();
-    } else if ( m_selectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
                               tr( "Operation not permitted" ),
                               tr( "Cannot delete one of the selected nodes. Most probably "
@@ -1149,16 +1176,16 @@ void AnnotatePlugin::removePolygon()
     m_lastItem = 0;
     m_movedItem = 0;
 
-    m_graphicsItems.removeAll( m_selectedArea );
-    m_marbleWidget->model()->treeModel()->removeFeature( m_selectedArea->feature() );
+    m_graphicsItems.removeAll( m_rmbSelectedArea );
+    m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
 
-    delete m_selectedArea->feature();
-    delete m_selectedArea;
+    delete m_rmbSelectedArea->feature();
+    delete m_rmbSelectedArea;
 }
 
 void AnnotatePlugin::editPolygon()
 {
-    EditPolygonDialog *dialog = new EditPolygonDialog( m_selectedArea->placemark(), m_marbleWidget );
+    EditPolygonDialog *dialog = new EditPolygonDialog( m_rmbSelectedArea->placemark(), m_marbleWidget );
 
     connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
@@ -1189,28 +1216,28 @@ void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
         m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
     }
 
-    m_selectedArea = area;
+    m_rmbSelectedArea = area;
     m_nodeRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
 void AnnotatePlugin::selectNode()
 {
-    m_selectedArea->changeClickedNodeSelection();
+    m_rmbSelectedArea->changeClickedNodeSelection();
 
-    if ( m_selectedArea->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( m_selectedArea->placemark() );
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
     }
 }
 
 void AnnotatePlugin::deleteNode()
 {
-    m_selectedArea->deleteClickedNode();
+    m_rmbSelectedArea->deleteClickedNode();
 
-    if ( m_selectedArea->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( m_selectedArea->placemark() );
-    } else if ( m_selectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
+    if ( m_rmbSelectedArea->request() == AreaAnnotation::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedArea->placemark() );
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::RemovePolygonRequest ) {
         removePolygon();
-    } else if ( m_selectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
+    } else if ( m_rmbSelectedArea->request() == AreaAnnotation::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
                               tr( "Operation not permitted" ),
                               tr( "Cannot delete one of the selected nodes. Most probably "
@@ -1234,6 +1261,43 @@ void AnnotatePlugin::setupCursor( SceneGraphicsItem *item )
     } else { // Maybe use different cursors, but so far I cannot find anything which fits better.
         m_marbleWidget->setCursor( Qt::PointingHandCursor );
     }
+}
+
+void AnnotatePlugin::cutItem()
+{
+    m_clipboardItem = m_rmbSelectedArea;
+    m_pasteGraphicItem->setEnabled( true );
+
+    m_graphicsItems.removeAll( m_rmbSelectedArea );
+    m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedArea->feature() );
+
+    m_lastItem = 0;
+}
+
+void AnnotatePlugin::copyItem()
+{
+    if ( m_rmbSelectedArea->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+        AreaAnnotation *area = dynamic_cast<AreaAnnotation*>( m_rmbSelectedArea );
+        //m_clipboardItem = new AreaAnnotation( *area );
+    }
+
+    m_pasteGraphicItem->setEnabled( true );
+}
+
+void AnnotatePlugin::pasteItem()
+{
+    QPoint eventPoint = m_marbleWidget->popupMenu()->mousePosition();
+
+    qreal lon, lat;
+    m_marbleWidget->geoCoordinates( eventPoint.x(), eventPoint.y(), lon, lat, GeoDataCoordinates::Radian );
+    const GeoDataCoordinates newCoords( lon, lat );
+
+    m_clipboardItem->move( m_fromWhereToCopy, newCoords );
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_clipboardItem->placemark() );
+    m_graphicsItems.append( m_clipboardItem );
+    m_clipboardItem = 0;
+
+    m_pasteGraphicItem->setEnabled( false );
 }
 
 //void AnnotatePlugin::readOsmFile( QIODevice *device, bool flyToFile )

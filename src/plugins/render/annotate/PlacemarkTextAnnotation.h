@@ -37,6 +37,8 @@ public:
 
     virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
+    void move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination );
+
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
