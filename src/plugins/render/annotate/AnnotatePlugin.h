@@ -114,6 +114,7 @@ public slots:
 
 private slots:
     void editTextAnnotationRmbMenu();
+    void removeTextAnnotation( PlacemarkTextAnnotation *targetedPlacemark );
 
     void editOverlay();
     void removeOverlay();

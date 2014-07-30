@@ -975,11 +975,22 @@ void AnnotatePlugin::addTextAnnotation()
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( this, SIGNAL(placemarkMoved()),
              dialog, SLOT(updateDialogFields()) );
-    connect( dialog, SIGNAL(removeRequested()),
-             this, SLOT(removeRmbSelectedItem()) );
+    connect( dialog, SIGNAL(removeRequested(PlacemarkTextAnnotation*)),
+             this, SLOT(removeTextAnnotation(PlacemarkTextAnnotation*)) );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
+}
+
+void AnnotatePlugin::removeTextAnnotation( PlacemarkTextAnnotation *targetedPlacemark )
+{
+    m_lastItem = 0;
+    m_movedItem = 0;
+    m_graphicsItems.removeAll( targetedPlacemark );
+    m_marbleWidget->model()->treeModel()->removeFeature( targetedPlacemark->feature() );
+
+    delete targetedPlacemark->feature();
+    delete targetedPlacemark;
 }
 
 void AnnotatePlugin::setupGroundOverlayModel()
@@ -1256,25 +1267,41 @@ void AnnotatePlugin::setupCursor( SceneGraphicsItem *item )
 
 void AnnotatePlugin::cutItem()
 {
+    m_movedItem = 0;
+    m_lastItem = 0;
+
+    if ( m_clipboardItem ) {
+        delete m_clipboardItem->feature();
+        delete m_clipboardItem;
+    }
+
     m_clipboardItem = m_rmbSelectedItem;
     m_pasteGraphicItem->setEnabled( true );
 
     m_graphicsItems.removeAll( m_rmbSelectedItem );
     m_marbleWidget->model()->treeModel()->removeFeature( m_rmbSelectedItem->feature() );
 
-    m_lastItem = 0;
+    m_rmbSelectedItem = 0;
 }
 
 void AnnotatePlugin::copyItem()
 {
+    m_movedItem = 0;
+    m_lastItem = 0;
+
+    if ( m_clipboardItem ) {
+        delete m_clipboardItem->feature();
+        delete m_clipboardItem;
+    }
+
     if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         //m_clipboardItem = new AreaAnnotation( *area );
     } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
         GeoDataPlacemark *placemark = new GeoDataPlacemark( *m_rmbSelectedItem->placemark() );
-        PlacemarkTextAnnotation *newPlacemark = new PlacemarkTextAnnotation( placemark );
-        m_clipboardItem = newPlacemark;
+        m_clipboardItem = new PlacemarkTextAnnotation( placemark );
     }
 
+    m_rmbSelectedItem = 0;
     m_pasteGraphicItem->setEnabled( true );
 }
 

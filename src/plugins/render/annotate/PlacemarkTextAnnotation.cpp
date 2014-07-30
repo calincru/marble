@@ -47,7 +47,7 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    painter->drawImage( placemark()->coordinate(), QImage( placemark()->style()->iconStyle().iconPath() ) );
+    //painter->drawImage( placemark()->coordinate(), QImage( placemark()->style()->iconStyle().iconPath() ) );
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
