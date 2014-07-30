@@ -1294,10 +1294,10 @@ void AnnotatePlugin::copyItem()
         delete m_clipboardItem;
     }
 
+    GeoDataPlacemark *placemark = new GeoDataPlacemark( *m_rmbSelectedItem->placemark() );
     if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
-        //m_clipboardItem = new AreaAnnotation( *area );
+        m_clipboardItem = new AreaAnnotation( placemark );
     } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
-        GeoDataPlacemark *placemark = new GeoDataPlacemark( *m_rmbSelectedItem->placemark() );
         m_clipboardItem = new PlacemarkTextAnnotation( placemark );
     }
 
