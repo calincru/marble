@@ -1028,7 +1028,6 @@ void AnnotatePlugin::addOverlay()
                                                                  m_marbleWidget->textureLayer(),
                                                                  m_marbleWidget );
     dialog->exec();
-
     delete dialog;
     m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, overlay );
 }
@@ -1079,14 +1078,12 @@ void AnnotatePlugin::displayOverlayEditDialog( GeoDataGroundOverlay *overlay )
                                                         overlay,
                                                         m_marbleWidget->textureLayer(),
                                                         m_marbleWidget );
-
     connect( dialog, SIGNAL(groundOverlayUpdated(GeoDataGroundOverlay*)),
              this, SLOT(updateOverlayFrame(GeoDataGroundOverlay*)) );
 
     dialog->exec();
     delete dialog;
 }
-
 
 void AnnotatePlugin::updateOverlayFrame( GeoDataGroundOverlay *overlay )
 {
@@ -1098,7 +1095,6 @@ void AnnotatePlugin::updateOverlayFrame( GeoDataGroundOverlay *overlay )
 
 void AnnotatePlugin::clearOverlayFrames()
 {
-
     foreach ( GeoDataGroundOverlay *overlay, m_groundOverlayFrames.keys() ) {
         GroundOverlayFrame *frame = static_cast<GroundOverlayFrame *>( m_groundOverlayFrames.value( overlay ) );
         m_graphicsItems.removeAll( m_groundOverlayFrames.value( overlay ) );
@@ -1284,6 +1280,7 @@ void AnnotatePlugin::cutItem()
     if ( m_clipboardItem ) {
         delete m_clipboardItem->feature();
         delete m_clipboardItem;
+        m_clipboardItem = 0;
     }
 
     m_clipboardItem = m_rmbSelectedItem;
@@ -1303,6 +1300,7 @@ void AnnotatePlugin::copyItem()
     if ( m_clipboardItem ) {
         delete m_clipboardItem->feature();
         delete m_clipboardItem;
+        m_clipboardItem = 0;
     }
 
     // Just copy the placemark and instantiate a new object based on its graphic type.
