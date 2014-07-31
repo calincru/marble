@@ -70,6 +70,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_clipboardItem( 0 ),
       // m_networkAccessManager( 0 ),
       m_drawingPolygon( false ),
+      m_drawingPolyline( false ),
       m_removingItem( false ),
       m_isInitialized( false )
 {
@@ -513,7 +514,8 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     }
 
     // Deal with adding polygons.
-    if ( m_drawingPolygon && handleAddingPolygon( mouseEvent ) ) {
+    if ( ( m_drawingPolygon && handleDrawingPolygon( mouseEvent ) ) ||
+         ( m_drawingPolyline && handleDrawingPolyline( mouseEvent ) ) ) {
         return true;
     }
 
@@ -575,7 +577,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
     return false;
 }
 
-bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
+bool AnnotatePlugin::handleDrawingPolygon( QMouseEvent *mouseEvent )
 {
     if ( mouseEvent->type() == QEvent::MouseMove ) {
         setupCursor( 0 );
@@ -594,6 +596,32 @@ bool AnnotatePlugin::handleAddingPolygon( QMouseEvent *mouseEvent )
         GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( m_polygonPlacemark->geometry() );
         poly->outerBoundary().append( coords );
         m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
+
+        return true;
+    }
+
+    return false;
+}
+
+bool AnnotatePlugin::handleDrawingPolyline( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->type() == QEvent::MouseMove ) {
+        setupCursor( 0 );
+        return true;
+    } else if ( mouseEvent->button() == Qt::LeftButton &&
+                mouseEvent->type() == QEvent::MouseButtonPress ) {
+        qreal lon, lat;
+        m_marbleWidget->geoCoordinates( mouseEvent->pos().x(),
+                                        mouseEvent->pos().y(),
+                                        lon, lat,
+                                        GeoDataCoordinates::Radian );
+        const GeoDataCoordinates coords( lon, lat );
+
+
+        m_marbleWidget->model()->treeModel()->removeFeature( m_polylinePlacemark );
+        GeoDataLineString *line = dynamic_cast<GeoDataLineString*>( m_polylinePlacemark->geometry() );
+        line->append( coords );
+        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polylinePlacemark );
 
         return true;
     }
@@ -1247,6 +1275,15 @@ void AnnotatePlugin::deleteNode()
 
 void AnnotatePlugin::addPolyline()
 {
+    m_drawingPolyline = true;
+
+    m_polylinePlacemark = new GeoDataPlacemark;
+    m_polylinePlacemark->setGeometry( new GeoDataLineString( Tessellate ) );
+    m_polylinePlacemark->setParent( m_annotationDocument );
+    m_polylinePlacemark->setStyleUrl( "#polyline" );
+
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polylinePlacemark );
+
 
 }
 

@@ -157,8 +157,8 @@ private:
     void handleUncaughtEvents( QMouseEvent *mouseEvent );
     void handleReleaseOverlay( QMouseEvent *mouseEvent );
 
-    bool handleAddingPlacemark( QMouseEvent *mouseEvent );
-    bool handleAddingPolygon( QMouseEvent *mouseEvent );
+    bool handleDrawingPolyline( QMouseEvent *mouseEvent );
+    bool handleDrawingPolygon( QMouseEvent *mouseEvent );
     bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
     void handleRemovingItem( SceneGraphicsItem *item );
@@ -194,6 +194,7 @@ private:
     SceneGraphicsItem *m_lastItem;
     SceneGraphicsItem *m_rmbSelectedItem;
 
+    GeoDataPlacemark        *m_polylinePlacemark;
     GeoDataPlacemark        *m_polygonPlacemark;
     GeoDataGroundOverlay    *m_rmbOverlay;
 
@@ -205,6 +206,7 @@ private:
     //    QErrorMessage m_errorMessage;
 
     bool m_drawingPolygon;
+    bool m_drawingPolyline;
     bool m_removingItem;
     bool m_isInitialized;
 };

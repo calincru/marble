@@ -15,6 +15,7 @@ set( annotate_UI
   EditGroundOverlayDialog.ui
   EditTextAnnotationDialog.ui
   EditPolygonDialog.ui
+  EditPolylineDialog.ui
 )
 
 set( annotate_SRCS
@@ -23,6 +24,7 @@ set( annotate_SRCS
   EditGroundOverlayDialog.cpp
   EditTextAnnotationDialog.cpp
   EditPolygonDialog.cpp
+  EditPolylineDialog.cpp
   GroundOverlayFrame.cpp
   MergingNodesAnimation.cpp
   PlacemarkTextAnnotation.cpp
