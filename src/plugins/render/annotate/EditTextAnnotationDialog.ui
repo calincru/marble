@@ -293,7 +293,10 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_3">
            <item>
-            <widget class="QLabel" name="label_5">
+            <widget class="QLabel" name="m_labelScaleField">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Scale:</string>
              </property>
@@ -301,6 +304,9 @@
            </item>
            <item>
             <widget class="QDoubleSpinBox" name="m_labelScale">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="decimals">
               <number>1</number>
              </property>
@@ -390,7 +396,10 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_11">
            <item>
-            <widget class="QLabel" name="label_9">
+            <widget class="QLabel" name="m_iconColorField">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="font">
               <font>
                <pointsize>9</pointsize>
@@ -403,6 +412,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="m_iconButton">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                <horstretch>0</horstretch>
@@ -447,7 +459,10 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_12">
            <item>
-            <widget class="QLabel" name="label_10">
+            <widget class="QLabel" name="m_iconScaleField">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Scale:</string>
              </property>
@@ -455,6 +470,9 @@
            </item>
            <item>
             <widget class="QDoubleSpinBox" name="m_iconScale">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="decimals">
               <number>1</number>
              </property>
