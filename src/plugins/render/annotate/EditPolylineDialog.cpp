@@ -24,31 +24,45 @@ namespace Marble
 class EditPolylineDialog::Private : public Ui::UiEditPolylineDialog
 {
 public:
-    Private();
+    Private( GeoDataPlacemark *placemark);
     ~Private();
+
+    GeoDataPlacemark *m_placemark;
+
+    // Used to tell whether the settings before showing the dialog should be restored on
+    // pressing the 'Cancel' button or not.
+    bool m_firstEditing;
 
 };
 
-EditPolylineDialog::Private::Private() :
-    Ui::UiEditPolylineDialog()
+EditPolylineDialog::Private::Private( GeoDataPlacemark *placemark ) :
+    Ui::UiEditPolylineDialog(),
+    m_placemark( placemark ),
+    m_firstEditing( false )
 {
-
+    // nothing to do
 }
 
 EditPolylineDialog::Private::~Private()
 {
-
+    // nothing to do
 }
 
-EditPolylineDialog::EditPolylineDialog() :
-    d (0)
+EditPolylineDialog::EditPolylineDialog( GeoDataPlacemark *placemark, QWidget *parent ) :
+    QDialog( parent ) ,
+    d ( new Private( placemark ) )
 {
 
 }
 
 EditPolylineDialog::~EditPolylineDialog()
 {
+    delete d;
+}
 
+void EditPolylineDialog::setFirstTimeEditing( bool enabled )
+{
+    d->m_firstEditing = enabled;
 }
 
 }

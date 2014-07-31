@@ -14,10 +14,67 @@
 // Qt
 
 // Marble
+#include "SceneGraphicsTypes.h"
 
 
 namespace Marble
 {
 
+PolylineAnnotation::PolylineAnnotation( GeoDataPlacemark *placemark ) :
+    SceneGraphicsItem( placemark )
+{
+    // nothing to do
+}
+
+PolylineAnnotation::~PolylineAnnotation()
+{
+    // nothing to do
+}
+
+void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
+{
+
+}
+
+bool PolylineAnnotation::containsPoint( const QPoint &eventPos ) const
+{
+
+    return false;
+}
+
+void PolylineAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
+{
+    Q_UNUSED( other );
+}
+
+void PolylineAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination )
+{
+
+}
+
+bool PolylineAnnotation::mousePressEvent( QMouseEvent *event )
+{
+    return false;
+}
+
+bool PolylineAnnotation::mouseMoveEvent( QMouseEvent *event )
+{
+    return false;
+}
+
+bool PolylineAnnotation::mouseReleaseEvent( QMouseEvent *event )
+{
+    return false;
+}
+
+void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
+{
+
+}
+
+const char *PolylineAnnotation::graphicType() const
+{
+    return SceneGraphicsTypes::SceneGraphicPolyline;
+}
 
 }

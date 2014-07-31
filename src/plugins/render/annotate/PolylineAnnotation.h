@@ -17,7 +17,6 @@
 namespace Marble
 {
 
-
 class PolylineAnnotation : public SceneGraphicsItem
 {
 public:
@@ -30,15 +29,23 @@ public:
 
     virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
-    void move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination );
+    virtual void move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination );
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
      */
     virtual const char *graphicType() const;
 
-private:
+protected:
+    virtual bool mousePressEvent( QMouseEvent *event );
+    virtual bool mouseMoveEvent( QMouseEvent *event );
+    virtual bool mouseReleaseEvent( QMouseEvent *event );
 
+
+    virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState );
+
+private:
+    QList<QRegion> m_regions;
 };
 
 }

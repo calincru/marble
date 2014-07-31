@@ -1269,7 +1269,6 @@ void AnnotatePlugin::deleteNode()
 
 void AnnotatePlugin::addPolyline()
 {
-    /*
     m_drawingPolyline = true;
 
     m_polylinePlacemark = new GeoDataPlacemark;
@@ -1283,8 +1282,20 @@ void AnnotatePlugin::addPolyline()
     m_graphicsItems.append( polyline );
     m_marbleWidget->update();
 
-    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog();
-    */
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_polylinePlacemark, m_marbleWidget );
+    dialog->setFirstTimeEditing( true );
+
+    connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),
+             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
+    connect( dialog, SIGNAL(removeRequested()),
+             this, SLOT(removeNewItem()) );
+
+    // It will point to new items when created, so that they could easily be removed if the Cancel
+    // button of the dialog is pressed immediately after creation.
+    m_newItem = polyline;
+
+    dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
+    dialog->show();
 }
 
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
