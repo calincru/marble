@@ -24,6 +24,7 @@ namespace SceneGraphicsTypes
     extern const char *SceneGraphicAreaAnnotation;
     extern const char *SceneGraphicGroundOverlay;
     extern const char *SceneGraphicPlacemark;
+    extern const char *SceneGraphicPolyline;
 }
 
 }

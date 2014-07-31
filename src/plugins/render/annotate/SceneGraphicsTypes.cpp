@@ -20,6 +20,7 @@ namespace SceneGraphicsTypes
     const char *SceneGraphicAreaAnnotation = "SceneGraphicAreaAnnotation";
 	const char *SceneGraphicGroundOverlay = "SceneGraphicGroundOverlay";
 	const char *SceneGraphicPlacemark = "SceneGraphicPlacemark";
+    const char *SceneGraphicPolyline = "SceneGraphicPolyline";
 }
 
 }
