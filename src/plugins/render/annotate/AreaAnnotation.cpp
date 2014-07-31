@@ -202,7 +202,7 @@ void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 {
     Q_UNUSED( other );
 
-    // So far we only deal with item changes when hovering virtual nodes, so that
+    // So far we only deal with item changes when hovering nodes, so that
     // they do not remain hovered when changing the item we interact with.
     if ( state() == SceneGraphicsItem::Editing ) {
         if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {

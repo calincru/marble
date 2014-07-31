@@ -49,6 +49,8 @@
 #include "SceneGraphicsTypes.h"
 #include "MergingNodesAnimation.h"
 #include "MarbleWidgetPopupMenu.h"
+#include "PolylineAnnotation.h"
+#include "EditPolylineDialog.h"
 
 
 namespace Marble
@@ -65,6 +67,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_annotationDocument( new GeoDataDocument ),
       m_movedItem( 0 ),
       m_lastItem( 0 ),
+      m_newItem( 0 ),
       m_rmbSelectedItem( 0 ),
       m_polygonPlacemark( 0 ),
       m_clipboardItem( 0 ),
@@ -967,8 +970,7 @@ void AnnotatePlugin::showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placema
 
 void AnnotatePlugin::editTextAnnotationRmbMenu()
 {
-    PlacemarkTextAnnotation *rmbTextAnnotation = static_cast<PlacemarkTextAnnotation*>( m_rmbSelectedItem );
-    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( rmbTextAnnotation,
+    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_rmbSelectedItem->placemark(),
                                                                               m_marbleWidget );
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
@@ -990,33 +992,25 @@ void AnnotatePlugin::addTextAnnotation()
     placemark->setCoordinate( lon, lat );
     m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
 
-    PlacemarkTextAnnotation *newTextAnnotation = new PlacemarkTextAnnotation( placemark );
-    m_graphicsItems.append( newTextAnnotation );
+    PlacemarkTextAnnotation *textAnnotation = new PlacemarkTextAnnotation( placemark );
+    m_graphicsItems.append( textAnnotation );
 
-    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( newTextAnnotation,
-                                                                              m_marbleWidget );
+    QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( placemark, m_marbleWidget );
     dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( this, SIGNAL(placemarkMoved()),
              dialog, SLOT(updateDialogFields()) );
-    connect( dialog, SIGNAL(removeRequested(PlacemarkTextAnnotation*)),
-             this, SLOT(removeTextAnnotation(PlacemarkTextAnnotation*)) );
+    connect( dialog, SIGNAL(removeRequested()),
+             this, SLOT(removeNewItem()) );
+
+    // It will point to new items when created, so that they could easily be removed if the Cancel
+    // button of the dialog is pressed immediately after creation.
+    m_newItem = textAnnotation;
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
-}
-
-void AnnotatePlugin::removeTextAnnotation( PlacemarkTextAnnotation *targetedPlacemark )
-{
-    m_lastItem = 0;
-    m_movedItem = 0;
-    m_graphicsItems.removeAll( targetedPlacemark );
-    m_marbleWidget->model()->treeModel()->removeFeature( targetedPlacemark->feature() );
-
-    delete targetedPlacemark->feature();
-    delete targetedPlacemark;
 }
 
 void AnnotatePlugin::setupGroundOverlayModel()
@@ -1275,6 +1269,7 @@ void AnnotatePlugin::deleteNode()
 
 void AnnotatePlugin::addPolyline()
 {
+    /*
     m_drawingPolyline = true;
 
     m_polylinePlacemark = new GeoDataPlacemark;
@@ -1284,7 +1279,12 @@ void AnnotatePlugin::addPolyline()
 
     m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polylinePlacemark );
 
+    PolylineAnnotation *polyline = new PolylineAnnotation( m_polylinePlacemark );
+    m_graphicsItems.append( polyline );
+    m_marbleWidget->update();
 
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog();
+    */
 }
 
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
@@ -1365,6 +1365,18 @@ void AnnotatePlugin::pasteItem()
     m_clipboardItem = 0;
 
     m_pasteGraphicItem->setEnabled( false );
+}
+
+void AnnotatePlugin::removeNewItem()
+{
+    m_lastItem = 0;
+    m_movedItem = 0;
+    m_graphicsItems.removeAll( m_newItem );
+    m_marbleWidget->model()->treeModel()->removeFeature( m_newItem->feature() );
+
+    delete m_newItem->feature();
+    delete m_newItem;
+    m_newItem = 0;
 }
 
 void AnnotatePlugin::removeRmbSelectedItem()

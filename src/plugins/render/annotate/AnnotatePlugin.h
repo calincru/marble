@@ -115,7 +115,6 @@ public slots:
 
 private slots:
     void editTextAnnotationRmbMenu();
-    void removeTextAnnotation( PlacemarkTextAnnotation *targetedPlacemark );
 
     void editOverlay();
     void removeOverlay();
@@ -131,6 +130,7 @@ private slots:
     void copyItem();
     void cutItem();
     void pasteItem();
+    void removeNewItem();
     void removeRmbSelectedItem();
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
@@ -192,11 +192,12 @@ private:
 
     SceneGraphicsItem *m_movedItem;
     SceneGraphicsItem *m_lastItem;
+    SceneGraphicsItem *m_newItem;
     SceneGraphicsItem *m_rmbSelectedItem;
+    GeoDataGroundOverlay    *m_rmbOverlay;
 
     GeoDataPlacemark        *m_polylinePlacemark;
     GeoDataPlacemark        *m_polygonPlacemark;
-    GeoDataGroundOverlay    *m_rmbOverlay;
 
     GeoDataCoordinates m_fromWhereToCopy;
     SceneGraphicsItem  *m_clipboardItem;
