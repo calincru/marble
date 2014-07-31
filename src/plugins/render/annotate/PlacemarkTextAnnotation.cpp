@@ -47,7 +47,7 @@ PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
 void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport )
 {
     m_viewport = viewport;
-    //painter->drawImage( placemark()->coordinate(), QImage( placemark()->style()->iconStyle().iconPath() ) );
+    painter->drawImage( placemark()->coordinate(), QImage( placemark()->style()->iconStyle().iconPath() ) );
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
@@ -68,7 +68,10 @@ void PlacemarkTextAnnotation::dealWithItemChange( const SceneGraphicsItem *other
 void PlacemarkTextAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination )
 {
     Q_UNUSED( source );
-    placemark()->setCoordinate( destination );
+    qreal lat = destination.latitude();
+    qreal lon = destination.longitude();
+    GeoDataCoordinates::normalizeLonLat( lon, lat );
+    placemark()->setCoordinate( lon, lat );
 }
 
 const char *PlacemarkTextAnnotation::graphicType() const
