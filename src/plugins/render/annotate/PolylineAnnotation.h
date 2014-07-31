@@ -5,14 +5,11 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2009      Andrew Manson  <g.real.ate@gmail.com>
-// Copyright 2013      Thibaut Gridel <tgridel@free.fr>
 // Copyright 2014      Calin Cruceru  <crucerucalincristian@gmail.com>
 //
 
-#ifndef PLACEMARKTEXTANNOTATION_H
-#define PLACEMARKTEXTANNOTATION_H
-
+#ifndef POLYLINEANNOTATION_H
+#define POLYLINEANNOTATION_H
 
 #include "SceneGraphicsItem.h"
 
@@ -20,11 +17,12 @@
 namespace Marble
 {
 
-class PlacemarkTextAnnotation : public SceneGraphicsItem
+
+class PolylineAnnotation : public SceneGraphicsItem
 {
 public:
-    explicit PlacemarkTextAnnotation( GeoDataPlacemark *placemark );
-    ~PlacemarkTextAnnotation();
+    explicit PolylineAnnotation( GeoDataPlacemark *placemark );
+    ~PolylineAnnotation();
 
     virtual void paint( GeoPainter *painter, const ViewportParams *viewport );
 
@@ -39,20 +37,10 @@ public:
      */
     virtual const char *graphicType() const;
 
-protected:
-    virtual bool mousePressEvent( QMouseEvent *event );
-    virtual bool mouseMoveEvent( QMouseEvent *event );
-    virtual bool mouseReleaseEvent( QMouseEvent *event );
-
-    virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState );
-
 private:
-    const ViewportParams *m_viewport;
-    bool m_movingPlacemark;
 
-    QRegion m_region;
 };
 
 }
 
-#endif // PLACEMARKTEXTANNOTATION_H
+#endif

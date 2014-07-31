@@ -28,6 +28,7 @@ set( annotate_SRCS
   GroundOverlayFrame.cpp
   MergingNodesAnimation.cpp
   PlacemarkTextAnnotation.cpp
+  PolylineAnnotation.cpp
   SceneGraphicsItem.cpp
   SceneGraphicsTypes.cpp
 )
