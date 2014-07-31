@@ -147,9 +147,8 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( PlacemarkTextAnnotation *tex
     connect( d->m_iconColorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateTextAnnotation()) );
 
 
-    // Promote "Ok" button to default button and connect it to updateTextAnnotation() slot.
-    QPushButton *okButton = d->buttonBox->button( QDialogButtonBox::Ok );
-    okButton->setDefault( true );
+    // Promote "Ok" button to default button.
+    d->buttonBox->button( QDialogButtonBox::Ok )->setDefault( true );
 
     connect( d->m_browseButton, SIGNAL(pressed()), this, SLOT(loadIconFile()) );
     connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
