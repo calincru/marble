@@ -960,10 +960,13 @@ void AnnotatePlugin::editTextAnnotationRmbMenu()
 
 void AnnotatePlugin::addTextAnnotation()
 {
-    GeoDataPlacemark *placemark = new GeoDataPlacemark;
+    // Get the normalized coordinates of the focus point. There will be automatically added a new
+    // placemark.
     qreal lat = m_marbleWidget->focusPoint().latitude();
     qreal lon = m_marbleWidget->focusPoint().longitude();
     GeoDataCoordinates::normalizeLonLat( lon, lat );
+
+    GeoDataPlacemark *placemark = new GeoDataPlacemark;
     placemark->setCoordinate( lon, lat );
     m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, placemark );
 
@@ -1006,14 +1009,14 @@ void AnnotatePlugin::setupGroundOverlayModel()
 
 void AnnotatePlugin::setupOverlayRmbMenu()
 {
-    QAction *removeOverlay = new QAction( tr( "Remove" ), m_overlayRmbMenu );
     QAction *editOverlay = new QAction( tr( "Properties" ), m_overlayRmbMenu );
-
     m_overlayRmbMenu->addAction( editOverlay );
-    m_overlayRmbMenu->addSeparator();
-    m_overlayRmbMenu->addAction( removeOverlay );
-
     connect( editOverlay, SIGNAL(triggered()), this, SLOT(editOverlay()) );
+
+    m_overlayRmbMenu->addSeparator();
+
+    QAction *removeOverlay = new QAction( tr( "Remove" ), m_overlayRmbMenu );
+    m_overlayRmbMenu->addAction( removeOverlay );
     connect( removeOverlay, SIGNAL(triggered()), this, SLOT(removeOverlay()) );
 }
 
@@ -1142,6 +1145,9 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 {
     m_rmbSelectedItem = selectedArea;
 
+    // We need to store the coordinates from where the rmb menu is shown so that in case of
+    // selecting Copy/Cut, we can move the polygon (remember that we need the bearing, etc
+    // which means we need both the source and destination coords).
     qreal lon, lat;
     m_marbleWidget->geoCoordinates( x, y, lon, lat, GeoDataCoordinates::Radian );
     m_fromWhereToCopy = GeoDataCoordinates( lon, lat );
@@ -1273,6 +1279,8 @@ void AnnotatePlugin::cutItem()
     m_movedItem = 0;
     m_lastItem = 0;
 
+    // If there is already an item copied/cut, free its memory and replace it with this one.
+    // The same applies when copying.
     if ( m_clipboardItem ) {
         delete m_clipboardItem->feature();
         delete m_clipboardItem;
@@ -1297,6 +1305,9 @@ void AnnotatePlugin::copyItem()
         delete m_clipboardItem;
     }
 
+    // Just copy the placemark and instantiate a new object based on its graphic type.
+    // FIXME: Here is obvious a problem in the case of AreaAnnotation (when copying a
+    // placemark which has a GeoDataPolygon geometry?)
     GeoDataPlacemark *placemark = new GeoDataPlacemark( *m_rmbSelectedItem->placemark() );
     if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         m_clipboardItem = new AreaAnnotation( placemark );
