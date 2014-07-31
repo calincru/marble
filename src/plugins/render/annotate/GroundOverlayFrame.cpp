@@ -70,7 +70,7 @@ void GroundOverlayFrame::dealWithItemChange( const SceneGraphicsItem *other )
 
 void GroundOverlayFrame::move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination )
 {
-
+    // not implemented yet
 }
 
 bool GroundOverlayFrame::mousePressEvent( QMouseEvent *event )
