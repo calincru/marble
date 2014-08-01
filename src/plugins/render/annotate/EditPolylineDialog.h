@@ -34,6 +34,10 @@ signals:
     void removeRequested();
 
 private slots:
+    void updatePolyline();
+    void updateLinesDialog( const QColor &color );
+    void restoreInitial();
+    void checkFields();
 
 private:
     class Private;
