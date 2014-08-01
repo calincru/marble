@@ -71,6 +71,7 @@ EditPolylineDialog::EditPolylineDialog( GeoDataPlacemark *placemark, QWidget *pa
 
     d->m_name->setText( placemark->name() );
     d->m_initialName = d->m_name->text();
+    connect( d->m_name, SIGNAL(editingFinished()), this, SLOT(updatePolyline()) );
 
     d->m_description->setText( placemark->description() );
     d->m_initialDescription = d->m_description->toPlainText();
@@ -80,8 +81,10 @@ EditPolylineDialog::EditPolylineDialog( GeoDataPlacemark *placemark, QWidget *pa
 
     // Get the current style properties.
     const GeoDataLineStyle lineStyle = placemark->style()->lineStyle();
-    d->m_linesWidth->setValue( lineStyle.width() );
     d->m_initialLineStyle = lineStyle;
+
+    d->m_linesWidth->setValue( lineStyle.width() );
+    connect( d->m_linesWidth, SIGNAL(editingFinished()), this, SLOT(updatePolyline()) );
 
     // Adjust the color button's icon to the current lines color.
     QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
@@ -95,13 +98,14 @@ EditPolylineDialog::EditPolylineDialog( GeoDataPlacemark *placemark, QWidget *pa
     d->m_linesDialog->setCurrentColor( lineStyle.color() );
     connect( d->m_linesColorButton, SIGNAL(clicked()), d->m_linesDialog, SLOT(exec()) );
     connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updateLinesDialog(const QColor&)) );
-
+    connect( d->m_linesDialog, SIGNAL(colorSelected(QColor)), this, SLOT(updatePolyline()) );
 
     // Promote "Ok" button to default button.
     d->buttonBox->button( QDialogButtonBox::Ok )->setDefault( true );
 
     connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
     connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updatePolyline()) );
+    connect( d->buttonBox, SIGNAL(accepted()), this, SIGNAL(editingPolylineEnded()) );
     connect( this, SIGNAL(rejected()), SLOT(restoreInitial()) );
 
     // Ensure that the dialog gets deleted when closing it (either when clicking OK or

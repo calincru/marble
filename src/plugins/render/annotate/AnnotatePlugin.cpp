@@ -516,7 +516,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
         return false;
     }
 
-    // Deal with adding polygons.
+    // Deal with adding polygons and polylines.
     if ( ( m_drawingPolygon && handleDrawingPolygon( mouseEvent ) ) ||
          ( m_drawingPolyline && handleDrawingPolyline( mouseEvent ) ) ) {
         return true;
@@ -1289,6 +1289,8 @@ void AnnotatePlugin::addPolyline()
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( dialog, SIGNAL(removeRequested()),
              this, SLOT(removeNewItem()) );
+    connect( dialog, SIGNAL(editingPolylineEnded()),
+             this, SLOT(stopDrawingPolyline()) );
 
     // It will point to new items when created, so that they could easily be removed if the Cancel
     // button of the dialog is pressed immediately after creation.
@@ -1296,6 +1298,11 @@ void AnnotatePlugin::addPolyline()
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
+}
+
+void AnnotatePlugin::stopDrawingPolyline()
+{
+    m_drawingPolyline = false;
 }
 
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
@@ -1388,6 +1395,11 @@ void AnnotatePlugin::removeNewItem()
     delete m_newItem->feature();
     delete m_newItem;
     m_newItem = 0;
+
+    m_drawingPolygon = false;
+    m_polygonPlacemark = 0;
+    m_drawingPolyline = false;
+    m_polylinePlacemark = 0;
 }
 
 void AnnotatePlugin::removeRmbSelectedItem()
