@@ -14,6 +14,7 @@
 
 // Qt
 #include <QColorDialog>
+#include <QMessageBox>
 
 // Marble
 #include "GeoDataPlacemark.h"
@@ -35,6 +36,11 @@ public:
 
     QColorDialog *m_linesDialog;
     GeoDataPlacemark *m_placemark;
+
+    // Used to restore if the Cancel button is pressed.
+    QString m_initialName;
+    QString m_initialDescription;
+    GeoDataLineStyle m_initialLineStyle;
 };
 
 EditPolylineDialog::Private::Private( GeoDataPlacemark *placemark ) :
@@ -62,13 +68,20 @@ EditPolylineDialog::EditPolylineDialog( GeoDataPlacemark *placemark, QWidget *pa
         d->m_placemark->setName( tr("Untitled Path") );
     }
 
+
     d->m_name->setText( placemark->name() );
+    d->m_initialName = d->m_name->text();
+
     d->m_description->setText( placemark->description() );
+    d->m_initialDescription = d->m_description->toPlainText();
+
     d->m_linesWidth->setRange( 0.1, 5.0 );
+
 
     // Get the current style properties.
     const GeoDataLineStyle lineStyle = placemark->style()->lineStyle();
     d->m_linesWidth->setValue( lineStyle.width() );
+    d->m_initialLineStyle = lineStyle;
 
     // Adjust the color button's icon to the current lines color.
     QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
@@ -108,6 +121,14 @@ void EditPolylineDialog::setFirstTimeEditing( bool enabled )
 
 void EditPolylineDialog::updatePolyline()
 {
+    d->m_placemark->setDescription( d->m_description->toPlainText() );
+    d->m_placemark->setName( d->m_name->text() );
+
+
+    GeoDataStyle *newStyle = new GeoDataStyle( *d->m_placemark->style() );
+    newStyle->lineStyle().setColor( d->m_linesDialog->currentColor() );
+    newStyle->lineStyle().setWidth( d->m_linesWidth->value() );
+    d->m_placemark->setStyle( newStyle );
 
     emit polylineUpdated( d->m_placemark );
 }
@@ -122,13 +143,37 @@ void EditPolylineDialog::updateLinesDialog( const QColor &color )
 
 void EditPolylineDialog::restoreInitial()
 {
+    // Make sure the polyline gets removed if the 'Cancel' button is pressed immediately after
+    // the 'Add Path' has been clicked.
+    if ( d->m_firstEditing ) {
+        emit removeRequested();
+        return;
+    }
+
+    if ( d->m_placemark->name() != d->m_initialName ) {
+        d->m_placemark->setName( d->m_initialName );
+    }
+
+    if ( d->m_placemark->description() != d->m_initialDescription ) {
+        d->m_placemark->setDescription( d->m_initialDescription );
+    }
+
+    if ( d->m_placemark->style()->lineStyle() != d->m_initialLineStyle ) {
+        GeoDataStyle *newStyle = new GeoDataStyle( *d->m_placemark->style() );
+        newStyle->setLineStyle( d->m_initialLineStyle );
+        d->m_placemark->setStyle( newStyle );
+    }
 
     emit polylineUpdated( d->m_placemark );
 }
 
 void EditPolylineDialog::checkFields()
 {
-
+    if ( d->m_name->text().isEmpty() ) {
+        QMessageBox::warning( this,
+                              tr( "No name specified" ),
+                              tr( "Please specify a name for this polyline." ) );
+    }
 }
 
 }
