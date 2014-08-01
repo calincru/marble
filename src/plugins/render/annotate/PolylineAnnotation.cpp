@@ -38,7 +38,6 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
 
 bool PolylineAnnotation::containsPoint( const QPoint &eventPos ) const
 {
-
     return false;
 }
 
@@ -49,7 +48,8 @@ void PolylineAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 
 void PolylineAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination )
 {
-
+    Q_UNUSED( source );
+    Q_UNUSED( destination );
 }
 
 bool PolylineAnnotation::mousePressEvent( QMouseEvent *event )
@@ -69,7 +69,7 @@ bool PolylineAnnotation::mouseReleaseEvent( QMouseEvent *event )
 
 void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
 {
-
+    Q_UNUSED( previousState );
 }
 
 const char *PolylineAnnotation::graphicType() const

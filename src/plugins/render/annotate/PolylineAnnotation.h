@@ -41,7 +41,6 @@ protected:
     virtual bool mouseMoveEvent( QMouseEvent *event );
     virtual bool mouseReleaseEvent( QMouseEvent *event );
 
-
     virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState );
 
 private:
