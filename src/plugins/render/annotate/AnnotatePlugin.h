@@ -93,33 +93,21 @@ signals:
     void itemRemoved();
     void placemarkMoved();
 
-public slots:
+private slots:
     void enableModel( bool enabled );
+
+    void addTextAnnotation();
+    void editTextAnnotationRmbMenu();
+
+    void addOverlay();
+    void editOverlay();
+    void removeOverlay();
+    void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
     void setDrawingPolygon( bool );
     void setAddingPolygonHole( bool );
     void setMergingNodes( bool );
     void setAddingNodes( bool );
-    void setRemovingItems( bool );
-
-    void addOverlay();
-    void addTextAnnotation();
-    void addPolyline();
-
-    //    void receiveNetworkReply( QNetworkReply* );
-    //    void downloadOsmFile();
-
-    void clearAnnotations();
-    void saveAnnotationFile();
-    void loadAnnotationFile();
-
-private slots:
-    void editTextAnnotationRmbMenu();
-
-    void editOverlay();
-    void removeOverlay();
-    void updateOverlayFrame( GeoDataGroundOverlay *overlay );
-
     void editPolygon();
     void selectNode();
     void deleteNode();
@@ -127,11 +115,23 @@ private slots:
     void deleteSelectedNodes();
     void setAreaAvailable( AreaAnnotation *targetedArea );
 
+    void addPolyline();
+    void stopDrawingPolyline();
+
     void copyItem();
     void cutItem();
     void pasteItem();
     void removeNewItem();
     void removeRmbSelectedItem();
+
+    void setRemovingItems( bool );
+    void clearAnnotations();
+    void saveAnnotationFile();
+    void loadAnnotationFile();
+
+    //    void receiveNetworkReply( QNetworkReply* );
+    //    void downloadOsmFile();
+
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
 
