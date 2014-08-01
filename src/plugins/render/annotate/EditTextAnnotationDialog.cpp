@@ -153,7 +153,7 @@ EditTextAnnotationDialog::EditTextAnnotationDialog( GeoDataPlacemark *placemark,
     connect( d->m_browseButton, SIGNAL(clicked()), this, SLOT(loadIconFile()) );
     connect( d->buttonBox->button( QDialogButtonBox::Ok ), SIGNAL(pressed()), this, SLOT(checkFields()) );
     connect( d->buttonBox, SIGNAL(accepted()), this, SLOT(updateTextAnnotation()) );
-    connect( this, SIGNAL(rejected()), this, SLOT(restoreInitial()) );
+    connect( d->buttonBox, SIGNAL(rejected()), this, SLOT(restoreInitial()) );
 
     // Ensure that the dialog gets deleted when closing it (either when clicking OK or
     // Close).
