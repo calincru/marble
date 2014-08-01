@@ -29,6 +29,7 @@ set( annotate_SRCS
   MergingNodesAnimation.cpp
   PlacemarkTextAnnotation.cpp
   PolylineAnnotation.cpp
+  PolylineNode.cpp
   SceneGraphicsItem.cpp
   SceneGraphicsTypes.cpp
 )

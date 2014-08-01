@@ -42,8 +42,10 @@ public:
         // Polygon specific
         DrawingPolygon,
         AddingPolygonHole,
-        MergingPolygonNodes,
-        AddingPolygonNodes,
+
+        // Polygon/Placemark specific
+        MergingPolylineNodes,
+        AddingPolylineNodes,
     };
 
     /**

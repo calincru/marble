@@ -283,7 +283,7 @@ void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
     if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::MergingPolygonNodes );
+        announceStateChanged( SceneGraphicsItem::MergingPolylineNodes );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -292,7 +292,7 @@ void AnnotatePlugin::setMergingNodes( bool enabled )
 void AnnotatePlugin::setAddingNodes( bool enabled )
 {
     if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::AddingPolygonNodes );
+        announceStateChanged( SceneGraphicsItem::AddingPolylineNodes );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -687,9 +687,9 @@ void AnnotatePlugin::handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneG
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
 
     // Store a pointer to the item for possible following move events only if its state is
-    // either 'Editing' or 'AddingPolygonNodes' and the the mouse left button has been used.
+    // either 'Editing' or 'AddingPolylineNodes' and the the mouse left button has been used.
     if ( ( item->state() == SceneGraphicsItem::Editing ||
-           item->state() == SceneGraphicsItem::AddingPolygonNodes ) &&
+           item->state() == SceneGraphicsItem::AddingPolylineNodes ) &&
          mouseEvent->button() == Qt::LeftButton ) {
         m_movedItem = item;
     }
@@ -1315,7 +1315,7 @@ void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newSta
 
 void AnnotatePlugin::setupCursor( SceneGraphicsItem *item )
 {
-    if ( !item || item->state() == SceneGraphicsItem::AddingPolygonNodes ) {
+    if ( !item || item->state() == SceneGraphicsItem::AddingPolylineNodes ) {
         m_marbleWidget->setCursor( Qt::DragCopyCursor );
     } else { // Maybe use different cursors, but so far I cannot find anything which fits better.
         m_marbleWidget->setCursor( Qt::PointingHandCursor );

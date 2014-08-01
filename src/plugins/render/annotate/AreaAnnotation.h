@@ -22,7 +22,7 @@
 namespace Marble
 {
 
-class PolygonNode;
+class PolylineNode;
 class MergingNodesAnimation;
 
 /**
@@ -47,7 +47,7 @@ public:
 
     /**
      * @brief Returns true if the given QPoint is contained by the current polygon. Note
-     * that the return value depends on the state (e.g. in the AddingPolygonNodes state a
+     * that the return value depends on the state (e.g. in the AddingPolylineNodes state a
      * point is considered to be contained by the polygon if the virtual nodes or the
      * polygon's interior contain it, while in the Editing state, it is contained by the
      * polygon if either polygon's interior, the outer nodes or the inner nodes contain
@@ -57,7 +57,7 @@ public:
 
     /**
      * @brief It is used so far to remove the hover effect while being in the
-     * AddingPolygonNodes state (@see SceneGraphicsItem::dealWithItemChange documentation).
+     * AddingPolylineNodes state (@see SceneGraphicsItem::dealWithItemChange documentation).
      */
     virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
@@ -140,15 +140,15 @@ private:
 
     /**
      * @brief It is called when the ::paint method is called for the first time. It
-     * initializes the m_outerNodesList by creating the PolygonNodes.
+     * initializes the m_outerNodesList by creating the PolylineNodes.
      * @see updateRegions() method for more detailed explanation.
      */
     void setupRegionsLists( GeoPainter *painter );
 
     /**
-     * @brief As briefly mentioned above, the PolygonNodes instances are not created at
+     * @brief As briefly mentioned above, the PolylineNodes instances are not created at
      * each ::paint call, but only at its first call. Everytime the ::paint method is
-     * called after that, each node from the lists of PolygonNodes gets its setRegion()
+     * called after that, each node from the lists of PolylineNodes gets its setRegion()
      * method called. We need the GeoPainter for doing this because we have to get the
      * ellipse around the GeoDataCoordinates.
      */
@@ -156,7 +156,7 @@ private:
 
     /**
      * @brief It iterates throught all nodes and paints them on the map. It takes into
-     * consideration the active flags of each PolygonNode.
+     * consideration the active flags of each PolylineNode.
      */
     void drawNodes( GeoPainter *painter );
 
@@ -195,14 +195,14 @@ private:
     bool processAddingHoleOnRelease( QMouseEvent *mouseEvent );
 
     /**
-     * @brief These are the event handlers for the MergingPolygonNodes state.
+     * @brief These are the event handlers for the MergingPolylineNodes state.
      */
     bool processMergingOnPress( QMouseEvent *mouseEvent );
     bool processMergingOnMove( QMouseEvent *mouseEvent );
     bool processMergingOnRelease( QMouseEvent *mouseEvent );
 
     /**
-     * @brief These are the event handlers for the AddingPolygonNodes state.
+     * @brief These are the event handlers for the AddingPolylineNodes state.
      */
     bool processAddingNodesOnPress( QMouseEvent *mouseEvent );
     bool processAddingNodesOnMove( QMouseEvent *mouseEvent );
@@ -225,10 +225,10 @@ private:
     bool                  m_regionsInitialized;
     bool                  m_busy;
 
-    QList<PolygonNode>          m_outerNodesList;
-    QList<PolygonNode>          m_outerVirtualNodes;
-    QList< QList<PolygonNode> > m_innerNodesList;
-    QList< QList<PolygonNode> > m_innerVirtualNodes;
+    QList<PolylineNode>          m_outerNodesList;
+    QList<PolylineNode>          m_outerVirtualNodes;
+    QList< QList<PolylineNode> > m_innerNodesList;
+    QList< QList<PolylineNode> > m_innerVirtualNodes;
     QList<QRegion>              m_boundariesList;
 
     // Used in the Editing state
