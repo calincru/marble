@@ -1,5 +1,9 @@
 project(marble)
 
+# YouCompleteMe plugin needs this in order to generate its
+# compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
+
 ####################################################
 # CMake Settings
 SET(CMAKE_COLOR_MAKEFILE ON)
