@@ -65,7 +65,10 @@ public:
         RemovePolygonRequest,
 
         // Placemark specific
-        ShowPlacemarkRmbMenu
+        ShowPlacemarkRmbMenu,
+
+        // Polyline specific
+        RemovePolylineRequest
     };
 
     /**
