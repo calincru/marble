@@ -19,10 +19,12 @@
 #include "GeoPainter.h"
 #include "PolylineNode.h"
 #include "MarbleColors.h"
+#include "MarbleMath.h"
 #include "GeoDataLineString.h"
 #include "MergingNodesAnimation.h"
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
+#include "ViewportParams.h"
 
 
 namespace Marble
@@ -43,6 +45,7 @@ PolylineAnnotation::PolylineAnnotation( GeoDataPlacemark *placemark ) :
     m_viewport( 0 ),
     m_regionsInitialized( false ),
     m_busy( false ),
+    m_clickedNodeIndex( -2 ),
     m_hoveredNodeIndex( -1 ),
     m_virtualHoveredNode( -1 )
 
@@ -347,50 +350,419 @@ void PolylineAnnotation::changeClickedNodeSelection()
 
 bool PolylineAnnotation::hasNodesSelected() const
 {
-    for ( int i = 0; i < m_outerNodesList.size(); ++i ) {
-        if ( m_outerNodesList.at(i).isSelected() ) {
+    for ( int i = 0; i < m_nodesList.size(); ++i ) {
+        if ( m_nodesList.at(i).isSelected() ) {
             return true;
-        }
-    }
-
-    for ( int i = 0; i < m_innerNodesList.size(); ++i ) {
-        for ( int j = 0; j < m_innerNodesList.at(i).size(); ++j ) {
-            if ( m_innerNodesList.at(i).at(j).isSelected() ) {
-                return true;
-            }
         }
     }
 
     return false;
 }
 
-bool AreaAnnotation::clickedNodeIsSelected() const
+bool PolylineAnnotation::clickedNodeIsSelected() const
 {
-    int i = m_clickedNodeIndexes.first;
-    int j = m_clickedNodeIndexes.second;
+    return m_nodesList[m_clickedNodeIndex].isSelected();
+}
 
-    return ( i != -1 && j == -1 && m_outerNodesList.at(i).isSelected() ) ||
-           ( i != -1 && j != -1 && m_innerNodesList.at(i).at(j).isSelected() );
+QPointer<MergingNodesAnimation> PolylineAnnotation::animation()
+{
+    return m_animation;
 }
 
 bool PolylineAnnotation::mousePressEvent( QMouseEvent *event )
 {
+    if ( !m_viewport || m_busy ) {
+        return false;
+    }
+
+    setRequest( SceneGraphicsItem::NoRequest );
+
+    if ( state() == SceneGraphicsItem::Editing ) {
+        return processEditingOnPress( event );
+    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+        return processMergingOnPress( event );
+    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+        return processAddingNodesOnPress( event );
+    }
+
     return false;
 }
 
 bool PolylineAnnotation::mouseMoveEvent( QMouseEvent *event )
 {
+    if ( !m_viewport || m_busy ) {
+        return false;
+    }
+
+    setRequest( SceneGraphicsItem::NoRequest );
+
+    if ( state() == SceneGraphicsItem::Editing ) {
+        return processEditingOnMove( event );
+    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+        return processMergingOnMove( event );
+    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+        return processAddingNodesOnMove( event );
+    }
+
     return false;
 }
 
 bool PolylineAnnotation::mouseReleaseEvent( QMouseEvent *event )
 {
+    if ( !m_viewport || m_busy ) {
+        return false;
+    }
+
+    setRequest( SceneGraphicsItem::NoRequest );
+
+    if ( state() == SceneGraphicsItem::Editing ) {
+        return processEditingOnRelease( event );
+    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+        return processMergingOnRelease( event );
+    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+        return processAddingNodesOnRelease( event );
+    }
+
     return false;
 }
 
 void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
 {
-    Q_UNUSED( previousState );
+    // Dealing with cases when exiting a state has an effect on this item.
+    if ( previousState == SceneGraphicsItem::Editing ) {
+        // Make sure that when changing the state, there is no highlighted node.
+        if ( m_hoveredNodeIndex != -1 ) {
+            m_nodesList[m_hoveredNodeIndex].setFlag( PolylineNode::NodeIsEditingHighlighted, false );
+        }
+
+        m_clickedNodeIndex = -1;
+        m_hoveredNodeIndex = -1;
+    } else if ( previousState == SceneGraphicsItem::MergingPolylineNodes ) {
+        // If there was only a node selected for being merged and the state changed,
+        // deselect it.
+        if ( m_firstMergedNode != -1 ) {
+            m_nodesList[m_firstMergedNode].setFlag( PolylineNode::NodeIsMerged, false );
+        }
+
+        // Make sure that when changing the state, there is no highlighted node.
+        if ( m_hoveredNodeIndex != -1 ) {
+            if ( m_hoveredNodeIndex != -1 ) {
+                m_nodesList[m_hoveredNodeIndex].setFlag( PolylineNode::NodeIsEditingHighlighted, false );
+            }
+        }
+
+        m_clickedNodeIndex = -1;
+        m_hoveredNodeIndex = -1;
+        delete m_animation;
+    } else if ( previousState == SceneGraphicsItem::AddingPolylineNodes ) {
+        m_virtualNodesList.clear();
+        m_virtualHoveredNode = -1;
+        m_adjustingNode = false;
+    }
+
+    // Dealing with cases when entering a state has an effect on this item, or
+    // initializations are needed.
+    if ( state() == SceneGraphicsItem::Editing ) {
+        // FIXME: m_interactingObj = InteractingNothing;
+        m_clickedNodeIndex = -1;
+        m_hoveredNodeIndex = -1;
+    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+        m_firstMergedNode = -1;
+        m_secondMergedNode = -1;
+        m_hoveredNodeIndex = -1;
+        m_animation = 0;
+    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+        m_virtualHoveredNode = -1;
+        m_adjustingNode = false;
+    }
+}
+
+bool PolylineAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->button() != Qt::LeftButton && mouseEvent->button() != Qt::RightButton ) {
+        return false;
+    }
+
+    qreal lat, lon;
+    m_viewport->geoCoordinates( mouseEvent->pos().x(),
+                                mouseEvent->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
+    m_movedPointCoords.set( lon, lat );
+
+    // First check if one of the nodes has been clicked.
+    int index = nodeContains( mouseEvent->pos() );
+    if ( index != -1 ) {
+        m_clickedNodeIndex = index;
+
+        if ( mouseEvent->button() == Qt::RightButton ) {
+            setRequest( SceneGraphicsItem::ShowNodeRmbMenu );
+        }
+
+        return true;
+    }
+
+    // Then check if the 'interior' of the polyline has been clicked (by interior
+    // I mean its lines excepting its nodes).
+    if ( polylineContains( mouseEvent->pos() ) ) {
+        m_clickedNodeIndex = -1;
+
+        if ( mouseEvent->button() == Qt::RightButton ) {
+            setRequest( SceneGraphicsItem::ShowPolylineRmbMenu );
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+bool PolylineAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
+{
+    if ( !m_viewport ) {
+        return false;
+    }
+
+    qreal lon, lat;
+    m_viewport->geoCoordinates( mouseEvent->pos().x(),
+                                mouseEvent->pos().y(),
+                                lon, lat,
+                                GeoDataCoordinates::Radian );
+    const GeoDataCoordinates newCoords( lon, lat );
+
+    if ( m_clickedNodeIndex >= 0 ) {
+        GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
+        line[m_clickedNodeIndex] = newCoords;
+
+        return true;
+    } else if ( m_clickedNodeIndex == -1 ) {
+        GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
+
+        const qreal bearing = m_movedPointCoords.bearing( newCoords );
+        const qreal distance = distanceSphere( newCoords, m_movedPointCoords );
+        line.clear();
+
+        for ( int i = 0; i < line.size(); ++i ) {
+            GeoDataCoordinates movedPoint = line.at(i).moveByBearing( bearing, distance );
+            qreal lon = movedPoint.longitude();
+            qreal lat = movedPoint.latitude();
+
+            GeoDataCoordinates::normalizeLonLat( lon, lat );
+            movedPoint.setLongitude( lon );
+            movedPoint.setLatitude( lat );
+
+            line.append( movedPoint );
+        }
+
+        m_movedPointCoords = newCoords;
+        return true;
+    } else if ( m_clickedNodeIndex == -2 ) {
+        return dealWithHovering( mouseEvent );
+    }
+
+    return false;
+}
+
+bool PolylineAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
+{
+    static const int mouseMoveOffset = 1;
+
+    if ( mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+    if ( m_clickedNodeIndex >= 0 ) {
+        qreal x, y;
+
+        m_viewport->screenCoordinates( m_movedPointCoords.longitude(),
+                                       m_movedPointCoords.latitude(),
+                                       x, y );
+        // The node gets selected only if it is clicked and not moved.
+        if ( qFabs(mouseEvent->pos().x() - x) > mouseMoveOffset ||
+             qFabs(mouseEvent->pos().y() - y) > mouseMoveOffset ) {
+            m_clickedNodeIndex = -2;
+            return true;
+        }
+
+
+        m_nodesList[m_clickedNodeIndex].setFlag( PolylineNode::NodeIsSelected,
+                                                 !m_nodesList.at(m_clickedNodeIndex).isSelected() );
+        m_clickedNodeIndex = -2;
+        return true;
+    } else if ( m_clickedNodeIndex == -1 ) {
+        // Nothing special happens at polygon release.
+        m_clickedNodeIndex = -2;
+        return true;
+    }
+
+    return false;
+}
+
+bool PolylineAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+    GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
+
+    int index = nodeContains( mouseEvent->pos() );
+    if ( index == -1 ) {
+        return false;
+    }
+
+    // If this is the first node selected to be merged.
+    if ( m_firstMergedNode == -1 ) {
+        m_firstMergedNode = index;
+        m_nodesList[index].setFlag( PolylineNode::NodeIsMerged );
+   } else {
+        Q_ASSERT( m_firstMergedNode != -1 );
+
+        // Clicking two times the same node results in unmarking it for merging.
+        if ( m_firstMergedNode == index ) {
+            m_nodesList[index].setFlag( PolylineNode::NodeIsMerged, false );
+            m_firstMergedNode = -1;
+            return true;
+        }
+
+        // If these two nodes are the last ones remained as part of the polyline, remove
+        // the whole polyline.
+        if ( line.size() <= 3 ) {
+            setRequest( SceneGraphicsItem::RemovePolylineRequest );
+            return true;
+        }
+        m_nodesList[index].setFlag( PolylineNode::NodeIsMerged );
+        m_secondMergedNode = -1;
+
+        delete m_animation;
+        // FIXME: m_animation = new MergingNodesAnimation( this );
+        setRequest( SceneGraphicsItem::StartAnimation );
+    }
+
+    return true;
+}
+
+bool PolylineAnnotation::processMergingOnMove( QMouseEvent *mouseEvent )
+{
+    return dealWithHovering( mouseEvent );
+}
+
+bool PolylineAnnotation::processMergingOnRelease( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return true;
+}
+
+bool PolylineAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
+{
+    if ( mouseEvent->button() != Qt::LeftButton ) {
+        return false;
+    }
+
+    GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
+
+    // If a virtual node has just been clicked, add it to the polygon's outer boundary
+    // and start 'adjusting' its position.
+    int index = virtualNodeContains( mouseEvent->pos() );
+    if ( index != -1 && !m_adjustingNode ) {
+        Q_ASSERT( m_virtualHoveredNode == index );
+
+        GeoDataLineString newLine( Tessellate );
+        QList<PolylineNode> newList;
+        for ( int i = index; i < index + line->size(); ++i ) {
+            newLine.append( line->at(i % line->size()) );
+            newList.append( PolylineNode( QRegion(), m_nodesList.at(i % line->size()).flags() ) );
+        }
+        newLine.append( newLine.at(0).interpolate( newLine.last(), 0.5 ) );
+
+        m_nodesList = newList;
+        m_nodesList.append( PolylineNode( QRegion() ) );
+        *line = newLine;
+
+        m_adjustingNode = true;
+        m_virtualHoveredNode = -1;
+        return true;
+    }
+
+    // If a virtual node which has been previously clicked and selected to become a
+    // 'real node' is clicked one more time, it stops from being 'adjusted'.
+    index = nodeContains( mouseEvent->pos() );
+    if ( index != -1 && m_adjustingNode ) {
+        m_adjustingNode = false;
+        return true;
+    }
+
+    return false;
+}
+
+bool PolylineAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
+{
+    Q_ASSERT( mouseEvent->button() == Qt::NoButton );
+
+    int index = virtualNodeContains( mouseEvent->pos() );
+
+    // If we are adjusting a virtual node which has just been clicked and became real, just
+    // change its coordinates when moving it, as we do with nodes in Editing state on move.
+    if ( m_adjustingNode ) {
+        // The virtual node which has just been added is always the last within
+        // GeoDataLinearRing's container.qreal lon, lat;
+        qreal lon, lat;
+        m_viewport->geoCoordinates( mouseEvent->pos().x(),
+                                    mouseEvent->pos().y(),
+                                    lon, lat,
+                                    GeoDataCoordinates::Radian );
+        const GeoDataCoordinates newCoords( lon, lat );
+        GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
+        line.last() = newCoords;
+
+        return true;
+
+    // If we are hovering a virtual node, store its index in order to be painted in drawNodes
+    // method.
+    } else if ( index != -1 ) {
+        m_virtualHoveredNode = index;
+        return true;
+    }
+
+    // This means that the interior of the polygon has been hovered. Let the event propagate
+    // since there may be overlapping polygons.
+    return false;
+}
+
+bool PolylineAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
+{
+    Q_UNUSED( mouseEvent );
+    return !m_adjustingNode;
+}
+
+bool PolylineAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
+{
+    PolylineNode::PolyNodeFlag flag = state() == SceneGraphicsItem::Editing ?
+                                                    PolylineNode::NodeIsEditingHighlighted :
+                                                    PolylineNode::NodeIsMergingHighlighted;
+
+    int index = nodeContains( mouseEvent->pos() );
+    if ( index != -1 ) {
+        if ( !m_nodesList.at(index).isEditingHighlighted() &&
+             !m_nodesList.at(index).isMergingHighlighted() ) {
+            // Deal with the case when two nodes are very close to each other.
+            if ( m_hoveredNodeIndex != -1 ) {
+                m_nodesList[m_hoveredNodeIndex].setFlag( flag, false );
+            }
+
+            m_hoveredNodeIndex = -1;
+            m_nodesList[index].setFlag( flag );
+        }
+
+        return true;
+    } else if ( m_hoveredNodeIndex != -1 ) {
+        m_nodesList[m_hoveredNodeIndex].setFlag( flag, false );
+        m_hoveredNodeIndex = -1;
+
+        return true;
+    }
+
+    return false;
 }
 
 const char *PolylineAnnotation::graphicType() const

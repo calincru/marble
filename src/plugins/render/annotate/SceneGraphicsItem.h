@@ -68,7 +68,8 @@ public:
         ShowPlacemarkRmbMenu,
 
         // Polyline specific
-        RemovePolylineRequest
+        RemovePolylineRequest,
+        ShowPolylineRmbMenu
     };
 
     /**

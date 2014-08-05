@@ -61,6 +61,9 @@ public:
      */
     virtual void dealWithItemChange( const SceneGraphicsItem *other );
 
+    /**
+     * @brief Moves the whole polygon to the destination coordinates.
+     */
     virtual void move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination );
 
     /**
