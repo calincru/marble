@@ -26,6 +26,7 @@
 #include "GeoDataTypes.h"
 #include "ViewportParams.h"
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -44,6 +45,7 @@ PolylineAnnotation::PolylineAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
     m_busy( false ),
+    m_interactingObj( InteractingNothing ),
     m_clickedNodeIndex( -1 ),
     m_hoveredNodeIndex( -1 ),
     m_virtualHoveredNode( -1 )
@@ -301,23 +303,34 @@ void PolylineAnnotation::setBusy( bool enabled )
     }
 }
 
+void PolylineAnnotation::deselectAllNodes()
+{
+    if ( state() != SceneGraphicsItem::Editing ) {
+        return;
+    }
+
+    for ( int i = 0 ; i < m_nodesList.size(); ++i ) {
+        m_nodesList[i].setFlag( PolylineNode::NodeIsSelected, false );
+    }
+}
+
 void PolylineAnnotation::deleteAllSelectedNodes()
 {
     if ( state() != SceneGraphicsItem::Editing ) {
         return;
     }
 
-    GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
+    GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
 
-    for ( int i = 0; i < line.size(); ++i ) {
+    for ( int i = 0; i < line->size(); ++i ) {
         if ( m_nodesList.at(i).isSelected() ) {
-            if ( m_nodesList.size() <= 3 ) {
+            if ( m_nodesList.size() <= 2 ) {
                 setRequest( SceneGraphicsItem::RemovePolylineRequest );
                 return;
             }
 
             m_nodesList.removeAt( i );
-            line.remove( i );
+            line->remove( i );
             --i;
         }
     }
@@ -329,14 +342,14 @@ void PolylineAnnotation::deleteClickedNode()
         return;
     }
 
-    GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
-    if ( m_nodesList.size() <= 3 ) {
+    GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
+    if ( m_nodesList.size() <= 2 ) {
         setRequest( SceneGraphicsItem::RemovePolylineRequest );
         return;
     }
 
     m_nodesList.removeAt( m_clickedNodeIndex );
-    line.remove( m_clickedNodeIndex );
+    line->remove( m_clickedNodeIndex );
  }
 
 void PolylineAnnotation::changeClickedNodeSelection()
@@ -345,7 +358,8 @@ void PolylineAnnotation::changeClickedNodeSelection()
         return;
     }
 
-    m_nodesList[m_clickedNodeIndex].setFlag( PolylineNode::NodeIsSelected, false );
+    m_nodesList[m_clickedNodeIndex].setFlag( PolylineNode::NodeIsSelected,
+                                             !m_nodesList[m_clickedNodeIndex].isSelected() );
 }
 
 bool PolylineAnnotation::hasNodesSelected() const
@@ -464,6 +478,7 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
     // Dealing with cases when entering a state has an effect on this item, or
     // initializations are needed.
     if ( state() == SceneGraphicsItem::Editing ) {
+        m_interactingObj = InteractingNothing;
         m_clickedNodeIndex = -1;
         m_hoveredNodeIndex = -1;
     } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
@@ -495,6 +510,9 @@ bool PolylineAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     if ( m_clickedNodeIndex != -1 ) {
         if ( mouseEvent->button() == Qt::RightButton ) {
             setRequest( SceneGraphicsItem::ShowNodeRmbMenu );
+        } else {
+            Q_ASSERT( mouseEvent->button() == Qt::LeftButton );
+            m_interactingObj = InteractingNode;
         }
 
         return true;
@@ -505,7 +523,11 @@ bool PolylineAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     if ( polylineContains( mouseEvent->pos() ) ) {
         if ( mouseEvent->button() == Qt::RightButton ) {
             setRequest( SceneGraphicsItem::ShowPolylineRmbMenu );
+        } else {
+            Q_ASSERT( mouseEvent->button() == Qt::LeftButton );
+            m_interactingObj = InteractingPolyline;
         }
+
 
         return true;
     }
@@ -526,10 +548,13 @@ bool PolylineAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
                                 GeoDataCoordinates::Radian );
     const GeoDataCoordinates newCoords( lon, lat );
 
-    if ( m_clickedNodeIndex >= 0 ) {
+    if ( m_interactingObj == InteractingNode ) {
         GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
         line->at(m_clickedNodeIndex) = newCoords;
 
+        return true;
+    } else if ( m_interactingObj == InteractingPolyline ) {
+        // FIXME: Not implemented at the moment.
         return true;
     }
 
@@ -544,7 +569,7 @@ bool PolylineAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
         return false;
     }
 
-    if ( m_clickedNodeIndex >= 0 ) {
+    if ( m_interactingObj == InteractingNode ) {
         qreal x, y;
 
         m_viewport->screenCoordinates( m_movedPointCoords.longitude(),
@@ -553,13 +578,17 @@ bool PolylineAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
         // The node gets selected only if it is clicked and not moved.
         if ( qFabs(mouseEvent->pos().x() - x) > mouseMoveOffset ||
              qFabs(mouseEvent->pos().y() - y) > mouseMoveOffset ) {
-            m_clickedNodeIndex = -1;
+            m_interactingObj = InteractingNothing;
             return true;
         }
 
         m_nodesList[m_clickedNodeIndex].setFlag( PolylineNode::NodeIsSelected,
                                                  !m_nodesList.at(m_clickedNodeIndex).isSelected() );
-        m_clickedNodeIndex = -1;
+        m_interactingObj = InteractingNothing;
+        return true;
+    } else if ( m_interactingObj == InteractingPolyline ) {
+        // Nothing special happens at polyline release.
+        m_interactingObj = InteractingNothing;
         return true;
     }
 
@@ -595,7 +624,7 @@ bool PolylineAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 
         // If these two nodes are the last ones remained as part of the polyline, remove
         // the whole polyline.
-        if ( line.size() <= 3 ) {
+        if ( line.size() <= 2 ) {
             setRequest( SceneGraphicsItem::RemovePolylineRequest );
             return true;
         }
@@ -726,7 +755,7 @@ bool PolylineAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
 
 const char *PolylineAnnotation::graphicType() const
 {
-    return SceneGraphicsTypes::SceneGraphicPolyline;
+    return SceneGraphicsTypes::SceneGraphicPolylineAnnotation;
 }
 
 }

@@ -75,7 +75,7 @@ void PlacemarkTextAnnotation::move( const GeoDataCoordinates &source, const GeoD
 
 const char *PlacemarkTextAnnotation::graphicType() const
 {
-    return SceneGraphicsTypes::SceneGraphicPlacemark;
+    return SceneGraphicsTypes::SceneGraphicTextAnnotation;
 }
 
 bool PlacemarkTextAnnotation::mousePressEvent( QMouseEvent *event )

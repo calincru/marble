@@ -213,6 +213,12 @@ private:
     QRegion             m_polylineRegion;
 
     // Used in Editing state
+    enum EditingInteractingObject {
+        InteractingNothing, // e.g. when hovering
+        InteractingNode,
+        InteractingPolyline
+    };
+    EditingInteractingObject m_interactingObj;
     GeoDataCoordinates m_movedPointCoords;
     int m_clickedNodeIndex;
     int m_hoveredNodeIndex;

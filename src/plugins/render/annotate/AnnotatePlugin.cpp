@@ -673,7 +673,7 @@ bool AnnotatePlugin::handleMovingSelectedItem( QMouseEvent *mouseEvent )
     if ( m_movedItem->sceneEvent( mouseEvent ) ) {
         m_marbleWidget->model()->treeModel()->updateFeature( m_movedItem->placemark() );
 
-        if ( m_movedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
+        if ( m_movedItem->graphicType() == SceneGraphicsTypes::SceneGraphicTextAnnotation ) {
             emit placemarkMoved();
         }
 
@@ -720,11 +720,11 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
     if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         AreaAnnotation *area = static_cast<AreaAnnotation*>( item );
 
-        if ( area->request() == AreaAnnotation::ShowPolygonRmbMenu ) {
+        if ( area->request() == SceneGraphicsItem::ShowPolygonRmbMenu ) {
             showPolygonRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
-        } else if ( area->request() == AreaAnnotation::ShowNodeRmbMenu ) {
+        } else if ( area->request() == SceneGraphicsItem::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
-        } else if ( area->request() == AreaAnnotation::StartAnimation ) {
+        } else if ( area->request() == SceneGraphicsItem::StartAnimation ) {
             QPointer<MergingNodesAnimation> animation = area->animation();
 
             connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
@@ -733,32 +733,34 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
 
             area->setBusy( true );
             animation->startAnimation();
-        } else if ( area->request() == AreaAnnotation::OuterInnerMergingWarning ) {
+        } else if ( area->request() == SceneGraphicsItem::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   tr( "Operation not permitted" ),
                                   tr( "Cannot merge a node from polygon's outer boundary "
                                       "with a node from one of its inner boundaries." ) );
-        } else if ( area->request() == AreaAnnotation::InnerInnerMergingWarning ) {
+        } else if ( area->request() == SceneGraphicsItem::InnerInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   tr( "Operation not permitted" ),
                                   tr( "Cannot merge two nodes from two different inner "
                                       "boundaries." ) );
-        } else if ( area->request() == AreaAnnotation::InvalidShapeWarning ) {
+        } else if ( area->request() == SceneGraphicsItem::InvalidShapeWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   tr( "Operation not permitted" ),
                                   tr( "Cannot merge the selected nodes. Most probably "
                                       "this would make the polygon's outer boundary not "
                                       "contain all its inner boundary nodes." ) );
-        } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
+        } else if ( area->request() == SceneGraphicsItem::RemovePolygonRequest ) {
             handleRemovingItem( area );
         }
-    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPolyline ) {
+    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
         PolylineAnnotation *polyline = static_cast<PolylineAnnotation*>( item );
 
         if ( polyline->request() == SceneGraphicsItem::ShowPolylineRmbMenu ) {
             showPolylineRmbMenu( polyline, mouseEvent->x(), mouseEvent->y() );
+        } else if ( polyline->request() == SceneGraphicsItem::ShowNodeRmbMenu ) {
+            showNodeRmbMenu( polyline, mouseEvent->x(), mouseEvent->y() );
         }
-    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
+    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicTextAnnotation ) {
         PlacemarkTextAnnotation *textAnnotation = static_cast<PlacemarkTextAnnotation*>( item );
 
         if ( textAnnotation->request() == SceneGraphicsItem::ShowPlacemarkRmbMenu ) {
@@ -1186,24 +1188,39 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
 
 void AnnotatePlugin::deselectNodes()
 {
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
-    area->deselectAllNodes();
+    if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+        AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
+        area->deselectAllNodes();
 
-    if ( area->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+        if ( area->request() == SceneGraphicsItem::NoRequest ) {
+            m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+        }
+    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
+        PolylineAnnotation *polyline = static_cast<PolylineAnnotation*>( m_rmbSelectedItem );
+        polyline->deselectAllNodes();
+
+        if ( polyline->request() == SceneGraphicsItem::NoRequest ) {
+            m_marbleWidget->model()->treeModel()->updateFeature( polyline->placemark() );
+        }
     }
 }
 
 void AnnotatePlugin::deleteSelectedNodes()
 {
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
-    area->deleteAllSelectedNodes();
+    if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+        AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
+        area->deleteAllSelectedNodes();
+    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
+        PolylineAnnotation *polyline = static_cast<PolylineAnnotation*>( m_rmbSelectedItem );
+        polyline->deleteAllSelectedNodes();
+    }
 
-    if ( area->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-    } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
+    if ( m_rmbSelectedItem->request() == SceneGraphicsItem::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedItem->placemark() );
+    } else if ( m_rmbSelectedItem->request() == SceneGraphicsItem::RemovePolygonRequest ||
+                m_rmbSelectedItem->request() == SceneGraphicsItem::RemovePolylineRequest ) {
         removeRmbSelectedItem();
-    } else if ( area->request() == AreaAnnotation::InvalidShapeWarning ) {
+    } else if ( m_rmbSelectedItem->request() == SceneGraphicsItem::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
                               tr( "Operation not permitted" ),
                               tr( "Cannot delete one of the selected nodes. Most probably "
@@ -1235,40 +1252,60 @@ void AnnotatePlugin::setupNodeRmbMenu()
     connect( deleteNode, SIGNAL(triggered()), this, SLOT(deleteNode()) );
 }
 
-void AnnotatePlugin::showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y )
+void AnnotatePlugin::showNodeRmbMenu( SceneGraphicsItem *item, qreal x, qreal y )
 {
     // Check whether the node is already selected; we change the text of the action
     // accordingly.
-    if ( area->clickedNodeIsSelected() ) {
+    bool isSelected = false;
+    if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation &&
+         static_cast<AreaAnnotation*>( item )->clickedNodeIsSelected() ) {
+        isSelected = true;
+    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation &&
+                static_cast<PolylineAnnotation*>( item )->clickedNodeIsSelected() ) {
+        isSelected = true;
+    }
+
+    if ( isSelected ) {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Deselect Node") );
     } else {
         m_nodeRmbMenu->actions().at(0)->setText( tr("Select Node") );
     }
 
-    m_rmbSelectedItem = area;
+    m_rmbSelectedItem = item;
     m_nodeRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
 void AnnotatePlugin::selectNode()
 {
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
-    area->changeClickedNodeSelection();
+    if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+        AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
+        area->changeClickedNodeSelection();
+    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
+        PolylineAnnotation *polyline = static_cast<PolylineAnnotation*>( m_rmbSelectedItem );
+        polyline->changeClickedNodeSelection();
+    }
 
-    if ( area->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
+    if ( m_rmbSelectedItem->request() == SceneGraphicsItem::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedItem->placemark() );
     }
 }
 
 void AnnotatePlugin::deleteNode()
 {
-    AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
-    area->deleteClickedNode();
+    if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
+        AreaAnnotation *area = static_cast<AreaAnnotation*>( m_rmbSelectedItem );
+        area->deleteClickedNode();
+    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
+        PolylineAnnotation *polyline = static_cast<PolylineAnnotation*>( m_rmbSelectedItem );
+        polyline->deleteClickedNode();
+    }
 
-    if ( area->request() == AreaAnnotation::NoRequest ) {
-        m_marbleWidget->model()->treeModel()->updateFeature( area->placemark() );
-    } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
+    if ( m_rmbSelectedItem->request() == SceneGraphicsItem::NoRequest ) {
+        m_marbleWidget->model()->treeModel()->updateFeature( m_rmbSelectedItem->placemark() );
+    } else if ( m_rmbSelectedItem->request() == SceneGraphicsItem::RemovePolygonRequest ||
+                m_rmbSelectedItem->request() == SceneGraphicsItem::RemovePolylineRequest ) {
         removeRmbSelectedItem();
-    } else if ( area->request() == AreaAnnotation::InvalidShapeWarning ) {
+    } else if ( m_rmbSelectedItem->request() == SceneGraphicsItem::InvalidShapeWarning ) {
         QMessageBox::warning( m_marbleWidget,
                               tr( "Operation not permitted" ),
                               tr( "Cannot delete one of the selected nodes. Most probably "
@@ -1279,6 +1316,16 @@ void AnnotatePlugin::deleteNode()
 
 void AnnotatePlugin::setupPolylineRmbMenu()
 {
+    QAction *deselectNodes = new QAction( tr( "Deselect All Nodes" ), m_polylineRmbMenu );
+    m_polylineRmbMenu->addAction( deselectNodes );
+    connect( deselectNodes, SIGNAL(triggered()), this, SLOT(deselectNodes()) );
+
+    QAction *deleteAllSelected = new QAction( tr( "Delete All Selected Nodes" ), m_polylineRmbMenu );
+    m_polylineRmbMenu->addAction( deleteAllSelected );
+    connect( deleteAllSelected, SIGNAL(triggered()), this, SLOT(deleteSelectedNodes()) );
+
+    m_polylineRmbMenu->addSeparator();
+
     QAction *cutItem = new QAction( tr( "Cut"), m_polylineRmbMenu );
     m_polylineRmbMenu->addAction( cutItem );
     connect( cutItem, SIGNAL(triggered()), this, SLOT(cutItem()) );
@@ -1301,6 +1348,19 @@ void AnnotatePlugin::setupPolylineRmbMenu()
 void AnnotatePlugin::showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x, qreal y )
 {
     m_rmbSelectedItem = polyline;
+
+    qreal lon, lat;
+    m_marbleWidget->geoCoordinates( x, y, lon, lat, GeoDataCoordinates::Radian );
+    m_fromWhereToCopy = GeoDataCoordinates( lon, lat );
+
+    if ( !polyline->hasNodesSelected() ) {
+        m_polylineRmbMenu->actions().at(1)->setEnabled( false );
+        m_polylineRmbMenu->actions().at(0)->setEnabled( false );
+    } else {
+        m_polylineRmbMenu->actions().at(1)->setEnabled( true );
+        m_polylineRmbMenu->actions().at(0)->setEnabled( true );
+    }
+
     m_polylineRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
@@ -1411,7 +1471,7 @@ void AnnotatePlugin::copyItem()
     GeoDataPlacemark *placemark = new GeoDataPlacemark( *m_rmbSelectedItem->placemark() );
     if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         m_clipboardItem = new AreaAnnotation( placemark );
-    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
+    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicTextAnnotation ) {
         m_clipboardItem = new PlacemarkTextAnnotation( placemark );
     }
 

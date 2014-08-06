@@ -994,11 +994,9 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         m_movedPointCoords = newCoords;
         return true;
-    } else if ( m_interactingObj == InteractingNothing ) {
-        return dealWithHovering( mouseEvent );
     }
 
-    return false;
+    return dealWithHovering( mouseEvent );
 }
 
 bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )

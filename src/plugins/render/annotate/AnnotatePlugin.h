@@ -154,7 +154,7 @@ private:
     void setupPolygonRmbMenu();
     void setupNodeRmbMenu();
     void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
-    void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
+    void showNodeRmbMenu( SceneGraphicsItem *item, qreal x, qreal y );
 
     void setupPolylineRmbMenu();
     void showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x, qreal y );
