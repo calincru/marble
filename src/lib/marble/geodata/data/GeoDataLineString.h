@@ -274,6 +274,12 @@ class GEODATA_EXPORT GeoDataLineString : public GeoDataGeometry
 
 
 /*!
+    \brief Inserts a new node at the given index.
+*/
+    void insert( int index, const GeoDataCoordinates& position );
+
+
+/*!
     \brief Appends a given geodesic position as a new node to the LineString.
 */
     void append ( const GeoDataCoordinates& position );
