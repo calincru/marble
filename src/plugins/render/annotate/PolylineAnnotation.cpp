@@ -554,8 +554,8 @@ bool PolylineAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         return true;
     } else if ( m_interactingObj == InteractingPolyline ) {
-        // FIXME: Not implemented at the moment.
-        return true;
+        // FIXME: Not implemented so far.
+        return false;
     }
 
     return dealWithHovering( mouseEvent );
