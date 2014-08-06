@@ -224,7 +224,7 @@ private:
 
     // Used in Adding Nodes state
     int m_virtualHoveredNode;
-    bool m_adjustingNode;
+    int m_adjustedNode;
 };
 
 }

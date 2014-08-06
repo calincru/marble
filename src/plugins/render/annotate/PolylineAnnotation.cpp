@@ -123,7 +123,7 @@ void PolylineAnnotation::updateRegions( GeoPainter *painter )
         QRegion firstRegion( painter->regionFromEllipse( line.at(0).interpolate( line.last(), 0.5 ),
                                                          hoveredDim, hoveredDim ) );
         m_virtualNodesList.append( PolylineNode( firstRegion ) );
-        for ( int i = 0; i < line.size(); ++i ) {
+        for ( int i = 0; i < line.size() - 1; ++i ) {
             QRegion newRegion( painter->regionFromEllipse( line.at(i).interpolate( line.at(i+1), 0.5 ),
                                                            hoveredDim, hoveredDim ) );
             m_virtualNodesList.append( PolylineNode( newRegion ) );
@@ -459,7 +459,7 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
     } else if ( previousState == SceneGraphicsItem::AddingPolylineNodes ) {
         m_virtualNodesList.clear();
         m_virtualHoveredNode = -1;
-        m_adjustingNode = false;
+        m_adjustedNode = -1;
     }
 
     // Dealing with cases when entering a state has an effect on this item, or
@@ -474,7 +474,7 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
         m_animation = 0;
     } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
         m_virtualHoveredNode = -1;
-        m_adjustingNode = false;
+        m_adjustedNode = -1;
     }
 }
 
@@ -633,22 +633,13 @@ bool PolylineAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
     // If a virtual node has just been clicked, add it to the polygon's outer boundary
     // and start 'adjusting' its position.
     int index = virtualNodeContains( mouseEvent->pos() );
-    if ( index != -1 && !m_adjustingNode ) {
+    if ( index != -1 && m_adjustedNode == -1 ) {
         Q_ASSERT( m_virtualHoveredNode == index );
 
-        GeoDataLineString newLine( Tessellate );
-        QList<PolylineNode> newList;
-        for ( int i = index; i < index + line->size(); ++i ) {
-            newLine.append( line->at(i % line->size()) );
-            newList.append( PolylineNode( QRegion(), m_nodesList.at(i % line->size()).flags() ) );
-        }
-        newLine.append( newLine.at(0).interpolate( newLine.last(), 0.5 ) );
+        line->insert( index, line->at(index-1).interpolate( line->at(index), 0.5 ) );
+        m_nodesList.insert( index, PolylineNode( QRegion() ) );
 
-        m_nodesList = newList;
-        m_nodesList.append( PolylineNode( QRegion() ) );
-        *line = newLine;
-
-        m_adjustingNode = true;
+        m_adjustedNode = index;
         m_virtualHoveredNode = -1;
         return true;
     }
@@ -656,8 +647,8 @@ bool PolylineAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
     // If a virtual node which has been previously clicked and selected to become a
     // 'real node' is clicked one more time, it stops from being 'adjusted'.
     index = nodeContains( mouseEvent->pos() );
-    if ( index != -1 && m_adjustingNode ) {
-        m_adjustingNode = false;
+    if ( index != -1 && m_adjustedNode != -1 ) {
+        m_adjustedNode = -1;
         return true;
     }
 
@@ -672,7 +663,7 @@ bool PolylineAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 
     // If we are adjusting a virtual node which has just been clicked and became real, just
     // change its coordinates when moving it, as we do with nodes in Editing state on move.
-    if ( m_adjustingNode ) {
+    if ( m_adjustedNode != -1 ) {
         // The virtual node which has just been added is always the last within
         // GeoDataLinearRing's container.qreal lon, lat;
         qreal lon, lat;
@@ -681,8 +672,8 @@ bool PolylineAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
                                     lon, lat,
                                     GeoDataCoordinates::Radian );
         const GeoDataCoordinates newCoords( lon, lat );
-        GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
-        line.last() = newCoords;
+        GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
+        line->at(m_adjustedNode) = newCoords;
 
         return true;
 
@@ -701,7 +692,7 @@ bool PolylineAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
 bool PolylineAnnotation::processAddingNodesOnRelease( QMouseEvent *mouseEvent )
 {
     Q_UNUSED( mouseEvent );
-    return !m_adjustingNode;
+    return m_adjustedNode == -1;
 }
 
 bool PolylineAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
