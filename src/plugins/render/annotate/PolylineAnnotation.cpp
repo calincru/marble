@@ -21,7 +21,7 @@
 #include "MarbleColors.h"
 #include "MarbleMath.h"
 #include "GeoDataLineString.h"
-#include "MergingNodesAnimation.h"
+#include "MergingPolygonNodesAnimation.h"
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
 #include "ViewportParams.h"
@@ -378,7 +378,7 @@ bool PolylineAnnotation::clickedNodeIsSelected() const
     return m_nodesList[m_clickedNodeIndex].isSelected();
 }
 
-QPointer<MergingNodesAnimation> PolylineAnnotation::animation()
+QPointer<MergingPolygonNodesAnimation> PolylineAnnotation::animation()
 {
     return m_animation;
 }
@@ -632,7 +632,7 @@ bool PolylineAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
         m_secondMergedNode = -1;
 
         delete m_animation;
-        // FIXME: m_animation = new MergingNodesAnimation( this );
+        // FIXME: m_animation = new MergingPolygonNodesAnimation( this );
         setRequest( SceneGraphicsItem::StartAnimation );
     }
 

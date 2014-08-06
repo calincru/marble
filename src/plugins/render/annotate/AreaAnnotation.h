@@ -23,7 +23,7 @@ namespace Marble
 {
 
 class PolylineNode;
-class MergingNodesAnimation;
+class MergingPolygonNodesAnimation;
 
 /**
  * @brief The AreaAnnotation class controls everything related to Polygons Editing Mode.
@@ -32,7 +32,7 @@ class MergingNodesAnimation;
  */
 class AreaAnnotation : public SceneGraphicsItem
 {
-    friend class MergingNodesAnimation;
+    friend class MergingPolygonNodesAnimation;
 
 public:
     explicit AreaAnnotation( GeoDataPlacemark *placemark );
@@ -109,7 +109,7 @@ public:
      * @brief Returns the animation to be handled by a QObject which can connect signals
      * and slots.
      */
-    QPointer<MergingNodesAnimation> animation();
+    QPointer<MergingPolygonNodesAnimation> animation();
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
@@ -248,7 +248,7 @@ private:
     // Used in Merging Nodes state
     QPair<int, int>    m_firstMergedNode;
     QPair<int, int>    m_secondMergedNode;
-    QPointer<MergingNodesAnimation> m_animation;
+    QPointer<MergingPolygonNodesAnimation> m_animation;
 
     // Used in Adding Nodes state
     QPair<int, int> m_virtualHovered;

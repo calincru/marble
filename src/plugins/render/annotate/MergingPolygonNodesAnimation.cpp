@@ -9,7 +9,7 @@
 //
 
 // Self
-#include "MergingNodesAnimation.h"
+#include "MergingPolygonNodesAnimation.h"
 
 // Marble
 #include "AreaAnnotation.h"
@@ -22,7 +22,7 @@
 namespace Marble {
 
 
-MergingNodesAnimation::MergingNodesAnimation( AreaAnnotation *polygon ) :
+MergingPolygonNodesAnimation::MergingPolygonNodesAnimation( AreaAnnotation *polygon ) :
     m_targetedArea( polygon ),
 
     // To avoid long lines and repeated code
@@ -51,18 +51,18 @@ MergingNodesAnimation::MergingNodesAnimation( AreaAnnotation *polygon ) :
     connect( m_timer, SIGNAL(timeout()), this, SLOT(updateNodes()) );
 }
 
-MergingNodesAnimation::~MergingNodesAnimation()
+MergingPolygonNodesAnimation::~MergingPolygonNodesAnimation()
 {
     delete m_timer;
 }
 
-void MergingNodesAnimation::startAnimation()
+void MergingPolygonNodesAnimation::startAnimation()
 {
     static const int timeOffset = 1;
     m_timer->start( timeOffset );
 }
 
-void MergingNodesAnimation::updateNodes()
+void MergingPolygonNodesAnimation::updateNodes()
 {
     static const qreal ratio = 0.05;
     const qreal distanceOffset = distanceSphere( m_firstInitialCoords.interpolate( m_secondInitialCoords, ratio ),
@@ -99,14 +99,14 @@ void MergingNodesAnimation::updateNodes()
     }
 }
 
-GeoDataCoordinates MergingNodesAnimation::newCoords()
+GeoDataCoordinates MergingPolygonNodesAnimation::newCoords()
 {
     return m_boundary == OuterBoundary ?
                 outerRing.at(first_i).interpolate( outerRing.at(second_i), 0.5 ) :
                 innerRings.at(first_i).at(first_j).interpolate( innerRings.at(second_i).at(second_j), 0.5 );
 }
 
-qreal MergingNodesAnimation::nodesDistance()
+qreal MergingPolygonNodesAnimation::nodesDistance()
 {
     return m_boundary == OuterBoundary ?
                 distanceSphere( outerRing.at(first_i), outerRing.at(second_i) ) :
@@ -115,4 +115,4 @@ qreal MergingNodesAnimation::nodesDistance()
 
 } // namespace Marble
 
-#include "MergingNodesAnimation.moc"
+#include "MergingPolygonNodesAnimation.moc"

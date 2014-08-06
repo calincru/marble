@@ -48,7 +48,7 @@
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
-#include "MergingNodesAnimation.h"
+#include "MergingPolygonNodesAnimation.h"
 #include "MarbleWidgetPopupMenu.h"
 #include "PolylineAnnotation.h"
 #include "EditPolylineDialog.h"
@@ -725,7 +725,7 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
         } else if ( area->request() == SceneGraphicsItem::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == SceneGraphicsItem::StartAnimation ) {
-            QPointer<MergingNodesAnimation> animation = area->animation();
+            QPointer<MergingPolygonNodesAnimation> animation = area->animation();
 
             connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
             connect( animation, SIGNAL(animationFinished(AreaAnnotation*)),

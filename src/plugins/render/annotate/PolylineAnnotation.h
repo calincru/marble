@@ -21,7 +21,7 @@ namespace Marble
 {
 
 class PolylineNode;
-class MergingNodesAnimation;
+class MergingPolygonNodesAnimation;
 
 class PolylineAnnotation : public SceneGraphicsItem
 {
@@ -95,7 +95,7 @@ public:
      * @brief Returns the animation to be handled by a QObject which can connect signals
      * and slots.
      */
-    QPointer<MergingNodesAnimation> animation();
+    QPointer<MergingPolygonNodesAnimation> animation();
 
     /**
      * @brief Provides information for downcasting a SceneGraphicsItem.
@@ -224,7 +224,7 @@ private:
     int m_hoveredNodeIndex;
 
     // Used in Merging Nodes state
-    QPointer<MergingNodesAnimation> m_animation;
+    QPointer<MergingPolygonNodesAnimation> m_animation;
     int m_firstMergedNode;
     int m_secondMergedNode;
 

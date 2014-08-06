@@ -22,12 +22,12 @@ namespace Marble {
 class AreaAnnotation;
 class GeoDataLinearRing;
 
-class MergingNodesAnimation : public QObject {
+class MergingPolygonNodesAnimation : public QObject {
 
     Q_OBJECT
 public:
-    explicit MergingNodesAnimation( AreaAnnotation *polygon );
-    ~MergingNodesAnimation();
+    explicit MergingPolygonNodesAnimation( AreaAnnotation *polygon );
+    ~MergingPolygonNodesAnimation();
 
     enum NodesBoundary {
         InnerBoundary,

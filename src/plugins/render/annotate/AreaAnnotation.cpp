@@ -24,7 +24,7 @@
 #include "ViewportParams.h"
 #include "SceneGraphicsTypes.h"
 #include "MarbleMath.h"
-#include "MergingNodesAnimation.h"
+#include "MergingPolygonNodesAnimation.h"
 #include "PolylineNode.h"
 
 
@@ -350,7 +350,7 @@ bool AreaAnnotation::clickedNodeIsSelected() const
            ( i != -1 && j != -1 && m_innerNodesList.at(i).at(j).isSelected() );
 }
 
-QPointer<MergingNodesAnimation> AreaAnnotation::animation()
+QPointer<MergingPolygonNodesAnimation> AreaAnnotation::animation()
 {
     return m_animation;
 }
@@ -1155,7 +1155,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             m_secondMergedNode = QPair<int, int>( outerIndex, -1 );
 
             delete m_animation;
-            m_animation = new MergingNodesAnimation( this );
+            m_animation = new MergingPolygonNodesAnimation( this );
             setRequest( SceneGraphicsItem::StartAnimation );
         }
 
@@ -1218,7 +1218,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             m_innerNodesList[innerIndexes.first][innerIndexes.second].setFlag( PolylineNode::NodeIsMerged );
             m_secondMergedNode = innerIndexes;
 
-            m_animation = new MergingNodesAnimation( this );
+            m_animation = new MergingPolygonNodesAnimation( this );
             setRequest( SceneGraphicsItem::StartAnimation );
         }
 
