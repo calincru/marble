@@ -44,6 +44,7 @@
 #include "MarbleModel.h"
 #include "MarblePlacemarkModel.h"
 #include "MarbleWidget.h"
+#include "AreaAnnotation.h"
 #include "PlacemarkTextAnnotation.h"
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
@@ -64,6 +65,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_polygonRmbMenu( new QMenu( m_marbleWidget ) ),
       m_nodeRmbMenu( new QMenu( m_marbleWidget ) ),
       m_textAnnotationRmbMenu( new QMenu( m_marbleWidget ) ),
+      m_polylineRmbMenu( new QMenu( m_marbleWidget ) ),
       m_annotationDocument( new GeoDataDocument ),
       m_movedItem( 0 ),
       m_lastItem( 0 ),
@@ -109,6 +111,7 @@ AnnotatePlugin::~AnnotatePlugin()
     delete m_polygonRmbMenu;
     delete m_nodeRmbMenu;
     delete m_textAnnotationRmbMenu;
+    delete m_polylineRmbMenu;
 
     delete m_annotationDocument;
     // delete m_networkAccessManager;
@@ -480,6 +483,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
             setupGroundOverlayModel();
             setupOverlayRmbMenu();
             setupPolygonRmbMenu();
+            setupPolylineRmbMenu();
             setupNodeRmbMenu();
             setupTextAnnotationRmbMenu();
             setupActions( marbleWidget );
@@ -748,7 +752,13 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
         } else if ( area->request() == AreaAnnotation::RemovePolygonRequest ) {
             handleRemovingItem( area );
         }
-   } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
+    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPolyline ) {
+        PolylineAnnotation *polyline = static_cast<PolylineAnnotation*>( item );
+
+        if ( polyline->request() == SceneGraphicsItem::ShowPolylineRmbMenu ) {
+            showPolylineRmbMenu( polyline, mouseEvent->x(), mouseEvent->y() );
+        }
+    } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicPlacemark ) {
         PlacemarkTextAnnotation *textAnnotation = static_cast<PlacemarkTextAnnotation*>( item );
 
         if ( textAnnotation->request() == SceneGraphicsItem::ShowPlacemarkRmbMenu ) {
@@ -959,7 +969,7 @@ void AnnotatePlugin::setupTextAnnotationRmbMenu()
 
     QAction *properties = new QAction( tr( "Properties" ), m_textAnnotationRmbMenu );
     m_textAnnotationRmbMenu->addAction( properties );
-    connect( properties, SIGNAL(triggered()), this, SLOT(editTextAnnotationRmbMenu()) );
+    connect( properties, SIGNAL(triggered()), this, SLOT(editTextAnnotation()) );
 }
 
 void AnnotatePlugin::showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y )
@@ -968,7 +978,7 @@ void AnnotatePlugin::showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placema
     m_textAnnotationRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
-void AnnotatePlugin::editTextAnnotationRmbMenu()
+void AnnotatePlugin::editTextAnnotation()
 {
     QPointer<EditTextAnnotationDialog> dialog = new EditTextAnnotationDialog( m_rmbSelectedItem->placemark(),
                                                                               m_marbleWidget );
@@ -1265,6 +1275,44 @@ void AnnotatePlugin::deleteNode()
                                   "this would make the polygon's outer boundary not "
                                   "contain all its inner boundary nodes." ) );
     }
+}
+
+void AnnotatePlugin::setupPolylineRmbMenu()
+{
+    QAction *cutItem = new QAction( tr( "Cut"), m_polylineRmbMenu );
+    m_polylineRmbMenu->addAction( cutItem );
+    connect( cutItem, SIGNAL(triggered()), this, SLOT(cutItem()) );
+
+    QAction *copyItem = new QAction( tr( "Copy"), m_polylineRmbMenu );
+    m_polylineRmbMenu->addAction( copyItem );
+    connect( copyItem, SIGNAL(triggered()), this, SLOT(copyItem()) );
+
+    QAction *removeItem = new QAction( tr( "Remove" ), m_polylineRmbMenu );
+    m_polylineRmbMenu->addAction( removeItem );
+    connect( removeItem, SIGNAL(triggered()), this, SLOT(removeRmbSelectedItem()) );
+
+    m_polylineRmbMenu->addSeparator();
+
+    QAction *properties = new QAction( tr( "Properties" ), m_polylineRmbMenu );
+    m_polylineRmbMenu->addAction( properties );
+    connect( properties, SIGNAL(triggered()), this, SLOT(editPolyline()) );
+}
+
+void AnnotatePlugin::showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x, qreal y )
+{
+    m_rmbSelectedItem = polyline;
+    m_polylineRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
+}
+
+void AnnotatePlugin::editPolyline()
+{
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_rmbSelectedItem->placemark(),
+                                                                  m_marbleWidget );
+
+    connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),
+             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
+
+    dialog->show();
 }
 
 void AnnotatePlugin::addPolyline()

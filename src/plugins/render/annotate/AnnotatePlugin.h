@@ -18,7 +18,6 @@
 #include "SceneGraphicsItem.h"
 #include "GeoDataGroundOverlay.h"
 #include "GroundOverlayFrame.h"
-#include "AreaAnnotation.h"
 
 #include <QObject>
 #include <QMenu>
@@ -33,10 +32,12 @@ namespace Marble
 
 class MarbleWidget;
 class TextureLayer;
-class PlacemarkTextAnnotation;
 class GeoDataDocument;
 class GeoDataLinearRing;
 class GeoDataLineString;
+class AreaAnnotation;
+class PolylineAnnotation;
+class PlacemarkTextAnnotation;
 
 
 /**
@@ -97,7 +98,7 @@ private slots:
     void enableModel( bool enabled );
 
     void addTextAnnotation();
-    void editTextAnnotationRmbMenu();
+    void editTextAnnotation();
 
     void addOverlay();
     void editOverlay();
@@ -116,6 +117,7 @@ private slots:
     void setAreaAvailable( AreaAnnotation *targetedArea );
 
     void addPolyline();
+    void editPolyline();
     void stopDrawingPolyline();
 
     void copyItem();
@@ -154,6 +156,9 @@ private:
     void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
     void showNodeRmbMenu( AreaAnnotation *area, qreal x, qreal y );
 
+    void setupPolylineRmbMenu();
+    void showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x, qreal y );
+
     void handleUncaughtEvents( QMouseEvent *mouseEvent );
     void handleReleaseOverlay( QMouseEvent *mouseEvent );
 
@@ -181,6 +186,7 @@ private:
     QMenu *m_polygonRmbMenu;
     QMenu *m_nodeRmbMenu;
     QMenu *m_textAnnotationRmbMenu;
+    QMenu *m_polylineRmbMenu;
 
     QList<QActionGroup*>    m_actions;
     QList<QActionGroup*>    m_toolbarActions;

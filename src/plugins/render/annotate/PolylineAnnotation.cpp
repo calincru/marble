@@ -26,7 +26,6 @@
 #include "GeoDataTypes.h"
 #include "ViewportParams.h"
 
-#include <QDebug>
 
 namespace Marble
 {
@@ -90,7 +89,7 @@ void PolylineAnnotation::setupRegionsLists( GeoPainter *painter )
     }
 
     // Add region from polyline so that events on polyline's 'lines' could be caught.
-    m_polylineRegion = painter->regionFromPolyline( line, 5 );
+    m_polylineRegion = painter->regionFromPolyline( line );
 }
 
 void PolylineAnnotation::updateRegions( GeoPainter *painter )
@@ -132,7 +131,7 @@ void PolylineAnnotation::updateRegions( GeoPainter *painter )
 
 
     // Update the polyline region;
-    m_polylineRegion = painter->regionFromPolyline( line, 5 );
+    m_polylineRegion = painter->regionFromPolyline( line );
 
     // Update the node lists.
     for ( int i = 0; i < m_nodesList.size(); ++i ) {
