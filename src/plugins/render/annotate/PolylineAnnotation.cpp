@@ -26,6 +26,7 @@
 #include "GeoDataTypes.h"
 #include "ViewportParams.h"
 
+#include <QDebug>
 
 namespace Marble
 {
@@ -43,9 +44,8 @@ const QColor PolylineAnnotation::hoveredColor = Oxygen::grapeViolet6;
 PolylineAnnotation::PolylineAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
-    m_regionsInitialized( false ),
     m_busy( false ),
-    m_clickedNodeIndex( -2 ),
+    m_clickedNodeIndex( -1 ),
     m_hoveredNodeIndex( -1 ),
     m_virtualHoveredNode( -1 )
 
@@ -64,9 +64,8 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
     Q_ASSERT( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataLineStringType );
 
     painter->save();
-    if ( !m_regionsInitialized ) {
+    if ( state() == SceneGraphicsItem::DrawingPolyline ) {
         setupRegionsLists( painter );
-        m_regionsInitialized = true;
     } else {
         updateRegions( painter );
     }
@@ -77,19 +76,21 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
 
 void PolylineAnnotation::setupRegionsLists( GeoPainter *painter )
 {
+    Q_ASSERT( state() == SceneGraphicsItem::DrawingPolyline );
     const GeoDataLineString line = static_cast<const GeoDataLineString>( *placemark()->geometry() );
 
-    // Add the outer boundary nodes.
+    // Add poyline nodes.
     QVector<GeoDataCoordinates>::ConstIterator itBegin = line.begin();
     QVector<GeoDataCoordinates>::ConstIterator itEnd = line.end();
 
+    m_nodesList.clear();
     for ( ; itBegin != itEnd; ++itBegin ) {
         PolylineNode newNode = PolylineNode( painter->regionFromEllipse( *itBegin, regularDim, regularDim ) );
         m_nodesList.append( newNode );
     }
 
-    // Add the outer boundary to the boundaries list.
-    m_polylineRegion = painter->regionFromPolyline( line );
+    // Add region from polyline so that events on polyline's 'lines' could be caught.
+    m_polylineRegion = painter->regionFromPolyline( line, 5 );
 }
 
 void PolylineAnnotation::updateRegions( GeoPainter *painter )
@@ -131,9 +132,9 @@ void PolylineAnnotation::updateRegions( GeoPainter *painter )
 
 
     // Update the polyline region;
-    m_polylineRegion = painter->regionFromPolyline( line );
+    m_polylineRegion = painter->regionFromPolyline( line, 5 );
 
-    // Update the outer and inner nodes lists.
+    // Update the node lists.
     for ( int i = 0; i < m_nodesList.size(); ++i ) {
         QRegion newRegion;
         if ( m_nodesList.at(i).isSelected() ) {
@@ -429,7 +430,9 @@ bool PolylineAnnotation::mouseReleaseEvent( QMouseEvent *event )
 void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previousState )
 {
     // Dealing with cases when exiting a state has an effect on this item.
-    if ( previousState == SceneGraphicsItem::Editing ) {
+    if ( previousState == SceneGraphicsItem::DrawingPolyline ) {
+        // nothing so far
+    } else if ( previousState == SceneGraphicsItem::Editing ) {
         // Make sure that when changing the state, there is no highlighted node.
         if ( m_hoveredNodeIndex != -1 ) {
             m_nodesList[m_hoveredNodeIndex].setFlag( PolylineNode::NodeIsEditingHighlighted, false );
@@ -451,7 +454,6 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
             }
         }
 
-        m_clickedNodeIndex = -1;
         m_hoveredNodeIndex = -1;
         delete m_animation;
     } else if ( previousState == SceneGraphicsItem::AddingPolylineNodes ) {
@@ -463,7 +465,6 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
     // Dealing with cases when entering a state has an effect on this item, or
     // initializations are needed.
     if ( state() == SceneGraphicsItem::Editing ) {
-        // FIXME: m_interactingObj = InteractingNothing;
         m_clickedNodeIndex = -1;
         m_hoveredNodeIndex = -1;
     } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
@@ -491,10 +492,8 @@ bool PolylineAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     m_movedPointCoords.set( lon, lat );
 
     // First check if one of the nodes has been clicked.
-    int index = nodeContains( mouseEvent->pos() );
-    if ( index != -1 ) {
-        m_clickedNodeIndex = index;
-
+    m_clickedNodeIndex = nodeContains( mouseEvent->pos() );
+    if ( m_clickedNodeIndex != -1 ) {
         if ( mouseEvent->button() == Qt::RightButton ) {
             setRequest( SceneGraphicsItem::ShowNodeRmbMenu );
         }
@@ -505,8 +504,6 @@ bool PolylineAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
     // Then check if the 'interior' of the polyline has been clicked (by interior
     // I mean its lines excepting its nodes).
     if ( polylineContains( mouseEvent->pos() ) ) {
-        m_clickedNodeIndex = -1;
-
         if ( mouseEvent->button() == Qt::RightButton ) {
             setRequest( SceneGraphicsItem::ShowPolylineRmbMenu );
         }
@@ -531,36 +528,13 @@ bool PolylineAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
     const GeoDataCoordinates newCoords( lon, lat );
 
     if ( m_clickedNodeIndex >= 0 ) {
-        GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
-        line[m_clickedNodeIndex] = newCoords;
+        GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
+        line->at(m_clickedNodeIndex) = newCoords;
 
         return true;
-    } else if ( m_clickedNodeIndex == -1 ) {
-        GeoDataLineString line = static_cast<GeoDataLineString>( *placemark()->geometry() );
-
-        const qreal bearing = m_movedPointCoords.bearing( newCoords );
-        const qreal distance = distanceSphere( newCoords, m_movedPointCoords );
-        line.clear();
-
-        for ( int i = 0; i < line.size(); ++i ) {
-            GeoDataCoordinates movedPoint = line.at(i).moveByBearing( bearing, distance );
-            qreal lon = movedPoint.longitude();
-            qreal lat = movedPoint.latitude();
-
-            GeoDataCoordinates::normalizeLonLat( lon, lat );
-            movedPoint.setLongitude( lon );
-            movedPoint.setLatitude( lat );
-
-            line.append( movedPoint );
-        }
-
-        m_movedPointCoords = newCoords;
-        return true;
-    } else if ( m_clickedNodeIndex == -2 ) {
-        return dealWithHovering( mouseEvent );
     }
 
-    return false;
+    return dealWithHovering( mouseEvent );
 }
 
 bool PolylineAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
@@ -580,18 +554,13 @@ bool PolylineAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )
         // The node gets selected only if it is clicked and not moved.
         if ( qFabs(mouseEvent->pos().x() - x) > mouseMoveOffset ||
              qFabs(mouseEvent->pos().y() - y) > mouseMoveOffset ) {
-            m_clickedNodeIndex = -2;
+            m_clickedNodeIndex = -1;
             return true;
         }
 
-
         m_nodesList[m_clickedNodeIndex].setFlag( PolylineNode::NodeIsSelected,
                                                  !m_nodesList.at(m_clickedNodeIndex).isSelected() );
-        m_clickedNodeIndex = -2;
-        return true;
-    } else if ( m_clickedNodeIndex == -1 ) {
-        // Nothing special happens at polygon release.
-        m_clickedNodeIndex = -2;
+        m_clickedNodeIndex = -1;
         return true;
     }
 
@@ -750,7 +719,7 @@ bool PolylineAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
                 m_nodesList[m_hoveredNodeIndex].setFlag( flag, false );
             }
 
-            m_hoveredNodeIndex = -1;
+            m_hoveredNodeIndex = index;
             m_nodesList[index].setFlag( flag );
         }
 

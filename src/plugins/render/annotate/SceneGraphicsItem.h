@@ -46,6 +46,9 @@ public:
         // Polygon/Placemark specific
         MergingPolylineNodes,
         AddingPolylineNodes,
+
+        // Polyline specific
+        DrawingPolyline
     };
 
     /**

@@ -192,7 +192,7 @@ private:
 
     SceneGraphicsItem *m_movedItem;
     SceneGraphicsItem *m_lastItem;
-    SceneGraphicsItem *m_newItem;
+    SceneGraphicsItem *m_editedItem;
     SceneGraphicsItem *m_rmbSelectedItem;
     GeoDataGroundOverlay    *m_rmbOverlay;
 

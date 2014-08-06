@@ -67,7 +67,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_annotationDocument( new GeoDataDocument ),
       m_movedItem( 0 ),
       m_lastItem( 0 ),
-      m_newItem( 0 ),
+      m_editedItem( 0 ),
       m_rmbSelectedItem( 0 ),
       m_polygonPlacemark( 0 ),
       m_clipboardItem( 0 ),
@@ -1007,7 +1007,7 @@ void AnnotatePlugin::addTextAnnotation()
 
     // It will point to new items when created, so that they could easily be removed if the Cancel
     // button of the dialog is pressed immediately after creation.
-    m_newItem = textAnnotation;
+    m_editedItem = textAnnotation;
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
@@ -1279,6 +1279,7 @@ void AnnotatePlugin::addPolyline()
     m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polylinePlacemark );
 
     PolylineAnnotation *polyline = new PolylineAnnotation( m_polylinePlacemark );
+    polyline->setState( SceneGraphicsItem::DrawingPolyline );
     m_graphicsItems.append( polyline );
     m_marbleWidget->update();
 
@@ -1294,7 +1295,7 @@ void AnnotatePlugin::addPolyline()
 
     // It will point to new items when created, so that they could easily be removed if the Cancel
     // button of the dialog is pressed immediately after creation.
-    m_newItem = polyline;
+    m_editedItem = polyline;
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
@@ -1303,6 +1304,7 @@ void AnnotatePlugin::addPolyline()
 void AnnotatePlugin::stopDrawingPolyline()
 {
     m_drawingPolyline = false;
+    m_editedItem->setState( SceneGraphicsItem::Editing );
 }
 
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
@@ -1389,12 +1391,12 @@ void AnnotatePlugin::removeNewItem()
 {
     m_lastItem = 0;
     m_movedItem = 0;
-    m_graphicsItems.removeAll( m_newItem );
-    m_marbleWidget->model()->treeModel()->removeFeature( m_newItem->feature() );
+    m_graphicsItems.removeAll( m_editedItem );
+    m_marbleWidget->model()->treeModel()->removeFeature( m_editedItem->feature() );
 
-    delete m_newItem->feature();
-    delete m_newItem;
-    m_newItem = 0;
+    delete m_editedItem->feature();
+    delete m_editedItem;
+    m_editedItem = 0;
 
     m_drawingPolygon = false;
     m_polygonPlacemark = 0;
