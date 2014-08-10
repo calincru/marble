@@ -660,8 +660,8 @@ bool PolylineAnnotation::processAddingNodesOnPress( QMouseEvent *mouseEvent )
 
     GeoDataLineString *line = static_cast<GeoDataLineString*>( placemark()->geometry() );
 
-    // If a virtual node has just been clicked, add it to the polygon's outer boundary
-    // and start 'adjusting' its position.
+    // If a virtual node has just been clicked, add it to the polyline and start 'adjusting'
+    // its position.
     int index = virtualNodeContains( mouseEvent->pos() );
     if ( index != -1 && m_adjustedNode == -1 ) {
         Q_ASSERT( m_virtualHoveredNode == index );
@@ -714,8 +714,6 @@ bool PolylineAnnotation::processAddingNodesOnMove( QMouseEvent *mouseEvent )
         return true;
     }
 
-    // This means that the interior of the polygon has been hovered. Let the event propagate
-    // since there may be overlapping polygons.
     return false;
 }
 

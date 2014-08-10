@@ -17,7 +17,8 @@
 namespace Marble
 {
 
-class PolylineNode {
+class PolylineNode
+{
 public:
     enum PolyNodeFlag {
         NoOption = 0x0,
