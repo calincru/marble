@@ -21,12 +21,13 @@
 #include "MarbleColors.h"
 #include "MarbleMath.h"
 #include "GeoDataLineString.h"
-#include "MergingPolygonNodesAnimation.h"
 #include "GeoDataPlacemark.h"
 #include "GeoDataTypes.h"
 #include "ViewportParams.h"
+#include "MergingPolylineNodesAnimation.h"
 
 #include <QDebug>
+
 
 namespace Marble
 {
@@ -102,22 +103,24 @@ void PolylineAnnotation::updateRegions( GeoPainter *painter )
 
     const GeoDataLineString line = static_cast<const GeoDataLineString>( *placemark()->geometry() );
 
-    if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
-        // Update the PolylineNodes lists after the animation has finished its execution.
-        m_nodesList[m_secondMergedNode].setFlag( PolylineNode::NodeIsMergingHighlighted, false );
-        m_hoveredNodeIndex = -1;
+    if ( state() == SceneGraphicsItem::MergingNodes ) {
+        if ( m_firstMergedNode != -1 && m_secondMergedNode != -1 ) {
+            // Update the PolylineNodes lists after the animation has finished its execution.
+            m_nodesList[m_secondMergedNode].setFlag( PolylineNode::NodeIsMergingHighlighted, false );
+            m_hoveredNodeIndex = -1;
 
-        // Remove the merging node flag and add the NodeIsSelected flag if either one of the
-        // merged nodes had been selected before merging them.
-        m_nodesList[m_secondMergedNode].setFlag( PolylineNode::NodeIsMerged, false );
-        if ( m_nodesList[m_firstMergedNode].isSelected() ) {
-            m_nodesList[m_secondMergedNode].setFlag( PolylineNode::NodeIsSelected );
+            // Remove the merging node flag and add the NodeIsSelected flag if either one of the
+            // merged nodes had been selected before merging them.
+            m_nodesList[m_secondMergedNode].setFlag( PolylineNode::NodeIsMerged, false );
+            if ( m_nodesList[m_firstMergedNode].isSelected() ) {
+                m_nodesList[m_secondMergedNode].setFlag( PolylineNode::NodeIsSelected );
+            }
+            m_nodesList.removeAt( m_firstMergedNode );
+
+            m_firstMergedNode = -1;
+            m_secondMergedNode = -1;
         }
-        m_nodesList.removeAt( m_firstMergedNode );
-
-        m_firstMergedNode = -1;
-        m_secondMergedNode = -1;
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         // Create and update virtual nodes lists when being in the AddingPolgonNodes state, to
         // avoid overhead in other states.
         m_virtualNodesList.clear();
@@ -228,9 +231,9 @@ bool PolylineAnnotation::containsPoint( const QPoint &point ) const
 {
     if ( state() == SceneGraphicsItem::Editing ) {
         return nodeContains( point ) != -1 || polylineContains( point );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return nodeContains( point ) != -1;
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return virtualNodeContains( point ) != -1 ||
                nodeContains( point ) != -1 ||
                polylineContains( point );
@@ -277,13 +280,13 @@ void PolylineAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
         }
 
         m_hoveredNodeIndex = -1;
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         if ( m_hoveredNodeIndex != -1 ) {
             m_nodesList[m_hoveredNodeIndex].setFlag( PolylineNode::NodeIsMergingHighlighted, false );
         }
 
         m_hoveredNodeIndex = -1;
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         m_virtualHoveredNode = -1;
     }
 }
@@ -378,7 +381,7 @@ bool PolylineAnnotation::clickedNodeIsSelected() const
     return m_nodesList[m_clickedNodeIndex].isSelected();
 }
 
-QPointer<MergingPolygonNodesAnimation> PolylineAnnotation::animation()
+QPointer<MergingPolylineNodesAnimation> PolylineAnnotation::animation()
 {
     return m_animation;
 }
@@ -393,9 +396,9 @@ bool PolylineAnnotation::mousePressEvent( QMouseEvent *event )
 
     if ( state() == SceneGraphicsItem::Editing ) {
         return processEditingOnPress( event );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return processMergingOnPress( event );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return processAddingNodesOnPress( event );
     }
 
@@ -412,9 +415,9 @@ bool PolylineAnnotation::mouseMoveEvent( QMouseEvent *event )
 
     if ( state() == SceneGraphicsItem::Editing ) {
         return processEditingOnMove( event );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return processMergingOnMove( event );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return processAddingNodesOnMove( event );
     }
 
@@ -431,9 +434,9 @@ bool PolylineAnnotation::mouseReleaseEvent( QMouseEvent *event )
 
     if ( state() == SceneGraphicsItem::Editing ) {
         return processEditingOnRelease( event );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return processMergingOnRelease( event );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return processAddingNodesOnRelease( event );
     }
 
@@ -453,7 +456,7 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
 
         m_clickedNodeIndex = -1;
         m_hoveredNodeIndex = -1;
-    } else if ( previousState == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( previousState == SceneGraphicsItem::MergingNodes ) {
         // If there was only a node selected for being merged and the state changed,
         // deselect it.
         if ( m_firstMergedNode != -1 ) {
@@ -469,7 +472,7 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
 
         m_hoveredNodeIndex = -1;
         delete m_animation;
-    } else if ( previousState == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( previousState == SceneGraphicsItem::AddingNodes ) {
         m_virtualNodesList.clear();
         m_virtualHoveredNode = -1;
         m_adjustedNode = -1;
@@ -481,12 +484,12 @@ void PolylineAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState pre
         m_interactingObj = InteractingNothing;
         m_clickedNodeIndex = -1;
         m_hoveredNodeIndex = -1;
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         m_firstMergedNode = -1;
         m_secondMergedNode = -1;
         m_hoveredNodeIndex = -1;
         m_animation = 0;
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         m_virtualHoveredNode = -1;
         m_adjustedNode = -1;
     }
@@ -527,7 +530,6 @@ bool PolylineAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
             Q_ASSERT( mouseEvent->button() == Qt::LeftButton );
             m_interactingObj = InteractingPolyline;
         }
-
 
         return true;
     }
@@ -629,11 +631,11 @@ bool PolylineAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             return true;
         }
         m_nodesList[index].setFlag( PolylineNode::NodeIsMerged );
-        m_secondMergedNode = -1;
+        m_secondMergedNode = index;
 
         delete m_animation;
-        // FIXME: m_animation = new MergingPolygonNodesAnimation( this );
-        setRequest( SceneGraphicsItem::StartAnimation );
+        m_animation = new MergingPolylineNodesAnimation( this );
+        setRequest( SceneGraphicsItem::StartPolylineAnimation );
     }
 
     return true;

@@ -119,6 +119,7 @@ private slots:
     void addPolyline();
     void editPolyline();
     void stopDrawingPolyline();
+    void setPolylineAvailable( PolylineAnnotation *targetedPolyline );
 
     void copyItem();
     void cutItem();

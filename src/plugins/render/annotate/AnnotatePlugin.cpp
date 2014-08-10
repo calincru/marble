@@ -49,6 +49,7 @@
 #include "TextureLayer.h"
 #include "SceneGraphicsTypes.h"
 #include "MergingPolygonNodesAnimation.h"
+#include "MergingPolylineNodesAnimation.h"
 #include "MarbleWidgetPopupMenu.h"
 #include "PolylineAnnotation.h"
 #include "EditPolylineDialog.h"
@@ -286,7 +287,7 @@ void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 void AnnotatePlugin::setMergingNodes( bool enabled )
 {
     if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::MergingPolylineNodes );
+        announceStateChanged( SceneGraphicsItem::MergingNodes );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -295,7 +296,7 @@ void AnnotatePlugin::setMergingNodes( bool enabled )
 void AnnotatePlugin::setAddingNodes( bool enabled )
 {
     if ( enabled ) {
-        announceStateChanged( SceneGraphicsItem::AddingPolylineNodes );
+        announceStateChanged( SceneGraphicsItem::AddingNodes );
     } else {
         announceStateChanged( SceneGraphicsItem::Editing );
     }
@@ -304,6 +305,12 @@ void AnnotatePlugin::setAddingNodes( bool enabled )
 void AnnotatePlugin::setAreaAvailable( AreaAnnotation *targetedArea )
 {
     targetedArea->setBusy( false );
+    emit repaintNeeded();
+}
+
+void AnnotatePlugin::setPolylineAvailable( PolylineAnnotation *targetedPolyline )
+{
+    targetedPolyline->setBusy( false );
     emit repaintNeeded();
 }
 
@@ -691,9 +698,9 @@ void AnnotatePlugin::handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneG
     m_marbleWidget->model()->treeModel()->updateFeature( item->placemark() );
 
     // Store a pointer to the item for possible following move events only if its state is
-    // either 'Editing' or 'AddingPolylineNodes' and the the mouse left button has been used.
+    // either 'Editing' or 'AddingNodes' and the the mouse left button has been used.
     if ( ( item->state() == SceneGraphicsItem::Editing ||
-           item->state() == SceneGraphicsItem::AddingPolylineNodes ) &&
+           item->state() == SceneGraphicsItem::AddingNodes ) &&
          mouseEvent->button() == Qt::LeftButton ) {
         m_movedItem = item;
     }
@@ -724,7 +731,7 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             showPolygonRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
         } else if ( area->request() == SceneGraphicsItem::ShowNodeRmbMenu ) {
             showNodeRmbMenu( area, mouseEvent->pos().x(), mouseEvent->pos().y() );
-        } else if ( area->request() == SceneGraphicsItem::StartAnimation ) {
+        } else if ( area->request() == SceneGraphicsItem::StartPolygonAnimation ) {
             QPointer<MergingPolygonNodesAnimation> animation = area->animation();
 
             connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
@@ -733,7 +740,7 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
 
             area->setBusy( true );
             animation->startAnimation();
-        } else if ( area->request() == SceneGraphicsItem::OuterInnerMergingWarning ) {
+      } else if ( area->request() == SceneGraphicsItem::OuterInnerMergingWarning ) {
             QMessageBox::warning( m_marbleWidget,
                                   tr( "Operation not permitted" ),
                                   tr( "Cannot merge a node from polygon's outer boundary "
@@ -759,6 +766,17 @@ void AnnotatePlugin::handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem 
             showPolylineRmbMenu( polyline, mouseEvent->x(), mouseEvent->y() );
         } else if ( polyline->request() == SceneGraphicsItem::ShowNodeRmbMenu ) {
             showNodeRmbMenu( polyline, mouseEvent->x(), mouseEvent->y() );
+        } else if ( polyline->request() == SceneGraphicsItem::StartPolylineAnimation ) {
+            QPointer<MergingPolylineNodesAnimation> animation = polyline->animation();
+
+            connect( animation, SIGNAL(nodesMoved()), this, SIGNAL(repaintNeeded()) );
+            connect( animation, SIGNAL(animationFinished(PolylineAnnotation*)),
+                     this, SLOT(setPolylineAvailable(PolylineAnnotation*)) );
+
+            polyline->setBusy( true );
+            animation->startAnimation();
+        } else if ( polyline->request() == SceneGraphicsItem::RemovePolylineRequest ) {
+            handleRemovingItem( polyline );
         }
     } else if ( item->graphicType() == SceneGraphicsTypes::SceneGraphicTextAnnotation ) {
         PlacemarkTextAnnotation *textAnnotation = static_cast<PlacemarkTextAnnotation*>( item );
@@ -1425,7 +1443,7 @@ void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newSta
 
 void AnnotatePlugin::setupCursor( SceneGraphicsItem *item )
 {
-    if ( !item || item->state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    if ( !item || item->state() == SceneGraphicsItem::AddingNodes ) {
         m_marbleWidget->setCursor( Qt::DragCopyCursor );
     } else { // Maybe use different cursors, but so far I cannot find anything which fits better.
         m_marbleWidget->setCursor( Qt::PointingHandCursor );

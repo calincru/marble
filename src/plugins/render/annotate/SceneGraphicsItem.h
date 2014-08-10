@@ -44,8 +44,8 @@ public:
         AddingPolygonHole,
 
         // Polygon/Placemark specific
-        MergingPolylineNodes,
-        AddingPolylineNodes,
+        MergingNodes,
+        AddingNodes,
 
         // Polyline specific
         DrawingPolyline
@@ -64,7 +64,7 @@ public:
         InvalidShapeWarning,
         ShowPolygonRmbMenu,
         ShowNodeRmbMenu,
-        StartAnimation,
+        StartPolygonAnimation,
         RemovePolygonRequest,
 
         // Placemark specific
@@ -72,7 +72,8 @@ public:
 
         // Polyline specific
         RemovePolylineRequest,
-        ShowPolylineRmbMenu
+        ShowPolylineRmbMenu,
+        StartPolylineAnimation
     };
 
     /**

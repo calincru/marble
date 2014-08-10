@@ -83,11 +83,11 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
         return polygonContains( point ) && outerNodeContains( point ) == -1 &&
                innerNodeContains( point ) == QPair<int, int>( -1, -1 );
 
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return outerNodeContains( point ) != -1 ||
                innerNodeContains( point ) != QPair<int, int>( -1, -1 );
 
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return virtualNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
                innerNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
                outerNodeContains( point ) != -1 ||
@@ -116,7 +116,7 @@ void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
         }
 
         m_hoveredNode = QPair<int, int>( -1, -1 );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         if ( m_hoveredNode != QPair<int, int>( -1, -1 ) ) {
             int i = m_hoveredNode.first;
             int j = m_hoveredNode.second;
@@ -129,7 +129,7 @@ void AreaAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
         }
 
         m_hoveredNode = QPair<int, int>( -1, -1 );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         m_virtualHovered = QPair<int, int>( -1, -1 );
     }
 }
@@ -367,9 +367,9 @@ bool AreaAnnotation::mousePressEvent( QMouseEvent *event )
         return processEditingOnPress( event );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnPress( event );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return processMergingOnPress( event );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return processAddingNodesOnPress( event );
     }
 
@@ -388,9 +388,9 @@ bool AreaAnnotation::mouseMoveEvent( QMouseEvent *event )
         return processEditingOnMove( event );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnMove( event );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return processMergingOnMove( event );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return processAddingNodesOnMove( event );
     }
 
@@ -409,9 +409,9 @@ bool AreaAnnotation::mouseReleaseEvent( QMouseEvent *event )
         return processEditingOnRelease( event );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         return processAddingHoleOnRelease( event );
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         return processMergingOnRelease( event );
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         return processAddingNodesOnRelease( event );
     }
 
@@ -455,7 +455,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
                 m_innerNodesList.last()[i].setFlag( PolylineNode::NodeIsInnerTmp, false );
             }
         }
-    } else if ( previousState == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( previousState == SceneGraphicsItem::MergingNodes ) {
         // If there was only a node selected for being merged and the state changed,
         // deselect it.
         int i = m_firstMergedNode.first;
@@ -482,7 +482,7 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
         m_firstMergedNode = QPair<int, int>( -1, -1 );
         m_hoveredNode = QPair<int, int>( -1, -1 );
         delete m_animation;
-    } else if ( previousState == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( previousState == SceneGraphicsItem::AddingNodes ) {
         m_outerVirtualNodes.clear();
         m_innerVirtualNodes.clear();
         m_virtualHovered = QPair<int, int>( -1, -1 );
@@ -497,12 +497,12 @@ void AreaAnnotation::dealWithStateChange( SceneGraphicsItem::ActionState previou
         m_hoveredNode = QPair<int, int>( -1, -1 );
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
         // Nothing to do so far when entering this state.
-    } else if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::MergingNodes ) {
         m_firstMergedNode = QPair<int, int>( -1, -1 );
         m_secondMergedNode = QPair<int, int>( -1, -1 );
         m_hoveredNode = QPair<int, int>( -1, -1 );
         m_animation = 0;
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         m_virtualHovered = QPair<int, int>( -1, -1 );
         m_adjustedNode = -2;
     }
@@ -557,7 +557,7 @@ void AreaAnnotation::updateRegions( GeoPainter *painter )
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
     const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
-    if ( state() == SceneGraphicsItem::MergingPolylineNodes ) {
+    if ( state() == SceneGraphicsItem::MergingNodes ) {
         // Update the PolylineNodes lists after the animation has finished its execution.
         int ff = m_firstMergedNode.first;
         int fs = m_firstMergedNode.second;
@@ -591,7 +591,7 @@ void AreaAnnotation::updateRegions( GeoPainter *painter )
             m_firstMergedNode = QPair<int, int>( -1, -1 );
             m_secondMergedNode = QPair<int, int>( -1, -1 );
         }
-    } else if ( state() == SceneGraphicsItem::AddingPolylineNodes ) {
+    } else if ( state() == SceneGraphicsItem::AddingNodes ) {
         // Create and update virtual nodes lists when being in the AddingPolgonNodes state, to
         // avoid overhead in other states.
         m_outerVirtualNodes.clear();
@@ -1156,7 +1156,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
 
             delete m_animation;
             m_animation = new MergingPolygonNodesAnimation( this );
-            setRequest( SceneGraphicsItem::StartAnimation );
+            setRequest( SceneGraphicsItem::StartPolygonAnimation );
         }
 
         return true;
@@ -1219,7 +1219,7 @@ bool AreaAnnotation::processMergingOnPress( QMouseEvent *mouseEvent )
             m_secondMergedNode = innerIndexes;
 
             m_animation = new MergingPolygonNodesAnimation( this );
-            setRequest( SceneGraphicsItem::StartAnimation );
+            setRequest( SceneGraphicsItem::StartPolygonAnimation );
         }
 
         return true;

@@ -27,6 +27,7 @@ set( annotate_SRCS
   EditPolylineDialog.cpp
   GroundOverlayFrame.cpp
   MergingPolygonNodesAnimation.cpp
+  MergingPolylineNodesAnimation.cpp
   PlacemarkTextAnnotation.cpp
   PolylineAnnotation.cpp
   PolylineNode.cpp

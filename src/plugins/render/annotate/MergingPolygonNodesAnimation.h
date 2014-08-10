@@ -8,8 +8,8 @@
 // Copyright 2014       Calin Cruceru  <crucerucalincristian@gmail.com>
 //
 
-#ifndef MERGINGNODESANIMATION_H
-#define MERGINGNODESANIMATION_H
+#ifndef MERGINGPOLYGONNODESANIMATION_H
+#define MERGINGPOLYGONNODESANIMATION_H
 
 #include <QObject>
 #include <QTimer>
@@ -22,9 +22,10 @@ namespace Marble {
 class AreaAnnotation;
 class GeoDataLinearRing;
 
-class MergingPolygonNodesAnimation : public QObject {
-
+class MergingPolygonNodesAnimation : public QObject
+{
     Q_OBJECT
+
 public:
     explicit MergingPolygonNodesAnimation( AreaAnnotation *polygon );
     ~MergingPolygonNodesAnimation();
@@ -67,4 +68,4 @@ private:
 
 } // namespace Marble
 
-#endif // MERGINGNODESANIMATION_H
+#endif // MERGINGPOLYGONNODESANIMATION_H
