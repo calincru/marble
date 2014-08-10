@@ -45,6 +45,7 @@ PolylineAnnotation::PolylineAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
+    m_paintingNodes( true ),
     m_busy( false ),
     m_interactingObj( InteractingNothing ),
     m_clickedNodeIndex( -1 ),
@@ -73,7 +74,9 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
         updateRegions( painter );
     }
 
-    drawNodes( painter );
+    if ( m_paintingNodes ) {
+        drawNodes( painter );
+    }
     painter->restore();
 }
 
@@ -312,6 +315,16 @@ void PolylineAnnotation::move( const GeoDataCoordinates &source, const GeoDataCo
 
         lineString->append( movedPoint );
     }
+}
+
+void PolylineAnnotation::setPaintingNodes( bool painting )
+{
+    m_paintingNodes = painting;
+}
+
+bool PolylineAnnotation::paintingNodes()
+{
+    return m_paintingNodes;
 }
 
 void PolylineAnnotation::setBusy( bool enabled )

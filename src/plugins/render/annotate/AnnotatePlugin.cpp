@@ -1384,8 +1384,9 @@ void AnnotatePlugin::showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x,
 
 void AnnotatePlugin::editPolyline()
 {
-    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_rmbSelectedItem->placemark(),
-                                                                  m_marbleWidget );
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog(
+                                                static_cast<PolylineAnnotation*>( m_rmbSelectedItem ),
+                                                m_marbleWidget );
 
     connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
@@ -1409,7 +1410,7 @@ void AnnotatePlugin::addPolyline()
     m_graphicsItems.append( polyline );
     m_marbleWidget->update();
 
-    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_polylinePlacemark, m_marbleWidget );
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( polyline, m_marbleWidget );
     dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),

@@ -43,6 +43,7 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
+    m_paintingNodes( true ),
     m_busy( false ),
     m_hoveredNode( -1, -1 ),
     m_interactingObj( InteractingNothing ),
@@ -172,6 +173,11 @@ void AreaAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordi
         }
         polygon->innerBoundaries().append( newRing );
     }
+}
+
+void AreaAnnotation::setPaintingNodes( bool painting )
+{
+    m_paintingNodes = painting;
 }
 
 void AreaAnnotation::setBusy( bool enabled )

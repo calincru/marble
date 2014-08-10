@@ -18,13 +18,14 @@ namespace Marble {
 
 class GeoDataPlacemark;
 class GeoDataFeature;
+class PolylineAnnotation;
 
 class EditPolylineDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    EditPolylineDialog( GeoDataPlacemark *placemark, QWidget *parent = 0 );
+    EditPolylineDialog( PolylineAnnotation *polyline, QWidget *parent = 0 );
     ~EditPolylineDialog();
 
     void setFirstTimeEditing( bool enabled );
@@ -37,6 +38,7 @@ signals:
 private slots:
     void updatePolyline();
     void updateLinesDialog( const QColor &color );
+    void setPaintingNodes( bool painting );
     void restoreInitial();
     void checkFields();
 
