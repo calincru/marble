@@ -28,7 +28,6 @@
 
 #include <QDebug>
 
-
 namespace Marble
 {
 
@@ -45,6 +44,7 @@ const QColor PolylineAnnotation::hoveredColor = Oxygen::grapeViolet6;
 PolylineAnnotation::PolylineAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
+    m_regionsInitialized( false ),
     m_busy( false ),
     m_interactingObj( InteractingNothing ),
     m_clickedNodeIndex( -1 ),
@@ -66,8 +66,9 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
     Q_ASSERT( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataLineStringType );
 
     painter->save();
-    if ( state() == SceneGraphicsItem::DrawingPolyline ) {
+    if ( state() == SceneGraphicsItem::DrawingPolyline || !m_regionsInitialized ) {
         setupRegionsLists( painter );
+        m_regionsInitialized = true;
     } else {
         updateRegions( painter );
     }
@@ -78,7 +79,7 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
 
 void PolylineAnnotation::setupRegionsLists( GeoPainter *painter )
 {
-    Q_ASSERT( state() == SceneGraphicsItem::DrawingPolyline );
+    Q_ASSERT( state() == SceneGraphicsItem::DrawingPolyline || !m_regionsInitialized );
     const GeoDataLineString line = static_cast<const GeoDataLineString>( *placemark()->geometry() );
 
     // Add poyline nodes.
@@ -293,8 +294,24 @@ void PolylineAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
 
 void PolylineAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination )
 {
-    Q_UNUSED( source );
-    Q_UNUSED( destination );
+    GeoDataLineString *lineString = static_cast<GeoDataLineString*>( placemark()->geometry() );
+    GeoDataLineString oldLineString = *lineString;
+
+    const qreal bearing = source.bearing( destination );
+    const qreal distance = distanceSphere( destination, source );
+    lineString->clear();
+
+    for ( int i = 0; i < oldLineString.size(); ++i ) {
+        GeoDataCoordinates movedPoint = oldLineString.at(i).moveByBearing( bearing, distance );
+        qreal lon = movedPoint.longitude();
+        qreal lat = movedPoint.latitude();
+
+        GeoDataCoordinates::normalizeLonLat( lon, lat );
+        movedPoint.setLongitude( lon );
+        movedPoint.setLatitude( lat );
+
+        lineString->append( movedPoint );
+    }
 }
 
 void PolylineAnnotation::setBusy( bool enabled )

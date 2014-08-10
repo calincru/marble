@@ -1485,12 +1485,15 @@ void AnnotatePlugin::copyItem()
 
     // Just copy the placemark and instantiate a new object based on its graphic type.
     // FIXME: Here is obvious a problem in the case of AreaAnnotation (when copying a
-    // placemark which has a GeoDataPolygon geometry?)
+    // placemark which has a GeoDataPolygon geometry?). Later Edit: The same applies for
+    // polylines (GeoDataLineString geometries).
     GeoDataPlacemark *placemark = new GeoDataPlacemark( *m_rmbSelectedItem->placemark() );
     if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         m_clipboardItem = new AreaAnnotation( placemark );
     } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicTextAnnotation ) {
         m_clipboardItem = new PlacemarkTextAnnotation( placemark );
+    } else if ( m_rmbSelectedItem->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
+        m_clipboardItem = new PolylineAnnotation( placemark );
     }
 
     m_rmbSelectedItem = 0;
