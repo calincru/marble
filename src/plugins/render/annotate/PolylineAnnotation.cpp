@@ -93,7 +93,7 @@ void PolylineAnnotation::setupRegionsLists( GeoPainter *painter )
     }
 
     // Add region from polyline so that events on polyline's 'lines' could be caught.
-    m_polylineRegion = painter->regionFromPolyline( line );
+    m_polylineRegion = painter->regionFromPolyline( line, 15 );
 }
 
 void PolylineAnnotation::updateRegions( GeoPainter *painter )
@@ -137,7 +137,7 @@ void PolylineAnnotation::updateRegions( GeoPainter *painter )
 
 
     // Update the polyline region;
-    m_polylineRegion = painter->regionFromPolyline( line );
+    m_polylineRegion = painter->regionFromPolyline( line, 15 );
 
     // Update the node lists.
     for ( int i = 0; i < m_nodesList.size(); ++i ) {
