@@ -296,19 +296,22 @@ void PolylineAnnotation::move( const GeoDataCoordinates &source, const GeoDataCo
 {
     GeoDataLineString *lineString = static_cast<GeoDataLineString*>( placemark()->geometry() );
     GeoDataLineString oldLineString = *lineString;
-
-    const qreal bearing = source.bearing( destination );
-    const qreal distance = distanceSphere( destination, source );
     lineString->clear();
 
-    for ( int i = 0; i < oldLineString.size(); ++i ) {
-        GeoDataCoordinates movedPoint = oldLineString.at(i).moveByBearing( bearing, distance );
-        qreal lon = movedPoint.longitude();
-        qreal lat = movedPoint.latitude();
+    qreal deltaLat = destination.latitude() - source.latitude();
+    qreal deltaLon = destination.longitude() - source.longitude();
 
-        GeoDataCoordinates::normalizeLonLat( lon, lat );
-        movedPoint.setLongitude( lon );
-        movedPoint.setLatitude( lat );
+    Quaternion latRectAxis = Quaternion::fromEuler( 0, destination.longitude(), 0);
+    Quaternion latAxis = Quaternion::fromEuler( -deltaLat, 0, 0);
+    Quaternion lonAxis = Quaternion::fromEuler(0, deltaLon, 0);
+    Quaternion rotAxis = latRectAxis * latAxis * latRectAxis.inverse() * lonAxis;
+
+    qreal lonRotated, latRotated;
+    for ( int i = 0; i < oldLineString.size(); ++i ) {
+        Quaternion qpos = oldLineString.at(i).quaternion();
+        qpos.rotateAroundAxis(rotAxis);
+        qpos.getSpherical( lonRotated, latRotated );
+        GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
 
         lineString->append( movedPoint );
     }
@@ -573,8 +576,30 @@ bool PolylineAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         return true;
     } else if ( m_interactingObj == InteractingPolyline ) {
-        // FIXME: Not implemented so far.
-        return false;
+        GeoDataLineString *lineString = static_cast<GeoDataLineString*>( placemark()->geometry() );
+        GeoDataLineString oldLineString = *lineString;
+        lineString->clear();
+
+        qreal deltaLat = lat - m_movedPointCoords.latitude();
+        qreal deltaLon = lon - m_movedPointCoords.longitude();
+
+        Quaternion latRectAxis = Quaternion::fromEuler( 0, lon, 0);
+        Quaternion latAxis = Quaternion::fromEuler( -deltaLat, 0, 0);
+        Quaternion lonAxis = Quaternion::fromEuler(0, deltaLon, 0);
+        Quaternion rotAxis = latRectAxis * latAxis * latRectAxis.inverse() * lonAxis;
+
+        qreal lonRotated, latRotated;
+        for ( int i = 0; i < oldLineString.size(); ++i ) {
+            Quaternion qpos = oldLineString.at(i).quaternion();
+            qpos.rotateAroundAxis(rotAxis);
+            qpos.getSpherical( lonRotated, latRotated );
+            GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
+
+            lineString->append( movedPoint );
+        }
+
+        m_movedPointCoords = newCoords;
+        return true;
     }
 
     return dealWithHovering( mouseEvent );
