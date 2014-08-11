@@ -33,10 +33,12 @@ PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) 
     SceneGraphicsItem( placemark ),
     m_movingPlacemark( false )
 {
-    GeoDataStyle *newStyle = new GeoDataStyle( *placemark->style() );
-    newStyle->iconStyle().setIcon( QImage() );
-    newStyle->iconStyle().setIconPath( MarbleDirs::path( "bitmaps/default_location.png" ) );
-    placemark->setStyle( newStyle );
+    if ( placemark->style()->iconStyle().iconPath().isNull() ) {
+        GeoDataStyle *newStyle = new GeoDataStyle( *placemark->style() );
+        newStyle->iconStyle().setIcon( QImage() );
+        newStyle->iconStyle().setIconPath( MarbleDirs::path( "bitmaps/default_location.png" ) );
+        placemark->setStyle( newStyle );
+    }
 }
 
 PlacemarkTextAnnotation::~PlacemarkTextAnnotation()
