@@ -53,6 +53,7 @@
 #include "MarbleWidgetPopupMenu.h"
 #include "PolylineAnnotation.h"
 #include "EditPolylineDialog.h"
+#include "ParsingRunnerManager.h"
 
 
 namespace Marble
@@ -433,29 +434,15 @@ void AnnotatePlugin::loadAnnotationFile()
                                                            tr("Open Annotation File"),
                                                            QString(),
                                                            tr("All Supported Files (*.kml *.osm);;"
-                                                              "Kml Annotation file (*.kml)"
-                                                              ";;Open Street Map file (*.osm)") );
-
+                                                              "Kml Annotation file (*.kml);;"
+                                                              "Open Street Map file (*.osm)") );
     if ( filename.isNull() ) {
         return;
     }
 
-    QFile file( filename );
-    if ( !file.exists() ) {
-        mDebug() << "File " << filename << " does not exist!";
-        return;
-    }
-
-    file.open( QIODevice::ReadOnly );
-    GeoDataParser parser( GeoData_KML );
-    if ( !parser.read( &file ) ) {
-        mDebug() << "Could not parse file " << filename;
-        return;
-    }
-
-    GeoDataDocument *document = dynamic_cast<GeoDataDocument*>( parser.releaseDocument() );
+    ParsingRunnerManager manager( m_marbleWidget->model()->pluginManager() );
+    GeoDataDocument *document = manager.openFile( filename );
     Q_ASSERT( document );
-    file.close();
 
     foreach ( GeoDataFeature *feature, document->featureList() ) {
         if ( feature->nodeType() == GeoDataTypes::GeoDataPlacemarkType ) {
@@ -1171,6 +1158,7 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     connect( cutPolygon, SIGNAL(triggered()), this, SLOT(cutItem()) );
 
     QAction *copyPolygon = new QAction( tr( "Copy"), m_polygonRmbMenu );
+    copyPolygon->setEnabled( false ); // FIXME
     m_polygonRmbMenu->addAction( copyPolygon );
     connect( copyPolygon, SIGNAL(triggered()), this, SLOT(copyItem()) );
 
@@ -1353,6 +1341,7 @@ void AnnotatePlugin::setupPolylineRmbMenu()
     connect( cutItem, SIGNAL(triggered()), this, SLOT(cutItem()) );
 
     QAction *copyItem = new QAction( tr( "Copy"), m_polylineRmbMenu );
+    copyItem->setEnabled( false ); // FIXME
     m_polylineRmbMenu->addAction( copyItem );
     connect( copyItem, SIGNAL(triggered()), this, SLOT(copyItem()) );
 

@@ -140,34 +140,34 @@ void AreaAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordi
     GeoDataLinearRing outerRing = polygon->outerBoundary();
     QVector<GeoDataLinearRing> innerRings = polygon->innerBoundaries();
 
-    const qreal bearing = source.bearing( destination );
-    const qreal distance = distanceSphere( destination, source );
     polygon->outerBoundary().clear();
     polygon->innerBoundaries().clear();
 
+    qreal deltaLat = destination.latitude() - source.latitude();
+    qreal deltaLon = destination.longitude() - source.longitude();
+
+    Quaternion latRectAxis = Quaternion::fromEuler( 0, destination.longitude(), 0);
+    Quaternion latAxis = Quaternion::fromEuler( -deltaLat, 0, 0);
+    Quaternion lonAxis = Quaternion::fromEuler(0, deltaLon, 0);
+    Quaternion rotAxis = latRectAxis * latAxis * latRectAxis.inverse() * lonAxis;
+
+    qreal lonRotated, latRotated;
+
     for ( int i = 0; i < outerRing.size(); ++i ) {
-        GeoDataCoordinates movedPoint = outerRing.at(i).moveByBearing( bearing, distance );
-        qreal lon = movedPoint.longitude();
-        qreal lat = movedPoint.latitude();
-
-        GeoDataCoordinates::normalizeLonLat( lon, lat );
-        movedPoint.setLongitude( lon );
-        movedPoint.setLatitude( lat );
-
+        Quaternion qpos = outerRing.at(i).quaternion();
+        qpos.rotateAroundAxis(rotAxis);
+        qpos.getSpherical( lonRotated, latRotated );
+        GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
         polygon->outerBoundary().append( movedPoint );
     }
 
     for ( int i = 0; i < innerRings.size(); ++i ) {
         GeoDataLinearRing newRing( Tessellate );
         for ( int j = 0; j < innerRings.at(i).size(); ++j ) {
-            GeoDataCoordinates movedPoint = innerRings.at(i).at(j).moveByBearing( bearing, distance );
-            qreal lon = movedPoint.longitude();
-            qreal lat = movedPoint.latitude();
-
-            GeoDataCoordinates::normalizeLonLat( lon, lat );
-            movedPoint.setLongitude( lon );
-            movedPoint.setLatitude( lat );
-
+            Quaternion qpos = innerRings.at(i).at(j).quaternion();
+            qpos.rotateAroundAxis(rotAxis);
+            qpos.getSpherical( lonRotated, latRotated );
+            GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
             newRing.append( movedPoint );
         }
         polygon->innerBoundaries().append( newRing );
