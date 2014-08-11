@@ -86,7 +86,7 @@ EditGroundOverlayDialog::~EditGroundOverlayDialog()
 void EditGroundOverlayDialog::loadPicture()
 {
     const QString filename = QFileDialog::getOpenFileName( this,
-                                                           tr( "Open Annotation File" ),
+                                                           tr( "Select Image" ),
                                                            QString(),
                                                            tr( "All Supported Files (*.jpg *.png)" ) );
     if ( filename.isNull() ) {
