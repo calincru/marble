@@ -105,7 +105,8 @@ private slots:
     void removeOverlay();
     void updateOverlayFrame( GeoDataGroundOverlay *overlay );
 
-    void setDrawingPolygon( bool );
+    void addPolygon();
+    void stopEditingPolygon();
     void setAddingPolygonHole( bool );
     void setMergingNodes( bool );
     void setAddingNodes( bool );
@@ -118,7 +119,7 @@ private slots:
 
     void addPolyline();
     void editPolyline();
-    void stopDrawingPolyline();
+    void stopEditingPolyline();
     void setPolylineAvailable( PolylineAnnotation *targetedPolyline );
 
     void copyItem();

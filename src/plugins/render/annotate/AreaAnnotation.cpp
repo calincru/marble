@@ -27,6 +27,7 @@
 #include "MergingPolygonNodesAnimation.h"
 #include "PolylineNode.h"
 
+#include <QDebug>
 
 namespace Marble {
 
@@ -62,7 +63,7 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
     Q_ASSERT( placemark()->geometry()->nodeType() == GeoDataTypes::GeoDataPolygonType );
 
     painter->save();
-    if ( !m_regionsInitialized ) {
+    if ( state() == SceneGraphicsItem::DrawingPolygon || !m_regionsInitialized ) {
         setupRegionsLists( painter );
         m_regionsInitialized = true;
     } else {
@@ -537,6 +538,9 @@ void AreaAnnotation::setupRegionsLists( GeoPainter *painter )
     // Add the outer boundary nodes.
     QVector<GeoDataCoordinates>::ConstIterator itBegin = outerRing.begin();
     QVector<GeoDataCoordinates>::ConstIterator itEnd = outerRing.end();
+
+    m_outerNodesList.clear();
+    m_boundariesList.clear();
 
     for ( ; itBegin != itEnd; ++itBegin ) {
         PolylineNode newNode = PolylineNode( painter->regionFromEllipse( *itBegin, regularDim, regularDim ) );
