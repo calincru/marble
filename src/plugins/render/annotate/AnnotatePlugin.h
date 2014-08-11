@@ -90,8 +90,6 @@ public:
                  const QString &renderPos, GeoSceneLayer *layer = 0 );
 
 signals:
-    void placemarkAdded();
-    void itemRemoved();
     void placemarkMoved();
 
 private slots:

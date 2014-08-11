@@ -806,7 +806,6 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
                                            this );
         selectItem->setCheckable( true );
         selectItem->setChecked( true );
-        connect( this, SIGNAL(itemRemoved()), selectItem, SLOT(toggle()) );
 
         QAction *drawPolygon = new QAction( QIcon( ":/icons/draw-polygon.png"),
                                             tr("Add Polygon"),
@@ -874,35 +873,32 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
         //          this, SLOT(downloadOsmFile()) );
 
 
-        QAction *beginSeparator = new QAction( this );
-        beginSeparator->setSeparator( true );
-        QAction *annotationsEndSeparator = new QAction( this );
-        annotationsEndSeparator->setSeparator( true );
-        QAction *removeItemBeginSeparator = new QAction( this );
-        removeItemBeginSeparator->setSeparator( true );
-        QAction *removeItemEndSeparator = new QAction( this );
-        removeItemEndSeparator->setSeparator( true );
-        QAction *endSeparator = new QAction ( this );
-        endSeparator->setSeparator( true );
+        QAction *sep1 = new QAction( this );
+        sep1->setSeparator( true );
+        QAction *sep2 = new QAction( this );
+        sep2->setSeparator( true );
+        QAction *sep3 = new QAction( this );
+        sep3->setSeparator( true );
+        QAction *sep4 = new QAction( this );
+        sep4->setSeparator( true );
 
 
+        group->addAction( loadAnnotationFile );
+        group->addAction( saveAnnotationFile );
+        group->addAction( sep1 );
         group->addAction( selectItem );
-        group->addAction( beginSeparator );
         group->addAction( addTextAnnotation );
         group->addAction( drawPolygon );
-        group->addAction( addOverlay );
         group->addAction( addPath );
-        group->addAction( annotationsEndSeparator );
+        group->addAction( addOverlay );
+        group->addAction( sep2 );
         group->addAction( addHole );
         group->addAction( mergeNodes );
         group->addAction( addNodes );
-        group->addAction( removeItemBeginSeparator );
+        group->addAction( sep3 );
         group->addAction( removeItem );
-        group->addAction( removeItemEndSeparator );
-        group->addAction( loadAnnotationFile );
-        group->addAction( saveAnnotationFile );
         group->addAction( clearAnnotations );
-        group->addAction( endSeparator );
+        group->addAction( sep4 );
 
         // nonExclusiveGroup->addAction( downloadOsm );
 
