@@ -26,7 +26,6 @@
 #include "ViewportParams.h"
 #include "MergingPolylineNodesAnimation.h"
 
-#include <QDebug>
 
 namespace Marble
 {
@@ -276,7 +275,8 @@ void PolylineAnnotation::dealWithItemChange( const SceneGraphicsItem *other )
     // So far we only deal with item changes when hovering nodes, so that
     // they do not remain hovered when changing the item we interact with.
     if ( state() == SceneGraphicsItem::Editing ) {
-        if ( m_hoveredNodeIndex != -1 ) {
+        if ( m_hoveredNodeIndex != -1 &&
+             m_hoveredNodeIndex < static_cast<GeoDataLineString*>( placemark()->geometry() )->size() ) {
             m_nodesList[m_hoveredNodeIndex].setFlag( PolylineNode::NodeIsEditingHighlighted, false );
         }
 
