@@ -413,8 +413,12 @@ void AnnotatePlugin::clearAnnotations()
 
 void AnnotatePlugin::saveAnnotationFile()
 {
-    QString const filename = QFileDialog::getSaveFileName( 0, tr("Save Annotation File"),
-                                 QString(), tr("All Supported Files (*.kml);;KML file (*.kml)"));
+    QString const filename = QFileDialog::getSaveFileName( 0,
+                                                           tr("Save Annotation File"),
+                                                           QString(),
+                                                           tr("All Supported Files (*.kml *.osm);;"
+                                                              "KML file (*.kml);;"
+                                                              "Open Street Map file (*.osm)") );
     if ( !filename.isNull() ) {
         GeoWriter writer;
         //FIXME: a better way to do this?
