@@ -876,8 +876,8 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
 
         QAction *beginSeparator = new QAction( this );
         beginSeparator->setSeparator( true );
-        QAction *polygonEndSeparator = new QAction( this );
-        polygonEndSeparator->setSeparator( true );
+        QAction *annotationsEndSeparator = new QAction( this );
+        annotationsEndSeparator->setSeparator( true );
         QAction *removeItemBeginSeparator = new QAction( this );
         removeItemBeginSeparator->setSeparator( true );
         QAction *removeItemEndSeparator = new QAction( this );
@@ -888,14 +888,14 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
 
         group->addAction( selectItem );
         group->addAction( beginSeparator );
+        group->addAction( addTextAnnotation );
         group->addAction( drawPolygon );
+        group->addAction( addOverlay );
+        group->addAction( addPath );
+        group->addAction( annotationsEndSeparator );
         group->addAction( addHole );
         group->addAction( mergeNodes );
         group->addAction( addNodes );
-        group->addAction( polygonEndSeparator );
-        group->addAction( addTextAnnotation );
-        group->addAction( addPath );
-        group->addAction( addOverlay );
         group->addAction( removeItemBeginSeparator );
         group->addAction( removeItem );
         group->addAction( removeItemEndSeparator );
