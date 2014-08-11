@@ -534,17 +534,31 @@ void AreaAnnotation::setupRegionsLists( GeoPainter *painter )
 {
     const GeoDataPolygon *polygon = static_cast<const GeoDataPolygon*>( placemark()->geometry() );
     const GeoDataLinearRing &outerRing = polygon->outerBoundary();
+    const QVector<GeoDataLinearRing> &innerRings = polygon->innerBoundaries();
 
     // Add the outer boundary nodes.
     QVector<GeoDataCoordinates>::ConstIterator itBegin = outerRing.begin();
     QVector<GeoDataCoordinates>::ConstIterator itEnd = outerRing.end();
 
     m_outerNodesList.clear();
+    m_innerNodesList.clear();
     m_boundariesList.clear();
 
     for ( ; itBegin != itEnd; ++itBegin ) {
         PolylineNode newNode = PolylineNode( painter->regionFromEllipse( *itBegin, regularDim, regularDim ) );
         m_outerNodesList.append( newNode );
+    }
+
+    foreach ( const GeoDataLinearRing &innerRing, innerRings ) {
+        QVector<GeoDataCoordinates>::ConstIterator itBegin = innerRing.begin();
+        QVector<GeoDataCoordinates>::ConstIterator itEnd = innerRing.end();
+        QList<PolylineNode> innerNodes;
+
+        for ( ; itBegin != itEnd; ++itBegin ) {
+            PolylineNode newNode = PolylineNode( painter->regionFromEllipse( *itBegin, regularDim, regularDim ) );
+            innerNodes.append( newNode );
+        }
+        m_innerNodesList.append( innerNodes );
     }
 
     // Add the outer boundary to the boundaries list.
