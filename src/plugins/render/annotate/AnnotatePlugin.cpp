@@ -433,8 +433,8 @@ void AnnotatePlugin::loadAnnotationFile()
                                                            tr("Open Annotation File"),
                                                            QString(),
                                                            tr("All Supported Files (*.kml *.osm);;"
-                                                              "Kml Annotation file (*.kml)"
-                                                              ";;Open Street Map file (*.osm)") );
+                                                              "Kml Annotation file (*.kml);;"
+                                                              "Open Street Map file (*.osm)") );
 
     if ( filename.isNull() ) {
         return;
