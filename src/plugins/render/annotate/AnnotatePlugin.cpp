@@ -53,6 +53,7 @@
 #include "MarbleWidgetPopupMenu.h"
 #include "PolylineAnnotation.h"
 #include "EditPolylineDialog.h"
+#include "ParsingRunnerManager.h"
 
 
 namespace Marble
@@ -412,8 +413,12 @@ void AnnotatePlugin::clearAnnotations()
 
 void AnnotatePlugin::saveAnnotationFile()
 {
-    QString const filename = QFileDialog::getSaveFileName( 0, tr("Save Annotation File"),
-                                 QString(), tr("All Supported Files (*.kml);;KML file (*.kml)"));
+    QString const filename = QFileDialog::getSaveFileName( 0,
+                                                           tr("Save Annotation File"),
+                                                           QString(),
+                                                           tr("All Supported Files (*.kml *.osm);;"
+                                                              "KML file (*.kml);;"
+                                                              "Open Street Map file (*.osm)") );
     if ( !filename.isNull() ) {
         GeoWriter writer;
         //FIXME: a better way to do this?
@@ -435,27 +440,13 @@ void AnnotatePlugin::loadAnnotationFile()
                                                            tr("All Supported Files (*.kml *.osm);;"
                                                               "Kml Annotation file (*.kml);;"
                                                               "Open Street Map file (*.osm)") );
-
     if ( filename.isNull() ) {
         return;
     }
 
-    QFile file( filename );
-    if ( !file.exists() ) {
-        mDebug() << "File " << filename << " does not exist!";
-        return;
-    }
-
-    file.open( QIODevice::ReadOnly );
-    GeoDataParser parser( GeoData_KML );
-    if ( !parser.read( &file ) ) {
-        mDebug() << "Could not parse file " << filename;
-        return;
-    }
-
-    GeoDataDocument *document = dynamic_cast<GeoDataDocument*>( parser.releaseDocument() );
+    ParsingRunnerManager manager( m_marbleWidget->model()->pluginManager() );
+    GeoDataDocument *document = manager.openFile( filename );
     Q_ASSERT( document );
-    file.close();
 
     foreach ( GeoDataFeature *feature, document->featureList() ) {
         if ( feature->nodeType() == GeoDataTypes::GeoDataPlacemarkType ) {
@@ -1171,6 +1162,7 @@ void AnnotatePlugin::setupPolygonRmbMenu()
     connect( cutPolygon, SIGNAL(triggered()), this, SLOT(cutItem()) );
 
     QAction *copyPolygon = new QAction( tr( "Copy"), m_polygonRmbMenu );
+    copyPolygon->setEnabled( false ); // FIXME
     m_polygonRmbMenu->addAction( copyPolygon );
     connect( copyPolygon, SIGNAL(triggered()), this, SLOT(copyItem()) );
 
@@ -1353,6 +1345,7 @@ void AnnotatePlugin::setupPolylineRmbMenu()
     connect( cutItem, SIGNAL(triggered()), this, SLOT(cutItem()) );
 
     QAction *copyItem = new QAction( tr( "Copy"), m_polylineRmbMenu );
+    copyItem->setEnabled( false ); // FIXME
     m_polylineRmbMenu->addAction( copyItem );
     connect( copyItem, SIGNAL(triggered()), this, SLOT(copyItem()) );
 
@@ -1388,9 +1381,8 @@ void AnnotatePlugin::showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x,
 
 void AnnotatePlugin::editPolyline()
 {
-    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog(
-                                                static_cast<PolylineAnnotation*>( m_rmbSelectedItem ),
-                                                m_marbleWidget );
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_rmbSelectedItem->placemark(),
+                                                                  m_marbleWidget );
 
     connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
@@ -1414,7 +1406,7 @@ void AnnotatePlugin::addPolyline()
     m_graphicsItems.append( polyline );
     m_marbleWidget->update();
 
-    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( polyline, m_marbleWidget );
+    QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_polylinePlacemark, m_marbleWidget );
     dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),

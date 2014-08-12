@@ -208,9 +208,9 @@ void EditTextAnnotationDialog::updateTextAnnotation()
 void EditTextAnnotationDialog::loadIconFile()
 {
     const QString filename = QFileDialog::getOpenFileName( this,
-                                                           tr( "Select Placemark Icon" ),
+                                                           tr( "Open Annotation File" ),
                                                            QString(),
-                                                           tr( "All Supported Files (*.png *.jpg)" ) );
+                                                           tr( "All Supported Files (*.png)" ) );
     if ( filename.isNull() ) {
         return;
     }

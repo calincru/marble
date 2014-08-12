@@ -67,11 +67,6 @@ public:
     virtual void move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination );
 
     /**
-     * @brief
-     */
-    void setPaintingNodes( bool painting );
-
-    /**
      * @brief Changes the busy state of the object according to @p enabled. It is mostly used
      * by Annotate Plugin to not send events to this object anymore.
      */
@@ -230,9 +225,8 @@ private:
     static const QColor hoveredColor;
 
     const ViewportParams *m_viewport;
-    bool m_regionsInitialized;
-    bool m_paintingNodes;
-    bool m_busy;
+    bool                  m_regionsInitialized;
+    bool                  m_busy;
 
     QList<PolylineNode>          m_outerNodesList;
     QList<PolylineNode>          m_outerVirtualNodes;

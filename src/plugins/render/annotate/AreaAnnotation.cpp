@@ -43,7 +43,6 @@ AreaAnnotation::AreaAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
     m_viewport( 0 ),
     m_regionsInitialized( false ),
-    m_paintingNodes( true ),
     m_busy( false ),
     m_hoveredNode( -1, -1 ),
     m_interactingObj( InteractingNothing ),
@@ -141,43 +140,38 @@ void AreaAnnotation::move( const GeoDataCoordinates &source, const GeoDataCoordi
     GeoDataLinearRing outerRing = polygon->outerBoundary();
     QVector<GeoDataLinearRing> innerRings = polygon->innerBoundaries();
 
-    const qreal bearing = source.bearing( destination );
-    const qreal distance = distanceSphere( destination, source );
     polygon->outerBoundary().clear();
     polygon->innerBoundaries().clear();
 
+    qreal deltaLat = destination.latitude() - source.latitude();
+    qreal deltaLon = destination.longitude() - source.longitude();
+
+    Quaternion latRectAxis = Quaternion::fromEuler( 0, destination.longitude(), 0);
+    Quaternion latAxis = Quaternion::fromEuler( -deltaLat, 0, 0);
+    Quaternion lonAxis = Quaternion::fromEuler(0, deltaLon, 0);
+    Quaternion rotAxis = latRectAxis * latAxis * latRectAxis.inverse() * lonAxis;
+
+    qreal lonRotated, latRotated;
+
     for ( int i = 0; i < outerRing.size(); ++i ) {
-        GeoDataCoordinates movedPoint = outerRing.at(i).moveByBearing( bearing, distance );
-        qreal lon = movedPoint.longitude();
-        qreal lat = movedPoint.latitude();
-
-        GeoDataCoordinates::normalizeLonLat( lon, lat );
-        movedPoint.setLongitude( lon );
-        movedPoint.setLatitude( lat );
-
+        Quaternion qpos = outerRing.at(i).quaternion();
+        qpos.rotateAroundAxis(rotAxis);
+        qpos.getSpherical( lonRotated, latRotated );
+        GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
         polygon->outerBoundary().append( movedPoint );
     }
 
     for ( int i = 0; i < innerRings.size(); ++i ) {
         GeoDataLinearRing newRing( Tessellate );
         for ( int j = 0; j < innerRings.at(i).size(); ++j ) {
-            GeoDataCoordinates movedPoint = innerRings.at(i).at(j).moveByBearing( bearing, distance );
-            qreal lon = movedPoint.longitude();
-            qreal lat = movedPoint.latitude();
-
-            GeoDataCoordinates::normalizeLonLat( lon, lat );
-            movedPoint.setLongitude( lon );
-            movedPoint.setLatitude( lat );
-
+            Quaternion qpos = innerRings.at(i).at(j).quaternion();
+            qpos.rotateAroundAxis(rotAxis);
+            qpos.getSpherical( lonRotated, latRotated );
+            GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
             newRing.append( movedPoint );
         }
         polygon->innerBoundaries().append( newRing );
     }
-}
-
-void AreaAnnotation::setPaintingNodes( bool painting )
-{
-    m_paintingNodes = painting;
 }
 
 void AreaAnnotation::setBusy( bool enabled )
@@ -933,7 +927,7 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
 
 bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 {
-    if ( !m_viewport ) {
+   if ( !m_viewport ) {
         return false;
     }
 
@@ -943,6 +937,9 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
                                 lon, lat,
                                 GeoDataCoordinates::Radian );
     const GeoDataCoordinates newCoords( lon, lat );
+
+    qreal deltaLat = lat - m_movedPointCoords.latitude();
+    qreal deltaLon = lon - m_movedPointCoords.longitude();
 
     if ( m_interactingObj == InteractingNode ) {
         GeoDataPolygon *polygon = static_cast<GeoDataPolygon*>( placemark()->geometry() );
@@ -965,34 +962,32 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
         GeoDataLinearRing outerRing = polygon->outerBoundary();
         QVector<GeoDataLinearRing> innerRings = polygon->innerBoundaries();
 
-        const qreal bearing = m_movedPointCoords.bearing( newCoords );
-        const qreal distance = distanceSphere( newCoords, m_movedPointCoords );
+        Quaternion latRectAxis = Quaternion::fromEuler( 0, lon, 0);
+        Quaternion latAxis = Quaternion::fromEuler( -deltaLat, 0, 0);
+        Quaternion lonAxis = Quaternion::fromEuler(0, deltaLon, 0);
+        Quaternion rotAxis = latRectAxis * latAxis * latRectAxis.inverse() * lonAxis;
+
+
         polygon->outerBoundary().clear();
         polygon->innerBoundaries().clear();
 
+        qreal lonRotated, latRotated;
+
         for ( int i = 0; i < outerRing.size(); ++i ) {
-            GeoDataCoordinates movedPoint = outerRing.at(i).moveByBearing( bearing, distance );
-            qreal lon = movedPoint.longitude();
-            qreal lat = movedPoint.latitude();
-
-            GeoDataCoordinates::normalizeLonLat( lon, lat );
-            movedPoint.setLongitude( lon );
-            movedPoint.setLatitude( lat );
-
+            Quaternion qpos = outerRing.at(i).quaternion();
+            qpos.rotateAroundAxis(rotAxis);
+            qpos.getSpherical( lonRotated, latRotated );
+            GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
             polygon->outerBoundary().append( movedPoint );
         }
 
         for ( int i = 0; i < innerRings.size(); ++i ) {
             GeoDataLinearRing newRing( Tessellate );
             for ( int j = 0; j < innerRings.at(i).size(); ++j ) {
-                GeoDataCoordinates movedPoint = innerRings.at(i).at(j).moveByBearing( bearing, distance );
-                qreal lon = movedPoint.longitude();
-                qreal lat = movedPoint.latitude();
-
-                GeoDataCoordinates::normalizeLonLat( lon, lat );
-                movedPoint.setLongitude( lon );
-                movedPoint.setLatitude( lat );
-
+                Quaternion qpos = innerRings.at(i).at(j).quaternion();
+                qpos.rotateAroundAxis(rotAxis);
+                qpos.getSpherical( lonRotated, latRotated );
+                GeoDataCoordinates movedPoint( lonRotated, latRotated, 0 );
                 newRing.append( movedPoint );
             }
             polygon->innerBoundaries().append( newRing );
@@ -1000,9 +995,11 @@ bool AreaAnnotation::processEditingOnMove( QMouseEvent *mouseEvent )
 
         m_movedPointCoords = newCoords;
         return true;
+    } else if ( m_interactingObj == InteractingNothing ) {
+        return dealWithHovering( mouseEvent );
     }
 
-    return dealWithHovering( mouseEvent );
+    return false;
 }
 
 bool AreaAnnotation::processEditingOnRelease( QMouseEvent *mouseEvent )

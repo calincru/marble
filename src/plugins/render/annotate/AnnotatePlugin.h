@@ -219,7 +219,6 @@ private:
     bool m_isInitialized;
 };
 
-
 }
 
 #endif // MARBLE_ANNOTATEPLUGIN_H

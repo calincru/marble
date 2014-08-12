@@ -29,7 +29,7 @@ class EditTextAnnotationDialog : public QDialog
     Q_OBJECT
 
 public:
-    EditTextAnnotationDialog( GeoDataPlacemark *textAnnotation, QWidget *parent = 0 );
+    EditTextAnnotationDialog( GeoDataPlacemark *placemark, QWidget *parent = 0 );
     ~EditTextAnnotationDialog();
 
     /**
