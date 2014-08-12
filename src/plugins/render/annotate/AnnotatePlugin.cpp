@@ -244,38 +244,6 @@ void AnnotatePlugin::enableModel( bool enabled )
     }
 }
 
-void AnnotatePlugin::setDrawingPolygon( bool enabled )
-{
-    m_drawingPolygon = enabled;
-
-    if ( enabled ) {
-        GeoDataPolygon *polygon = new GeoDataPolygon( Tessellate );
-        polygon->outerBoundary().setTessellate( true );
-
-        m_polygonPlacemark = new GeoDataPlacemark;
-        m_polygonPlacemark->setGeometry( polygon );
-        m_polygonPlacemark->setParent( m_annotationDocument );
-        m_polygonPlacemark->setStyleUrl( "#polygon" );
-
-        m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
-        announceStateChanged( SceneGraphicsItem::DrawingPolygon );
-    } else {
-        const GeoDataPolygon *poly = dynamic_cast<const GeoDataPolygon*>( m_polygonPlacemark->geometry() );
-        Q_ASSERT( poly );
-
-        if ( poly->outerBoundary().size() > 2 ) {
-            AreaAnnotation *area = new AreaAnnotation( m_polygonPlacemark );
-            m_graphicsItems.append( area );
-            m_marbleWidget->update();
-        } else {
-            m_marbleWidget->model()->treeModel()->removeFeature( m_polygonPlacemark );
-            delete m_polygonPlacemark;
-        }
-        m_polygonPlacemark = 0;
-        announceStateChanged( SceneGraphicsItem::Editing );
-    }
-}
-
 void AnnotatePlugin::setAddingPolygonHole( bool enabled )
 {
     if ( enabled ) {
@@ -838,13 +806,11 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
                                            this );
         selectItem->setCheckable( true );
         selectItem->setChecked( true );
-        connect( this, SIGNAL(itemRemoved()), selectItem, SLOT(toggle()) );
 
         QAction *drawPolygon = new QAction( QIcon( ":/icons/draw-polygon.png"),
                                             tr("Add Polygon"),
                                             this );
-        drawPolygon->setCheckable( true );
-        connect( drawPolygon, SIGNAL(toggled(bool)), this, SLOT(setDrawingPolygon(bool)) );
+        connect( drawPolygon, SIGNAL(triggered()), this, SLOT(addPolygon()) );
 
         QAction *addHole = new QAction( QIcon(":/icons/16x16/add-holes.png"),
                                         tr("Add Polygon Hole"),
@@ -907,35 +873,32 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
         //          this, SLOT(downloadOsmFile()) );
 
 
-        QAction *beginSeparator = new QAction( this );
-        beginSeparator->setSeparator( true );
-        QAction *polygonEndSeparator = new QAction( this );
-        polygonEndSeparator->setSeparator( true );
-        QAction *removeItemBeginSeparator = new QAction( this );
-        removeItemBeginSeparator->setSeparator( true );
-        QAction *removeItemEndSeparator = new QAction( this );
-        removeItemEndSeparator->setSeparator( true );
-        QAction *endSeparator = new QAction ( this );
-        endSeparator->setSeparator( true );
+        QAction *sep1 = new QAction( this );
+        sep1->setSeparator( true );
+        QAction *sep2 = new QAction( this );
+        sep2->setSeparator( true );
+        QAction *sep3 = new QAction( this );
+        sep3->setSeparator( true );
+        QAction *sep4 = new QAction( this );
+        sep4->setSeparator( true );
 
 
+        group->addAction( loadAnnotationFile );
+        group->addAction( saveAnnotationFile );
+        group->addAction( sep1 );
         group->addAction( selectItem );
-        group->addAction( beginSeparator );
+        group->addAction( addTextAnnotation );
         group->addAction( drawPolygon );
+        group->addAction( addPath );
+        group->addAction( addOverlay );
+        group->addAction( sep2 );
         group->addAction( addHole );
         group->addAction( mergeNodes );
         group->addAction( addNodes );
-        group->addAction( polygonEndSeparator );
-        group->addAction( addTextAnnotation );
-        group->addAction( addPath );
-        group->addAction( addOverlay );
-        group->addAction( removeItemBeginSeparator );
+        group->addAction( sep3 );
         group->addAction( removeItem );
-        group->addAction( removeItemEndSeparator );
-        group->addAction( loadAnnotationFile );
-        group->addAction( saveAnnotationFile );
         group->addAction( clearAnnotations );
-        group->addAction( endSeparator );
+        group->addAction( sep4 );
 
         // nonExclusiveGroup->addAction( downloadOsm );
 
@@ -1199,6 +1162,45 @@ void AnnotatePlugin::showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, 
     m_polygonRmbMenu->popup( m_marbleWidget->mapToGlobal( QPoint( x, y ) ) );
 }
 
+void AnnotatePlugin::addPolygon()
+{
+    m_drawingPolygon = true;
+
+    m_polygonPlacemark = new GeoDataPlacemark;
+    m_polygonPlacemark->setGeometry( new GeoDataPolygon( Tessellate ) );
+    m_polygonPlacemark->setParent( m_annotationDocument );
+    m_polygonPlacemark->setStyleUrl( "#polygon" );
+
+    m_marbleWidget->model()->treeModel()->addFeature( m_annotationDocument, m_polygonPlacemark );
+
+    AreaAnnotation *polygon = new AreaAnnotation( m_polygonPlacemark );
+    polygon->setState( SceneGraphicsItem::DrawingPolygon );
+    m_graphicsItems.append( polygon );
+    m_marbleWidget->update();
+
+    QPointer<EditPolygonDialog> dialog = new EditPolygonDialog( m_polygonPlacemark, m_marbleWidget );
+    dialog->setFirstTimeEditing( true );
+
+    connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
+             m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
+    connect( dialog, SIGNAL(removeRequested()),
+             this, SLOT(removeNewItem()) );
+    connect( dialog, SIGNAL(finished(int)),
+             this, SLOT(stopEditingPolygon()) );
+
+    // It will point to new items when created, so that they could easily be removed if the Cancel
+    // button of the dialog is pressed immediately after creation.
+    m_editedItem = polygon;
+
+    dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
+    dialog->show();
+}
+
+void AnnotatePlugin::stopEditingPolygon()
+{
+    m_drawingPolygon = false;
+    announceStateChanged( SceneGraphicsItem::Editing );
+}
 
 void AnnotatePlugin::deselectNodes()
 {
@@ -1413,8 +1415,8 @@ void AnnotatePlugin::addPolyline()
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
     connect( dialog, SIGNAL(removeRequested()),
              this, SLOT(removeNewItem()) );
-    connect( dialog, SIGNAL(editingPolylineEnded()),
-             this, SLOT(stopDrawingPolyline()) );
+    connect( dialog, SIGNAL(finished(int)),
+             this, SLOT(stopEditingPolyline()) );
 
     // It will point to new items when created, so that they could easily be removed if the Cancel
     // button of the dialog is pressed immediately after creation.
@@ -1424,10 +1426,10 @@ void AnnotatePlugin::addPolyline()
     dialog->show();
 }
 
-void AnnotatePlugin::stopDrawingPolyline()
+void AnnotatePlugin::stopEditingPolyline()
 {
     m_drawingPolyline = false;
-    m_editedItem->setState( SceneGraphicsItem::Editing );
+    announceStateChanged( SceneGraphicsItem::Editing );
 }
 
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
