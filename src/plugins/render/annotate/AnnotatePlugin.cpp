@@ -746,8 +746,13 @@ void AnnotatePlugin::handleUncaughtEvents( QMouseEvent *mouseEvent )
     }
 
     if ( m_focusItem && m_focusItem->graphicType() != SceneGraphicsTypes::SceneGraphicGroundOverlay ) {
-        m_focusItem->dealWithItemChange( 0 );
-        m_marbleWidget->model()->treeModel()->updateFeature( m_focusItem->placemark() );
+        if ( ( m_focusItem->graphicType() == SceneGraphicsTypes::SceneGraphicAreaAnnotation &&
+               !static_cast<AreaAnnotation*>( m_focusItem )->isBusy() ) ||
+             ( m_focusItem->graphicType() == SceneGraphicsTypes::SceneGraphicPolylineAnnotation &&
+               !static_cast<PolylineAnnotation*>( m_focusItem )->isBusy() ) ) {
+            m_focusItem->dealWithItemChange( 0 );
+            m_marbleWidget->model()->treeModel()->updateFeature( m_focusItem->placemark() );
+        }
 
         if ( mouseEvent->type() == QEvent::MouseButtonPress ) {
             m_focusItem->setFocus( false );

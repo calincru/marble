@@ -336,6 +336,11 @@ void PolylineAnnotation::setBusy( bool enabled )
     }
 }
 
+bool PolylineAnnotation::isBusy() const
+{
+    return m_busy;
+}
+
 void PolylineAnnotation::deselectAllNodes()
 {
     if ( state() != SceneGraphicsItem::Editing ) {

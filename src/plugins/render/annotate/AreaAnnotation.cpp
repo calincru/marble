@@ -77,6 +77,10 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
 
 bool AreaAnnotation::containsPoint( const QPoint &point ) const
 {
+    if ( m_busy ) {
+        return false;
+    }
+
     if ( state() == SceneGraphicsItem::Editing ) {
         return outerNodeContains( point ) != -1 || polygonContains( point ) ||
                innerNodeContains( point ) != QPair<int, int>( -1, -1 );
@@ -183,6 +187,11 @@ void AreaAnnotation::setBusy( bool enabled )
     if ( !enabled ) {
         delete m_animation;
     }
+}
+
+bool AreaAnnotation::isBusy() const
+{
+    return m_busy;
 }
 
 void AreaAnnotation::deselectAllNodes()
