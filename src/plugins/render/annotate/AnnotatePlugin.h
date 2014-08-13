@@ -94,9 +94,18 @@ signals:
 
 private slots:
     void enableModel( bool enabled );
+    void askToRemoveFocusItem();
+    void removeFocusItem();
+    void clearAnnotations();
+    void saveAnnotationFile();
+    void loadAnnotationFile();
+    void copyItem();
+    void cutItem();
+    void pasteItem();
 
     void addTextAnnotation();
     void editTextAnnotation();
+    void stopEditingTextAnnotation();
 
     void addOverlay();
     void editOverlay();
@@ -120,22 +129,16 @@ private slots:
     void stopEditingPolyline();
     void setPolylineAvailable( PolylineAnnotation *targetedPolyline );
 
-    void copyItem();
-    void cutItem();
-    void pasteItem();
-
-    void removeFocusItem();
-    void removeNewItem();
-    void clearAnnotations();
-    void saveAnnotationFile();
-    void loadAnnotationFile();
-
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
 
 private:
     void addContextItems();
     void setupActions( MarbleWidget *marbleWidget );
+    void disableActions( QActionGroup *group );
+    void enableAllActions( QActionGroup *group );
+    void enableOnFocusItemType( const QString &type );
+    void disableFocusActions();
 
     void setupTextAnnotationRmbMenu();
     void showTextAnnotationRmbMenu( qreal x, qreal y );
@@ -143,7 +146,6 @@ private:
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
     void showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y );
-    void displayOverlayEditDialog( GeoDataGroundOverlay *overlay );
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
@@ -157,14 +159,11 @@ private:
 
     void handleUncaughtEvents( QMouseEvent *mouseEvent );
     void handleReleaseOverlay( QMouseEvent *mouseEvent );
-
     bool handleDrawingPolyline( QMouseEvent *mouseEvent );
     bool handleDrawingPolygon( QMouseEvent *mouseEvent );
     bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
-    void handleRemovingItem( SceneGraphicsItem *item );
     void handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-
     void handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     void handleSuccessfulHoverEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     void handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
@@ -204,6 +203,7 @@ private:
     bool m_drawingPolygon;
     bool m_drawingPolyline;
     bool m_isInitialized;
+    bool m_editingDialogIsShown;
 };
 
 }
