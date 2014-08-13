@@ -71,6 +71,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
       m_annotationDocument( new GeoDataDocument ),
       m_movedItem( 0 ),
       m_focusItem( 0 ),
+      m_polylinePlacemark( 0 ),
       m_polygonPlacemark( 0 ),
       m_clipboardItem( 0 ),
       m_drawingPolygon( false ),
@@ -1214,8 +1215,11 @@ void AnnotatePlugin::addPolygon()
 
 void AnnotatePlugin::stopEditingPolygon()
 {
-    m_editingDialogIsShown = false;
     m_drawingPolygon = false;
+    m_drawingPolygon = 0;
+    m_polygonPlacemark = 0;
+
+    m_editingDialogIsShown = false;
     announceStateChanged( SceneGraphicsItem::Editing );
     enableAllActions( m_actions.at(0) );
     disableFocusActions();
@@ -1455,8 +1459,11 @@ void AnnotatePlugin::addPolyline()
 
 void AnnotatePlugin::stopEditingPolyline()
 {
-    m_editingDialogIsShown = false;
     m_drawingPolyline = false;
+    m_drawingPolyline = 0;
+    m_polylinePlacemark = 0;
+
+    m_editingDialogIsShown = false;
     announceStateChanged( SceneGraphicsItem::Editing );
     enableAllActions( m_actions.at(0) );
     disableFocusActions();
