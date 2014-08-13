@@ -94,9 +94,18 @@ signals:
 
 private slots:
     void enableModel( bool enabled );
+    void askToRemoveFocusItem();
+    void removeFocusItem();
+    void clearAnnotations();
+    void saveAnnotationFile();
+    void loadAnnotationFile();
+    void copyItem();
+    void cutItem();
+    void pasteItem();
 
     void addTextAnnotation();
     void editTextAnnotation();
+    void stopEditingTextAnnotation();
 
     void addOverlay();
     void editOverlay();
@@ -120,63 +129,47 @@ private slots:
     void stopEditingPolyline();
     void setPolylineAvailable( PolylineAnnotation *targetedPolyline );
 
-    void copyItem();
-    void cutItem();
-    void pasteItem();
-    void removeNewItem();
-    void removeRmbSelectedItem();
-
-    void setRemovingItems( bool );
-    void clearAnnotations();
-    void saveAnnotationFile();
-    void loadAnnotationFile();
-
-    //    void receiveNetworkReply( QNetworkReply* );
-    //    void downloadOsmFile();
-
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
 
 private:
     void addContextItems();
     void setupActions( MarbleWidget *marbleWidget );
+    void disableActions( QActionGroup *group );
+    void enableAllActions( QActionGroup *group );
+    void enableOnFocusItemType( const QString &type );
+    void disableFocusActions();
 
     void setupTextAnnotationRmbMenu();
-    void showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y );
+    void showTextAnnotationRmbMenu( qreal x, qreal y );
 
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
     void showOverlayRmbMenu( GeoDataGroundOverlay *overlay, qreal x, qreal y );
-    void displayOverlayEditDialog( GeoDataGroundOverlay *overlay );
     void displayOverlayFrame( GeoDataGroundOverlay *overlay );
     void clearOverlayFrames();
 
     void setupPolygonRmbMenu();
     void setupNodeRmbMenu();
-    void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
-    void showNodeRmbMenu( SceneGraphicsItem *item, qreal x, qreal y );
+    void showPolygonRmbMenu( qreal x, qreal y );
+    void showNodeRmbMenu( qreal x, qreal y );
 
     void setupPolylineRmbMenu();
-    void showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x, qreal y );
+    void showPolylineRmbMenu( qreal x, qreal y );
 
     void handleUncaughtEvents( QMouseEvent *mouseEvent );
     void handleReleaseOverlay( QMouseEvent *mouseEvent );
-
     bool handleDrawingPolyline( QMouseEvent *mouseEvent );
     bool handleDrawingPolygon( QMouseEvent *mouseEvent );
     bool handleMovingSelectedItem( QMouseEvent *mouseEvent );
 
-    void handleRemovingItem( SceneGraphicsItem *item );
     void handleRequests( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
-
     void handleSuccessfulPressEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     void handleSuccessfulHoverEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
     void handleSuccessfulReleaseEvent( QMouseEvent *mouseEvent, SceneGraphicsItem *item );
 
     void announceStateChanged( SceneGraphicsItem::ActionState newState );
     void setupCursor( SceneGraphicsItem *item );
-
-    //    void readOsmFile( QIODevice* device, bool flyToFile );
 
 
     bool m_widgetInitialized;
@@ -188,34 +181,29 @@ private:
     QMenu *m_textAnnotationRmbMenu;
     QMenu *m_polylineRmbMenu;
 
-    QList<QActionGroup*>    m_actions;
-    QList<QActionGroup*>    m_toolbarActions;
-    QSortFilterProxyModel   m_groundOverlayModel;
+    QList<QActionGroup*> m_actions;
+    QList<QActionGroup*> m_toolbarActions;
+    QSortFilterProxyModel m_groundOverlayModel;
     QMap<GeoDataGroundOverlay*, SceneGraphicsItem*> m_groundOverlayFrames;
 
-    GeoDataDocument*          m_annotationDocument;
+    GeoDataDocument* m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
     SceneGraphicsItem *m_movedItem;
-    SceneGraphicsItem *m_lastItem;
-    SceneGraphicsItem *m_editedItem;
-    SceneGraphicsItem *m_rmbSelectedItem;
-    GeoDataGroundOverlay    *m_rmbOverlay;
+    SceneGraphicsItem *m_focusItem;
+    GeoDataGroundOverlay *m_rmbOverlay;
 
-    GeoDataPlacemark        *m_polylinePlacemark;
-    GeoDataPlacemark        *m_polygonPlacemark;
+    GeoDataPlacemark *m_polylinePlacemark;
+    GeoDataPlacemark *m_polygonPlacemark;
 
     GeoDataCoordinates m_fromWhereToCopy;
-    SceneGraphicsItem  *m_clipboardItem;
-    QAction            *m_pasteGraphicItem;
-
-    //    QNetworkAccessManager* m_networkAccessManager;
-    //    QErrorMessage m_errorMessage;
+    SceneGraphicsItem *m_clipboardItem;
+    QAction *m_pasteGraphicItem;
 
     bool m_drawingPolygon;
     bool m_drawingPolyline;
-    bool m_removingItem;
     bool m_isInitialized;
+    bool m_editingDialogIsShown;
 };
 
 }
