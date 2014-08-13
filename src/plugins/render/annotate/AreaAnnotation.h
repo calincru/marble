@@ -225,8 +225,8 @@ private:
     static const QColor hoveredColor;
 
     const ViewportParams *m_viewport;
-    bool                  m_regionsInitialized;
-    bool                  m_busy;
+    bool m_regionsInitialized;
+    bool m_busy;
 
     QList<PolylineNode>          m_outerNodesList;
     QList<PolylineNode>          m_outerVirtualNodes;

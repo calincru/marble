@@ -72,7 +72,9 @@ void PolylineAnnotation::paint( GeoPainter *painter, const ViewportParams *viewp
         updateRegions( painter );
     }
 
-    drawNodes( painter );
+    if ( hasFocus() ) {
+        drawNodes( painter );
+    }
     painter->restore();
 }
 
@@ -244,6 +246,10 @@ bool PolylineAnnotation::containsPoint( const QPoint &point ) const
 
 int PolylineAnnotation::nodeContains( const QPoint &point ) const
 {
+    if ( !hasFocus() ) {
+        return -1;
+    }
+
     for ( int i = 0; i < m_nodesList.size(); ++i ) {
         if ( m_nodesList.at(i).containsPoint( point ) ) {
             return i;
@@ -255,6 +261,10 @@ int PolylineAnnotation::nodeContains( const QPoint &point ) const
 
 int PolylineAnnotation::virtualNodeContains( const QPoint &point ) const
 {
+    if ( !hasFocus() ) {
+        return -1;
+    }
+
     for ( int i = 0; i < m_virtualNodesList.size(); ++i ) {
         if ( m_virtualNodesList.at(i).containsPoint( point ) )
             return i;

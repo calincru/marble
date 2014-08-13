@@ -27,7 +27,6 @@
 #include "MergingPolygonNodesAnimation.h"
 #include "PolylineNode.h"
 
-#include <QDebug>
 
 namespace Marble {
 
@@ -70,7 +69,9 @@ void AreaAnnotation::paint( GeoPainter *painter, const ViewportParams *viewport 
         updateRegions( painter );
     }
 
-    drawNodes( painter );
+    if ( hasFocus() ) {
+        drawNodes( painter );
+    }
     painter->restore();
 }
 
@@ -826,6 +827,10 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
 
 int AreaAnnotation::outerNodeContains( const QPoint &point ) const
 {
+    if ( !hasFocus() ) {
+        return -1;
+    }
+
     for ( int i = 0; i < m_outerNodesList.size(); ++i ) {
         if ( m_outerNodesList.at(i).containsPoint( point ) ) {
             return i;
@@ -837,6 +842,10 @@ int AreaAnnotation::outerNodeContains( const QPoint &point ) const
 
 QPair<int, int> AreaAnnotation::innerNodeContains( const QPoint &point ) const
 {
+    if ( !hasFocus() ) {
+        return QPair<int, int>( -1, -1 );
+    }
+
     for ( int i = 0; i < m_innerNodesList.size(); ++i ) {
         for ( int j = 0; j < m_innerNodesList.at(i).size(); ++j ) {
             if ( m_innerNodesList.at(i).at(j).containsPoint( point ) ) {
@@ -850,6 +859,10 @@ QPair<int, int> AreaAnnotation::innerNodeContains( const QPoint &point ) const
 
 QPair<int, int> AreaAnnotation::virtualNodeContains( const QPoint &point ) const
 {
+    if ( !hasFocus() ) {
+        return QPair<int, int>( -1, -1 );
+    }
+
     for ( int i = 0; i < m_outerVirtualNodes.size(); ++i ) {
         if ( m_outerVirtualNodes.at(i).containsPoint( point ) ) {
             return QPair<int, int>( i, -1 );

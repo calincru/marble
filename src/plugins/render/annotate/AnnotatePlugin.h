@@ -123,16 +123,12 @@ private slots:
     void copyItem();
     void cutItem();
     void pasteItem();
-    void removeNewItem();
-    void removeRmbSelectedItem();
 
-    void setRemovingItems( bool );
+    void removeFocusItem();
+    void removeNewItem();
     void clearAnnotations();
     void saveAnnotationFile();
     void loadAnnotationFile();
-
-    //    void receiveNetworkReply( QNetworkReply* );
-    //    void downloadOsmFile();
 
 protected:
     bool eventFilter( QObject *watched, QEvent *event );
@@ -142,7 +138,7 @@ private:
     void setupActions( MarbleWidget *marbleWidget );
 
     void setupTextAnnotationRmbMenu();
-    void showTextAnnotationRmbMenu( PlacemarkTextAnnotation *placemark, qreal x, qreal y );
+    void showTextAnnotationRmbMenu( qreal x, qreal y );
 
     void setupGroundOverlayModel();
     void setupOverlayRmbMenu();
@@ -153,11 +149,11 @@ private:
 
     void setupPolygonRmbMenu();
     void setupNodeRmbMenu();
-    void showPolygonRmbMenu( AreaAnnotation *selectedArea, qreal x, qreal y );
-    void showNodeRmbMenu( SceneGraphicsItem *item, qreal x, qreal y );
+    void showPolygonRmbMenu( qreal x, qreal y );
+    void showNodeRmbMenu( qreal x, qreal y );
 
     void setupPolylineRmbMenu();
-    void showPolylineRmbMenu( PolylineAnnotation *polyline, qreal x, qreal y );
+    void showPolylineRmbMenu( qreal x, qreal y );
 
     void handleUncaughtEvents( QMouseEvent *mouseEvent );
     void handleReleaseOverlay( QMouseEvent *mouseEvent );
@@ -176,8 +172,6 @@ private:
     void announceStateChanged( SceneGraphicsItem::ActionState newState );
     void setupCursor( SceneGraphicsItem *item );
 
-    //    void readOsmFile( QIODevice* device, bool flyToFile );
-
 
     bool m_widgetInitialized;
     MarbleWidget *m_marbleWidget;
@@ -188,33 +182,27 @@ private:
     QMenu *m_textAnnotationRmbMenu;
     QMenu *m_polylineRmbMenu;
 
-    QList<QActionGroup*>    m_actions;
-    QList<QActionGroup*>    m_toolbarActions;
-    QSortFilterProxyModel   m_groundOverlayModel;
+    QList<QActionGroup*> m_actions;
+    QList<QActionGroup*> m_toolbarActions;
+    QSortFilterProxyModel m_groundOverlayModel;
     QMap<GeoDataGroundOverlay*, SceneGraphicsItem*> m_groundOverlayFrames;
 
-    GeoDataDocument*          m_annotationDocument;
+    GeoDataDocument* m_annotationDocument;
     QList<SceneGraphicsItem*> m_graphicsItems;
 
     SceneGraphicsItem *m_movedItem;
-    SceneGraphicsItem *m_lastItem;
-    SceneGraphicsItem *m_editedItem;
-    SceneGraphicsItem *m_rmbSelectedItem;
-    GeoDataGroundOverlay    *m_rmbOverlay;
+    SceneGraphicsItem *m_focusItem;
+    GeoDataGroundOverlay *m_rmbOverlay;
 
-    GeoDataPlacemark        *m_polylinePlacemark;
-    GeoDataPlacemark        *m_polygonPlacemark;
+    GeoDataPlacemark *m_polylinePlacemark;
+    GeoDataPlacemark *m_polygonPlacemark;
 
     GeoDataCoordinates m_fromWhereToCopy;
-    SceneGraphicsItem  *m_clipboardItem;
-    QAction            *m_pasteGraphicItem;
-
-    //    QNetworkAccessManager* m_networkAccessManager;
-    //    QErrorMessage m_errorMessage;
+    SceneGraphicsItem *m_clipboardItem;
+    QAction *m_pasteGraphicItem;
 
     bool m_drawingPolygon;
     bool m_drawingPolyline;
-    bool m_removingItem;
     bool m_isInitialized;
 };
 
