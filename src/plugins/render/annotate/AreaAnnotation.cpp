@@ -1464,7 +1464,8 @@ bool AreaAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
         return true;
     }
 
-    return false;
+    // This means that the interior of the polygon has been covered so we catch this event too.
+    return true;
 }
 
 }

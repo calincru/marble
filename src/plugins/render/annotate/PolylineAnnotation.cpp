@@ -807,7 +807,8 @@ bool PolylineAnnotation::dealWithHovering( QMouseEvent *mouseEvent )
         return true;
     }
 
-    return false;
+    // This means that the interior of the polyline has been hovered so we catch this evnt too.
+    return true;
 }
 
 const char *PolylineAnnotation::graphicType() const
