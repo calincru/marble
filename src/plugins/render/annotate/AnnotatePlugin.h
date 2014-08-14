@@ -137,7 +137,7 @@ private:
     void setupActions( MarbleWidget *marbleWidget );
     void disableActions( QActionGroup *group );
     void enableAllActions( QActionGroup *group );
-    void enableOnFocusItemType( const QString &type );
+    void enableActionsOnItemType( const QString &type );
     void disableFocusActions();
 
     void setupTextAnnotationRmbMenu();

@@ -99,10 +99,7 @@ AnnotatePlugin::AnnotatePlugin( const MarbleModel *model )
 
 AnnotatePlugin::~AnnotatePlugin()
 {
-    for ( int i = 0; i < m_graphicsItems.size(); ++i ) {
-        delete m_graphicsItems[i];
-    }
-
+    qDeleteAll( m_graphicsItems );
     if ( m_marbleWidget ) {
         m_marbleWidget->model()->treeModel()->removeDocument( m_annotationDocument );
     }
@@ -286,7 +283,6 @@ void AnnotatePlugin::askToRemoveFocusItem()
                                               QObject::tr( "Remove current item" ),
                                               QObject::tr( "Are you sure you want to remove the current item?" ),
                                               QMessageBox::Yes | QMessageBox::No );
-
     if ( result == QMessageBox::Yes ) {
         removeFocusItem();
     }
@@ -344,7 +340,7 @@ void AnnotatePlugin::clearAnnotations()
 
 void AnnotatePlugin::saveAnnotationFile()
 {
-    QString const filename = QFileDialog::getSaveFileName( 0,
+    const QString filename = QFileDialog::getSaveFileName( 0,
                                                            tr("Save Annotation File"),
                                                            QString(),
                                                            tr("All Supported Files (*.kml *.osm);;"
@@ -365,7 +361,7 @@ void AnnotatePlugin::saveAnnotationFile()
 
 void AnnotatePlugin::loadAnnotationFile()
 {
-    QString const filename = QFileDialog::getOpenFileName( 0,
+    const QString filename = QFileDialog::getOpenFileName( 0,
                                                            tr("Open Annotation File"),
                                                            QString(),
                                                            tr("All Supported Files (*.kml *.osm);;"
@@ -491,7 +487,7 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
             if ( mouseEvent->type() == QEvent::MouseButtonPress &&
                  mouseEvent->button() == Qt::LeftButton ) {
                 item->setFocus( true );
-                enableOnFocusItemType( item->graphicType() );
+                enableActionsOnItemType( item->graphicType() );
 
                 if ( m_focusItem && m_focusItem != item ) {
                     m_focusItem->setFocus( false );
@@ -879,7 +875,7 @@ void AnnotatePlugin::enableAllActions( QActionGroup *group )
     }
 }
 
-void AnnotatePlugin::enableOnFocusItemType( const QString &type )
+void AnnotatePlugin::enableActionsOnItemType( const QString &type )
 {
     if ( type == SceneGraphicsTypes::SceneGraphicAreaAnnotation ||
          type == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
@@ -1003,7 +999,7 @@ void AnnotatePlugin::stopEditingTextAnnotation()
     announceStateChanged( SceneGraphicsItem::Editing );
     enableAllActions( m_actions.at(0) );
     disableFocusActions();
-    enableOnFocusItemType( SceneGraphicsTypes::SceneGraphicTextAnnotation );
+    enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicTextAnnotation );
 }
 
 void AnnotatePlugin::setupGroundOverlayModel()
@@ -1093,7 +1089,7 @@ void AnnotatePlugin::displayOverlayFrame( GeoDataGroundOverlay *overlay )
         m_focusItem->setFocus( false );
     }
     m_focusItem = frame;
-    enableOnFocusItemType( SceneGraphicsTypes::SceneGraphicGroundOverlay );
+    enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicGroundOverlay );
 }
 
 void AnnotatePlugin::updateOverlayFrame( GeoDataGroundOverlay *overlay )
@@ -1223,7 +1219,7 @@ void AnnotatePlugin::stopEditingPolygon()
     announceStateChanged( SceneGraphicsItem::Editing );
     enableAllActions( m_actions.at(0) );
     disableFocusActions();
-    enableOnFocusItemType( SceneGraphicsTypes::SceneGraphicAreaAnnotation );
+    enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicAreaAnnotation );
 }
 
 void AnnotatePlugin::deselectNodes()
@@ -1467,7 +1463,7 @@ void AnnotatePlugin::stopEditingPolyline()
     announceStateChanged( SceneGraphicsItem::Editing );
     enableAllActions( m_actions.at(0) );
     disableFocusActions();
-    enableOnFocusItemType( SceneGraphicsTypes::SceneGraphicPolylineAnnotation );
+    enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicPolylineAnnotation );
 }
 
 void AnnotatePlugin::announceStateChanged( SceneGraphicsItem::ActionState newState )
@@ -1545,7 +1541,7 @@ void AnnotatePlugin::pasteItem()
     m_graphicsItems.append( m_clipboardItem );
 
     m_clipboardItem->setFocus( true );
-    enableOnFocusItemType( m_clipboardItem->graphicType() );
+    enableActionsOnItemType( m_clipboardItem->graphicType() );
     m_focusItem = m_clipboardItem;
     m_clipboardItem = 0;
 
