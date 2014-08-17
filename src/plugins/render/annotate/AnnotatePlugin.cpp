@@ -1211,11 +1211,11 @@ void AnnotatePlugin::addPolygon()
 
 void AnnotatePlugin::stopEditingPolygon()
 {
+    m_editingDialogIsShown = false;
     m_drawingPolygon = false;
     m_drawingPolygon = 0;
     m_polygonPlacemark = 0;
 
-    m_editingDialogIsShown = false;
     announceStateChanged( SceneGraphicsItem::Editing );
     enableAllActions( m_actions.at(0) );
     disableFocusActions();

@@ -88,6 +88,7 @@ EditPolygonDialog::EditPolygonDialog( GeoDataPlacemark *placemark, QWidget *pare
     } else {
         d->m_filledColor->setCurrentIndex( 1 );
     }
+    connect( d->m_filledColor, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePolygon()) );
 
     // Adjust the color buttons' icons to the current lines and polygon colors.
     QPixmap linesPixmap( d->m_linesColorButton->iconSize().width(),
