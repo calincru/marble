@@ -879,22 +879,22 @@ void AnnotatePlugin::enableActionsOnItemType( const QString &type )
 {
     if ( type == SceneGraphicsTypes::SceneGraphicAreaAnnotation ||
          type == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
-        m_actions.at(0)->actions().at(9)->setEnabled( true );
-        m_actions.at(0)->actions().at(10)->setEnabled( true );
-        m_actions.at(0)->actions().at(11)->setEnabled( true );
+        m_actions.first()->actions().at(9)->setEnabled( true );
+        m_actions.first()->actions().at(10)->setEnabled( true );
+        m_actions.first()->actions().at(11)->setEnabled( true );
     }
 
-    m_actions.at(0)->actions().at(12)->setEnabled( true );
+    m_actions.first()->actions().at(12)->setEnabled( true );
 }
 
 void AnnotatePlugin::disableFocusActions()
 {
-    m_actions.at(0)->actions().at(8)->setChecked( true );
+    m_actions.first()->actions().at(8)->setChecked( true );
 
-    m_actions.at(0)->actions().at(9)->setEnabled( false );
-    m_actions.at(0)->actions().at(10)->setEnabled( false );
-    m_actions.at(0)->actions().at(11)->setEnabled( false );
-    m_actions.at(0)->actions().at(12)->setEnabled( false );
+    m_actions.first()->actions().at(9)->setEnabled( false );
+    m_actions.first()->actions().at(10)->setEnabled( false );
+    m_actions.first()->actions().at(11)->setEnabled( false );
+    m_actions.first()->actions().at(12)->setEnabled( false );
 }
 
 void AnnotatePlugin::addContextItems()
@@ -951,7 +951,7 @@ void AnnotatePlugin::editTextAnnotation()
     connect( dialog, SIGNAL(finished(int)),
              this, SLOT(stopEditingTextAnnotation()) );
 
-    disableActions( m_actions.at(0) );
+    disableActions( m_actions.first() );
     dialog->show();
     m_editingDialogIsShown = true;
 }
@@ -988,7 +988,7 @@ void AnnotatePlugin::addTextAnnotation()
         m_focusItem->setFocus( false );
     }
     m_focusItem = textAnnotation;
-    disableActions( m_actions.at(0) );
+    disableActions( m_actions.first() );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
@@ -997,7 +997,7 @@ void AnnotatePlugin::addTextAnnotation()
 void AnnotatePlugin::stopEditingTextAnnotation()
 {
     announceStateChanged( SceneGraphicsItem::Editing );
-    enableAllActions( m_actions.at(0) );
+    enableAllActions( m_actions.first() );
     disableFocusActions();
     enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicTextAnnotation );
 }
@@ -1203,7 +1203,7 @@ void AnnotatePlugin::addPolygon()
         m_focusItem->setFocus( false );
     }
     m_focusItem = polygon;
-    disableActions( m_actions.at(0) );
+    disableActions( m_actions.first() );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
@@ -1217,7 +1217,7 @@ void AnnotatePlugin::stopEditingPolygon()
     m_polygonPlacemark = 0;
 
     announceStateChanged( SceneGraphicsItem::Editing );
-    enableAllActions( m_actions.at(0) );
+    enableAllActions( m_actions.first() );
     disableFocusActions();
     enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicAreaAnnotation );
 }
@@ -1274,7 +1274,7 @@ void AnnotatePlugin::editPolygon()
     connect( dialog, SIGNAL(finished(int)),
              this, SLOT(stopEditingPolygon()) );
 
-    disableActions( m_actions.at(0) );
+    disableActions( m_actions.first() );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
@@ -1411,7 +1411,7 @@ void AnnotatePlugin::editPolyline()
     connect( dialog, SIGNAL(finished(int)),
              this, SLOT(stopEditingPolyline()) );
 
-    disableActions( m_actions.at(0) );
+    disableActions( m_actions.first() );
     dialog->show();
     m_editingDialogIsShown = true;
 }
@@ -1447,7 +1447,7 @@ void AnnotatePlugin::addPolyline()
         m_focusItem->setFocus( false );
     }
     m_focusItem = polyline;
-    disableActions( m_actions.at(0) );
+    disableActions( m_actions.first() );
 
     dialog->move( m_marbleWidget->mapToGlobal( QPoint( 0, 0 ) ) );
     dialog->show();
@@ -1461,7 +1461,7 @@ void AnnotatePlugin::stopEditingPolyline()
 
     m_editingDialogIsShown = false;
     announceStateChanged( SceneGraphicsItem::Editing );
-    enableAllActions( m_actions.at(0) );
+    enableAllActions( m_actions.first() );
     disableFocusActions();
     enableActionsOnItemType( SceneGraphicsTypes::SceneGraphicPolylineAnnotation );
 }
