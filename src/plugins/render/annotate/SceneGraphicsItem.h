@@ -90,7 +90,11 @@ public:
     virtual void dealWithItemChange( const SceneGraphicsItem *other ) = 0;
 
     /**
-     * @brief
+     * @brief Pure virtual method which is implemented by concrete scene graphic items
+     * and deals with moving it from the @param source coordinates to the @param
+     * destination coordinates.
+     * FIXME: Maybe move this to the model classes since the classes derived from this
+     * abstract class should only deal with painting and event handling.
      */
     virtual void move( const GeoDataCoordinates &source, const GeoDataCoordinates &destination ) = 0;
 
@@ -106,12 +110,12 @@ public:
     void setState( ActionState state );
 
     /**
-     * @brief
+     * @brief Returns whether this item has the focus or not.
      */
     bool hasFocus() const;
 
     /**
-     * @brief
+     * @brief Sets the focus of this item according to the @param enabled.
      */
     void setFocus( bool enabled );
 
