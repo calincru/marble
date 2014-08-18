@@ -125,11 +125,6 @@ public:
     MarbleWidgetRequest request() const;
 
     /**
-     * @brief Sets the widget request.
-     */
-    void setRequest( MarbleWidgetRequest request );
-
-    /**
      * @brief SceneGraphicItem class, when called from one of its derived classes'
      * constructors, takes as a parameter a pointer to the placemark of the graphic
      * element.
@@ -162,6 +157,11 @@ protected:
     virtual bool mouseReleaseEvent( QMouseEvent *event ) = 0;
 
     virtual void dealWithStateChange( SceneGraphicsItem::ActionState previousState ) = 0;
+
+    /**
+     * @brief Sets the widget request.
+     */
+    void setRequest( MarbleWidgetRequest request );
 
 private:
     ActionState         m_state;
