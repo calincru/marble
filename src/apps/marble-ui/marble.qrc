@@ -54,6 +54,7 @@
         <file>icons/polygon-add-nodes.png</file>
         <file>icons/polygon-draw-hole.png</file>
         <file>icons/polygon-merge-nodes.png</file>
+        <file>icons/open-for-editing.png</file>
         <file>icons/16x16/task-accepted.png</file>
         <file>icons/16x16/document-open.png</file>
         <file>icons/16x16/document-save.png</file>

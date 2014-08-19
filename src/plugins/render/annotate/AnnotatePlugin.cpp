@@ -828,12 +828,12 @@ void AnnotatePlugin::setupActions( MarbleWidget *widget )
     removeItem->setEnabled( false );
     connect( removeItem, SIGNAL(triggered()), this, SLOT(askToRemoveFocusItem()) );
 
-    QAction *loadAnnotationFile = new QAction( QIcon( ":/icons/document-import.png"),
+    QAction *loadAnnotationFile = new QAction( QIcon( ":/icons/open-for-editing.png"),
                                                tr("Load Annotation File" ),
                                                this );
     connect( loadAnnotationFile, SIGNAL(triggered()), this, SLOT(loadAnnotationFile()) );
 
-    QAction *saveAnnotationFile = new QAction( QIcon( ":/icons/document-export.png"),
+    QAction *saveAnnotationFile = new QAction( QIcon( ":/icons//document-save-as.png"),
                                                tr("Save Annotation File"),
                                                this );
     connect( saveAnnotationFile, SIGNAL(triggered()), this, SLOT(saveAnnotationFile()) );
