@@ -147,13 +147,13 @@ private Q_SLOTS:
     void moveDown();
     void addFlyTo();
     void deleteSelected();
-    void centerOn( const GeoDataCoordinates &coordinates );
 
  private:
     Q_PRIVATE_SLOT( d, void openFile() )
     Q_PRIVATE_SLOT( d, void createTour() )
     Q_PRIVATE_SLOT( d, void saveTour() )
     Q_PRIVATE_SLOT( d, void saveTourAs() )
+    Q_PRIVATE_SLOT( d, void captureTour() )
     Q_PRIVATE_SLOT( d, void updateButtonsStates() )
     Q_PRIVATE_SLOT( d, void mapCenterOn( const QModelIndex &index ) )
     Q_PRIVATE_SLOT( d, void handlePlaybackProgress( const double position ) )

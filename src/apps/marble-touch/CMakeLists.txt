@@ -34,7 +34,6 @@ else()
     ${Qt5Network_LIBRARIES}
     ${Qt5WebKitWidgets_LIBRARIES}
     ${Qt5WebKit_LIBRARIES}
-    ${Qt5Quick_LIBRARIES}
     marblewidget)
 endif()
 install( TARGETS marble-touch RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )

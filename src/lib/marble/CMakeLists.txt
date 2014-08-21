@@ -90,6 +90,7 @@ set(marblewidget_SRCS
     MarbleModel.cpp
     MarbleMap.cpp
     MarbleControlBox.cpp
+    MarbleColors.cpp
     NavigationWidget.cpp
     MapViewWidget.cpp
     FileViewWidget.cpp
@@ -103,7 +104,8 @@ set(marblewidget_SRCS
     PlaybackTourControlItem.cpp
     PlaybackWaitItem.cpp
     SerialTrack.cpp
-    ParallelTrack.cpp
+    SoundTrack.cpp
+    AnimatedUpdateTrack.cpp
     CurrentLocationWidget.cpp
     MarbleNavigator.cpp
     MarbleLegendBrowser.cpp
@@ -153,6 +155,7 @@ set(marblewidget_SRCS
     VisiblePlacemark.cpp
     PlacemarkLayout.cpp
     Planet.cpp
+    PlanetFactory.cpp
     Quaternion.cpp
     TextureColorizer.cpp
     TextureMapperInterface.cpp
@@ -182,6 +185,7 @@ set(marblewidget_SRCS
     ImageF.cpp
     MovieCapture.cpp
     MovieCaptureDialog.cpp
+    TourCaptureDialog.cpp
 
     AbstractDataPlugin.cpp
     AbstractDataPluginModel.cpp
@@ -320,6 +324,7 @@ set (marblewidget_UI
     cloudsync/CloudRoutesDialog.ui
     MarbleCloudSyncSettingsWidget.ui
     MovieCaptureDialog.ui
+    TourCaptureDialog.ui
 )
 
 # FIXME: cleaner approach of src/lib/marblwidget/MarbleControlBox.* vs. marble.qrc
@@ -355,7 +360,6 @@ else()
     ${Qt5WebKitWidgets_LIBRARIES}
     ${Qt5Svg_LIBRARIES}
     ${Qt5Script_LIBRARIES}
-    ${Qt5PrintSupport_LIBRARIES}
     )
 endif()
 
@@ -530,6 +534,7 @@ install( FILES
     PluginAboutDialog.h
     marble_export.h
     Planet.h
+    PlanetFactory.h
 
     AbstractDataPlugin.h
     AbstractDataPluginModel.h

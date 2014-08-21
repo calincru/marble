@@ -1,9 +1,5 @@
 project(marble)
 
-# YouCompleteMe plugin needs this in order to generate its
-# compile_commands.json
-set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-
 ####################################################
 # CMake Settings
 SET(CMAKE_COLOR_MAKEFILE ON)
@@ -78,14 +74,14 @@ else()
   find_package(Qt5Sql REQUIRED)
   find_package(Qt5Concurrent REQUIRED)
   find_package(Qt5PrintSupport REQUIRED)
-  find_package(Qt5Quick REQUIRED)
 
   include_directories( ${Qt5Svg_INCLUDE_DIRS} )
   include_directories( ${Qt5PrintSupport_INCLUDE_DIRS} )
   include_directories( ${Qt5Network_INCLUDE_DIRS} )
   include_directories( ${Qt5Script_INCLUDE_DIRS} )
   include_directories( ${Qt5Test_INCLUDE_DIRS} )
-  include_directories( ${Qt5Quick_INCLUDE_DIRS} )
+  include_directories( ${Qt5Xml_INCLUDE_DIRS} )
+  include_directories( ${Qt5Sql_INCLUDE_DIRS} )
 
   SET(CMAKE_AUTOMOC TRUE)
   SET(CMAKE_AUTOMOC_RELAXED_MODE TRUE)
@@ -296,10 +292,6 @@ if(WIN32)
   set (STATIC_BUILD FALSE CACHE BOOL "Link to static Qt libs (win32 only)?")
 endif(WIN32)
 
-# Variables to test new kml implementation
-# Will removed in feature after success
-#add_definitions(-DKML_DEBUG)
-#add_definitions(-DKML_GSOC)
 add_definitions(-DQT_USE_FAST_CONCATENATION -DQT_USE_FAST_OPERATOR_PLUS)
 
 ####################################################
@@ -395,13 +387,14 @@ endif()
 ####################################################
 # Install extra files
 install(FILES LICENSE.txt DESTINATION ${MARBLE_DATA_INSTALL_PATH})
+install(FILES marble.appdata.xml DESTINATION ${CMAKE_INSTALL_PREFIX}/share/appdata/)
 
 ####################################################
 # Install CMake module
-if( CMAKE_MODULES_INSTALL_PATH )
+if( CMAKE_MODULES_INSTALL_PATH AND NOT WIN32 )
   install( FILES FindMarble.cmake
            DESTINATION ${CMAKE_MODULES_INSTALL_PATH}  )
-endif( CMAKE_MODULES_INSTALL_PATH )
+endif()
 
 ############################################################
 # Uninstall stuff

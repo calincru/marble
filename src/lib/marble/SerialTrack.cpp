@@ -61,7 +61,9 @@ void SerialTrack::pause()
 void SerialTrack::stop()
 {
     m_paused = true;
-    m_items[m_currentIndex]->stop();
+    if( m_items.size() != 0 && m_currentIndex >= 0 && m_currentIndex <= m_items.size() - 1 ){
+        m_items[m_currentIndex]->stop();
+    }
     m_finishedPosition = 0;
     emit progressChanged( m_finishedPosition );
     m_currentIndex = 0;
@@ -122,6 +124,11 @@ void SerialTrack::clear()
 {
     qDeleteAll( m_items );
     m_items.clear();
+    m_duration = 0;
+    m_currentIndex = 0;
+    m_finishedPosition = 0;
+    m_currentPosition = 0;
+    m_paused = true;
 }
 
 void SerialTrack::handleFinishedItem()
@@ -154,6 +161,10 @@ PlaybackItem* SerialTrack::at( int i )
     return m_items.at( i );
 }
 
+double SerialTrack::currentPosition()
+{
+    return m_currentPosition;
+}
 
 }
 

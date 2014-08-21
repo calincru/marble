@@ -95,4 +95,4 @@ void GeoDataSimpleData::unpack( QDataStream &stream )
     stream >> d->m_data;
 }
 
-}   // namespace Marble
+}

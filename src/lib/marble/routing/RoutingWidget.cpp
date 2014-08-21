@@ -11,6 +11,10 @@
 #include "RoutingWidget.h"
 
 #include "GeoDataLineString.h"
+#include "GeoDataTour.h"
+#include "GeoDataFlyTo.h"
+#include "GeoDataStyle.h"
+#include "TourPlayback.h"
 #include "MarbleModel.h"
 #include "MarblePlacemarkModel.h"
 #include "MarbleWidget.h"
@@ -23,10 +27,15 @@
 #include "RoutingProfilesModel.h"
 #include "RoutingProfileSettingsDialog.h"
 #include "GeoDataDocument.h"
+#include "GeoDataTreeModel.h"
+#include "GeoDataTypes.h"
 #include "AlternativeRoutesModel.h"
 #include "RouteSyncManager.h"
 #include "CloudRoutesDialog.h"
 #include "CloudSyncManager.h"
+#include "PlaybackAnimatedUpdateItem.h"
+#include "GeoDataAnimatedUpdate.h"
+#include "MarbleMath.h"
 
 #include <QTime>
 #include <QTimer>
@@ -45,40 +54,48 @@
 namespace Marble
 {
 
+struct WaypointInfo
+{
+    int index;
+    double distance; // distance to route start
+    GeoDataCoordinates coordinates;
+    Maneuver maneuver;
+    const QString info;
+
+    WaypointInfo( int index_, double distance_, const GeoDataCoordinates &coordinates_, Maneuver maneuver_, const QString& info_ ) :
+        index( index_ ),
+        distance( distance_ ),
+        coordinates( coordinates_ ),
+        maneuver( maneuver_ ),
+        info( info_ )
+    {
+        // nothing to do
+    }
+};
+
 class RoutingWidgetPrivate
 {
 public:
     Ui::RoutingWidget m_ui;
-
     MarbleWidget *const m_widget;
-
     RoutingManager *const m_routingManager;
-
     RoutingLayer *const m_routingLayer;
-
     RoutingInputWidget *m_activeInput;
-
     QVector<RoutingInputWidget*> m_inputWidgets;
-
     RoutingInputWidget *m_inputRequest;
-
     QAbstractItemModel *const m_routingModel;
-
     RouteRequest *const m_routeRequest;
-
     RouteSyncManager *m_routeSyncManager;
-
     bool m_zoomRouteAfterDownload;
-
     QTimer m_progressTimer;
-
     QVector<QIcon> m_progressAnimation;
-
+    GeoDataDocument *m_document;
+    GeoDataTour *m_tour;
+    TourPlayback *m_playback;
     int m_currentFrame;
-
     int m_iconSize;
-
     int m_collapse_width;
+    bool m_playing;
 
     QToolBar *m_toolBar;
 
@@ -91,6 +108,7 @@ public:
     QToolButton *m_reverseRouteButton;
     QToolButton *m_clearRouteButton;
     QToolButton *m_configureButton;
+    QToolButton *m_playButton;
 
     QProgressDialog* m_routeUploadDialog;
 
@@ -130,9 +148,13 @@ RoutingWidgetPrivate::RoutingWidgetPrivate( RoutingWidget *parent, MarbleWidget 
         m_routeRequest( marbleWidget->model()->routingManager()->routeRequest() ),
         m_routeSyncManager( 0 ),
         m_zoomRouteAfterDownload( false ),
+        m_document( 0 ),
+        m_tour( 0 ),
+        m_playback( 0 ),
         m_currentFrame( 0 ),
         m_iconSize( 16 ),
         m_collapse_width( 0 ),
+        m_playing( false ),
         m_toolBar( 0 ),
         m_openRouteButton( 0 ),
         m_saveRouteButton( 0 ),
@@ -208,6 +230,11 @@ void RoutingWidgetPrivate::setupToolBar()
     m_saveRouteButton->setIcon( QIcon(":/icons/16x16/document-save.png") );
     m_toolBar->addWidget(m_saveRouteButton);
 
+    m_playButton = new QToolButton;
+    m_playButton->setToolTip( QObject::tr("Preview Route") );
+    m_playButton->setIcon( QIcon( ":/marble/playback-play.png" ) );
+    m_toolBar->addWidget(m_playButton);
+
     m_cloudSyncSeparator = m_toolBar->addSeparator();
     m_uploadToCloudAction = m_toolBar->addAction( QObject::tr("Upload to Cloud") );
     m_uploadToCloudAction->setToolTip( QObject::tr("Upload to Cloud") );
@@ -256,6 +283,8 @@ void RoutingWidgetPrivate::setupToolBar()
                       m_routingManager, SLOT(clearRoute()) );
     QObject::connect( m_configureButton, SIGNAL(clicked()),
                       m_parent,  SLOT(configureProfile()) );
+    QObject::connect( m_playButton, SIGNAL(clicked()),
+                      m_parent,  SLOT(toggleRoutePlay()) );
 
     m_toolBar->setIconSize(QSize(16, 16));
     m_ui.toolBarLayout->addWidget(m_toolBar, 0, Qt::AlignLeft);
@@ -368,6 +397,12 @@ RoutingWidget::RoutingWidget( MarbleWidget *marbleWidget, QWidget *parent ) :
 
 RoutingWidget::~RoutingWidget()
 {
+    delete d->m_playback;
+    delete d->m_tour;
+    if( d->m_document ){
+        d->m_widget->model()->treeModel()->removeDocument( d->m_document );
+        delete d->m_document;
+    }
     delete d;
 }
 
@@ -401,6 +436,10 @@ void RoutingWidget::retrieveRoute()
         d->m_routingManager->retrieveRoute();
         d->m_ui.directionsListView->setModel( d->m_routingModel );
         d->m_routingLayer->synchronizeWith( d->m_ui.directionsListView->selectionModel() );
+    }
+
+    if( d->m_playback ){
+        d->m_playback->stop();
     }
 }
 
@@ -537,6 +576,7 @@ void RoutingWidget::removeInputWidget( int index )
 
 void RoutingWidget::updateRouteState( RoutingManager::State state )
 {
+    clearTour();
     if ( state != RoutingManager::Retrieved ) {
         d->m_ui.routeComboBox->setVisible( false );
         d->m_ui.routeComboBox->clear();
@@ -813,6 +853,158 @@ bool RoutingWidget::eventFilter( QObject *o, QEvent *event )
 void RoutingWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
+}
+
+void RoutingWidget::toggleRoutePlay()
+{
+    if( !d->m_playing ){
+        d->m_playing = true;
+        d->m_playButton->setIcon( QIcon( ":/marble/playback-pause.png" ) );
+
+        if( !d->m_playback ){
+            initializeTour();
+        }
+        if( d->m_playback ){
+            d->m_playback->play();
+        }
+    } else {
+        d->m_playing = false;
+        d->m_playButton->setIcon( QIcon( ":/marble/playback-play.png" ) );
+        d->m_playback->pause();
+    }
+}
+
+void RoutingWidget::initializeTour()
+{
+    d->m_tour = new GeoDataTour;
+    if( d->m_document ){
+        d->m_widget->model()->treeModel()->removeDocument( d->m_document );
+        delete d->m_document;
+    }
+    d->m_document = new GeoDataDocument;
+    d->m_document->setId("tourdoc");
+    d->m_document->append( d->m_tour );
+
+    d->m_tour->setPlaylist( new GeoDataPlaylist );
+    Route const route = d->m_widget->model()->routingManager()->routingModel()->route();
+    GeoDataLineString path = route.path();
+    if ( path.size() < 1 ){
+        return;
+    }
+
+    QList<WaypointInfo> waypoints;
+    double totalDistance = 0.0;
+    for( int i=0; i<route.size(); ++i ){
+        waypoints << WaypointInfo( i, totalDistance, route.at(i).path().first(), route.at(i).maneuver(), QString("start ") + QString( i ) );
+        totalDistance += route.at( i ).distance();
+    }
+
+    if( waypoints.size() < 1 ){
+        return;
+    }
+
+    QList<WaypointInfo> const allWaypoints = waypoints;
+    totalDistance = 0.0;
+    GeoDataCoordinates last = path.at( 0 );
+    int j=0; // next waypoint
+    for( int i=1; i<path.size(); ++i ){
+        GeoDataCoordinates coordinates = path.at( i );
+        totalDistance += EARTH_RADIUS * distanceSphere( path.at( i-1 ), coordinates ); // Distance to route start
+        while (totalDistance >= allWaypoints[j].distance && j+1<allWaypoints.size()) {
+            ++j;
+        }
+        int const lastIndex = qBound( 0, j-1, allWaypoints.size()-1 ); // previous waypoint
+        double const lastDistance = qAbs( totalDistance - allWaypoints[lastIndex].distance );
+        double const nextDistance = qAbs( allWaypoints[j].distance - totalDistance );
+        double const waypointDistance = qMin( lastDistance, nextDistance ); // distance to closest waypoint
+        double const step = qBound( 100.0, waypointDistance*2, 1000.0 ); // support point distance (higher density close to waypoints)
+
+        double const distance = EARTH_RADIUS * distanceSphere( last, coordinates );
+        if( i > 1 && distance < step ){
+            continue;
+        }
+        last = coordinates;
+
+        GeoDataLookAt* lookat = new GeoDataLookAt;
+        // Choose a zoom distance of 400, 600 or 800 meters based on the distance to the closest waypoint
+        double const range = waypointDistance < 400 ? 400 : ( waypointDistance < 2000 ? 600 : 800 );
+        coordinates.setAltitude( range );
+        lookat->setCoordinates( coordinates );
+        lookat->setRange( range );
+        GeoDataFlyTo* flyto = new GeoDataFlyTo;
+        double const duration = 0.75;
+        flyto->setDuration( duration );
+        flyto->setView( lookat );
+        flyto->setFlyToMode( GeoDataFlyTo::Smooth );
+        d->m_tour->playlist()->addPrimitive( flyto );
+
+        if( !waypoints.empty() && totalDistance > waypoints.first().distance-100 ){
+            WaypointInfo const waypoint = waypoints.first();
+            waypoints.pop_front();
+            GeoDataAnimatedUpdate *updateCreate = new GeoDataAnimatedUpdate;
+            updateCreate->setUpdate( new GeoDataUpdate );
+            updateCreate->update()->setCreate( new GeoDataCreate );
+            GeoDataPlacemark *placemarkCreate = new GeoDataPlacemark;
+            QString const waypointId = QString( "waypoint-%1" ).arg( i, 0, 10 );
+            placemarkCreate->setId( waypointId );
+            placemarkCreate->setTargetId( d->m_document->id() );
+            placemarkCreate->setCoordinate( waypoint.coordinates );
+            GeoDataStyle *style = new GeoDataStyle;
+            style->iconStyle().setIconPath( waypoint.maneuver.directionPixmap() );
+            placemarkCreate->setStyle( style );
+            updateCreate->update()->create()->append( placemarkCreate );
+            d->m_tour->playlist()->addPrimitive( updateCreate );
+
+            GeoDataAnimatedUpdate *updateDelete = new GeoDataAnimatedUpdate;
+            updateDelete->setDelayedStart( 2 );
+            updateDelete->setUpdate( new GeoDataUpdate );
+            updateDelete->update()->setDelete( new GeoDataDelete );
+            GeoDataPlacemark *placemarkDelete = new GeoDataPlacemark;
+            placemarkDelete->setTargetId( waypointId );
+            updateDelete->update()->getDelete()->append( placemarkDelete );
+            d->m_tour->playlist()->addPrimitive( updateDelete );
+        }
+    }
+
+    d->m_playback = new TourPlayback;
+    d->m_playback->setMarbleWidget( d->m_widget );
+    d->m_playback->setTour( d->m_tour );
+    d->m_widget->model()->treeModel()->addDocument( d->m_document );
+    QObject::connect( d->m_playback, SIGNAL( finished() ),
+                  this, SLOT( seekTourToStart() ) );
+}
+
+void RoutingWidget::centerOn( const GeoDataCoordinates &coordinates )
+{
+    if ( d->m_widget ) {
+        GeoDataLookAt lookat;
+        lookat.setCoordinates( coordinates );
+        lookat.setRange( coordinates.altitude() );
+        d->m_widget->flyTo( lookat, Instant );
+    }
+}
+
+void RoutingWidget::clearTour()
+{
+    d->m_playing = false;
+    d->m_playButton->setIcon( QIcon( ":/marble/playback-play.png" ) );
+    delete d->m_playback;
+    d->m_playback = 0;
+    if( d->m_document ){
+        d->m_widget->model()->treeModel()->removeDocument( d->m_document );
+        delete d->m_document;
+        d->m_document = 0;
+        d->m_tour = 0;
+    }
+}
+
+void RoutingWidget::seekTourToStart()
+{
+    Q_ASSERT( d->m_playback );
+    d->m_playback->stop();
+    d->m_playback->seek( 0 );
+    d->m_playButton->setIcon( QIcon( ":/marble/playback-play.png" ) );
+    d->m_playing = false;
 }
 
 } // namespace Marble

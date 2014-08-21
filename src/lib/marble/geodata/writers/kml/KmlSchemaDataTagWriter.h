@@ -22,6 +22,6 @@ public:
     virtual bool write( const GeoNode *node, GeoWriter& writer ) const;
 };
 
-}   // namespace Marble
+}
 
 #endif

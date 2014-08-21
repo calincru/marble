@@ -29,6 +29,8 @@
 #include "MarbleWidget.h"
 #include "ParsingRunnerManager.h"
 #include "TourPlayback.h"
+#include "MovieCapture.h"
+#include "TourCaptureDialog.h"
 #include "MarbleDebug.h"
 
 #include <QFileDialog>
@@ -46,6 +48,8 @@
 #include <QHBoxLayout>
 #include <QToolButton>
 #include <QLineEdit>
+#include <QProcess>
+#include <QProgressBar>
 
 namespace Marble
 {
@@ -70,6 +74,7 @@ public:
     void updateButtonsStates();
     void moveUp();
     void moveDown();
+    void captureTour();
     void handlePlaybackProgress( const double position );
 
 private:
@@ -84,6 +89,7 @@ public:
     TourWidget *q;
     MarbleWidget *m_widget;
     Ui::TourWidget  m_tourUi;
+    TourCaptureDialog *m_tourCaptureDialog;
     TourPlayback m_playback;
     TourItemDelegate *m_delegate;
     bool m_playState;
@@ -100,6 +106,7 @@ TourWidgetPrivate::TourWidgetPrivate( TourWidget *parent )
       m_document( 0 )
 {
     m_tourUi.setupUi( parent );
+    m_tourUi.m_actionRecord->setEnabled( false );
 
     QObject::connect( m_tourUi.m_listView, SIGNAL( activated( QModelIndex ) ), q, SLOT( mapCenterOn( QModelIndex ) ) );
     QObject::connect( m_tourUi.m_actionAddFlyTo, SIGNAL( triggered() ), q, SLOT( addFlyTo() ) );
@@ -110,10 +117,7 @@ TourWidgetPrivate::TourWidgetPrivate( TourWidget *parent )
     QObject::connect( m_tourUi.m_actionOpenTour, SIGNAL( triggered() ), q, SLOT( openFile() ) );
     QObject::connect( m_tourUi.m_actionSaveTour, SIGNAL( triggered() ), q, SLOT( saveTour() ) );
     QObject::connect( m_tourUi.m_actionSaveTourAs, SIGNAL( triggered() ), q, SLOT( saveTourAs() ) );
-    QObject::connect( &m_playback, SIGNAL(centerOn(GeoDataCoordinates)), q, SLOT(centerOn(GeoDataCoordinates)) );
-    QObject::connect( &m_playback, SIGNAL(updated(GeoDataFeature*)), q, SIGNAL(featureUpdated(GeoDataFeature*)) );
-    QObject::connect( &m_playback, SIGNAL(added(GeoDataContainer*,GeoDataFeature*,int)), q, SIGNAL(featureAdded(GeoDataContainer*,GeoDataFeature*,int)) );
-    QObject::connect( &m_playback, SIGNAL(removed(const GeoDataFeature*)), q, SIGNAL(featureRemoved(const GeoDataFeature*)) );
+    QObject::connect( m_tourUi.m_actionRecord, SIGNAL(triggered()), q, SLOT( captureTour()) );
 }
 
 TourWidget::TourWidget( QWidget *parent, Qt::WindowFlags flags )
@@ -368,12 +372,6 @@ void TourWidget::setMarbleWidget( MarbleWidget *widget )
     d->m_widget = widget;
     d->m_delegate = new TourItemDelegate( d->m_tourUi.m_listView, d->m_widget );
     d->m_tourUi.m_listView->setItemDelegate( d->m_delegate );
-    connect( this, SIGNAL( featureUpdated( GeoDataFeature* ) ),
-             d->m_widget->model()->treeModel(), SLOT( updateFeature( GeoDataFeature* ) ) );
-    connect( this, SIGNAL( featureAdded(GeoDataContainer*,GeoDataFeature*,int)),
-             d->m_widget->model()->treeModel(), SLOT(addFeature(GeoDataContainer*,GeoDataFeature*,int)) );
-    connect( this, SIGNAL( featureRemoved(const GeoDataFeature*)),
-             d->m_widget->model()->treeModel(), SLOT(removeFeature(const GeoDataFeature*)) );
 }
 
 void TourWidget::togglePlaying()
@@ -599,14 +597,13 @@ void TourWidgetPrivate::updateRootIndex()
         m_playback.setMarbleWidget( m_widget );
         m_playback.setTour( tour );
         m_tourUi.m_slider->setMaximum( m_playback.duration() * 100 );
-        QObject::connect( &m_playback, SIGNAL( centerOn( GeoDataCoordinates ) ),
-                         m_widget, SLOT( centerOn( GeoDataCoordinates ) ) );
         QObject::connect( &m_playback, SIGNAL( progressChanged( double ) ),
                          q, SLOT( handlePlaybackProgress( double ) ) );
         q->stopPlaying();
         m_tourUi.m_toolBarPlayback->setEnabled( true );
         m_tourUi.actionPlay->setEnabled( true );
         m_tourUi.actionStop->setEnabled( false );
+        m_tourUi.m_actionRecord->setEnabled( true );
     }
 }
 
@@ -627,16 +624,6 @@ void TourWidget::deleteSelected()
     if ( feature ) {
         emit featureUpdated( feature );
         d->updateRootIndex();
-    }
-}
-
-void TourWidget::centerOn( const GeoDataCoordinates &coordinates )
-{
-    if ( d->m_widget ) {
-        GeoDataLookAt lookat;
-        lookat.setCoordinates( coordinates );
-        lookat.setRange( coordinates.altitude() );
-        d->m_widget->flyTo( lookat, Instant );
     }
 }
 
@@ -749,6 +736,41 @@ bool TourWidgetPrivate::saveTourAs(const QString &filename)
         }
     }
     return false;
+}
+
+void TourWidgetPrivate::captureTour()
+{
+    MarbleWidget* widget = new MarbleWidget;
+    widget->setMapThemeId( m_widget->mapThemeId() );
+    widget->resize( 1280, 720 );
+
+    m_widget->model()->treeModel()->removeDocument(m_document);
+    widget->model()->treeModel()->addDocument(m_document);
+
+    GeoDataTour* tour = findTour( m_document );
+    TourPlayback* playback = new TourPlayback;
+    playback->setMarbleWidget( widget );
+    playback->setTour( tour );
+
+    m_tourUi.m_listView->setModel( widget->model()->treeModel() );
+    if( tour ){
+        m_tourUi.m_listView->setRootIndex( widget->model()->treeModel()->index( tour->playlist() ) );
+        m_tourUi.m_listView->repaint();
+
+        TourCaptureDialog* tourCaptureDialog = new TourCaptureDialog( widget, m_widget );
+        tourCaptureDialog->setTourPlayback( playback );
+        tourCaptureDialog->exec();
+    }
+
+    delete playback;
+    widget->model()->treeModel()->removeDocument(m_document);
+    m_widget->model()->treeModel()->addDocument(m_document);
+    m_tourUi.m_listView->setModel( m_widget->model()->treeModel() );
+    if( tour ){
+        m_tourUi.m_listView->setRootIndex( m_widget->model()->treeModel()->index( tour->playlist() ) );
+        m_tourUi.m_listView->repaint();
+    }
+    delete widget;
 }
 
 bool TourWidgetPrivate::overrideModifications()

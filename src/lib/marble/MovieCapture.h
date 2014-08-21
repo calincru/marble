@@ -27,24 +27,29 @@ class MARBLE_EXPORT MovieCapture : public QObject
 {
     Q_OBJECT
 public:
+    enum SnapshotMethod { TimeDriven, DataDriven };
     MovieCapture(MarbleWidget *widget, QObject *parent);
     ~MovieCapture();
 
     int fps() const;
     QString destination() const;
+    MovieCapture::SnapshotMethod snapshotMethod() const;
 
 public slots:
     void setFps(int fps);
-    void setDestination(const QString &path);
-
+    void setFilename(const QString &path);
+    void setSnapshotMethod(MovieCapture::SnapshotMethod method);
+    void recordFrame();
     void startRecording();
     void stopRecording();
+    void cancelRecording();
 
 private slots:
     void processWrittenMovie(int exitCode);
 
-private slots:
-    void recordFrame();
+signals:
+    void rateCalculated( double );
+    void errorOccured();
 
 protected:
     MovieCapturePrivate * const d_ptr;

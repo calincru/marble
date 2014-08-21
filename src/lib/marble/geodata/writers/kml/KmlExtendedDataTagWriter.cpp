@@ -46,7 +46,7 @@ bool KmlExtendedDataTagWriter::write( const GeoNode *node,
     foreach( const GeoDataSchemaData &schemaData, extended->schemaDataList() ) {
         writeElement( &schemaData, writer );
     }
-    
+
     writer.writeEndElement();
 
     return true;

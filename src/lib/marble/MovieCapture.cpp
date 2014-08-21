@@ -6,17 +6,14 @@
 // the source code.
 //
 // Copyright 2013   Illya Kovalevskyy <illya.kovalevskyy@gmail.com>
+// Copyright 2014   Dennis Nienhüser <earthwings@gentoo.org>
 //
-
-#include <QDir>
-#include <QDateTime>
-#include <QProcess>
-#include <QThread>
-#include <QElapsedTimer>
 
 #include "MovieCapture.h"
 #include "MarbleWidget.h"
 #include "MarbleDebug.h"
+
+#include <QProcess>
 
 namespace Marble
 {
@@ -25,18 +22,16 @@ class MovieCapturePrivate
 {
 public:
     MovieCapturePrivate(MarbleWidget *widget) :
-        marbleWidget(widget),
-        frameCount(0),
-        sessionId(0)
+        marbleWidget(widget), method(MovieCapture::TimeDriven)
     {}
 
     QTimer frameTimer;
     MarbleWidget *marbleWidget;
-    int frameCount;
-    QDir tempDir;
     QString encoderExec;
     QString destinationFile;
-    int sessionId;
+    QProcess process;
+    MovieCapture::SnapshotMethod method;
+    int fps;
 };
 
 MovieCapture::MovieCapture(MarbleWidget *widget, QObject *parent) :
@@ -44,8 +39,11 @@ MovieCapture::MovieCapture(MarbleWidget *widget, QObject *parent) :
     d_ptr(new MovieCapturePrivate(widget))
 {
     Q_D(MovieCapture);
-    d->frameTimer.setInterval(1000/30); // fps = 30 (default)
-    connect(&d->frameTimer, SIGNAL(timeout()), this, SLOT(recordFrame()));
+    if( d->method == MovieCapture::TimeDriven ){
+        d->frameTimer.setInterval(1000/30); // fps = 30 (default)
+        connect(&d->frameTimer, SIGNAL(timeout()), this, SLOT(recordFrame()));
+    }
+    d->fps = 30;
 }
 
 MovieCapture::~MovieCapture()
@@ -56,19 +54,28 @@ MovieCapture::~MovieCapture()
 void MovieCapture::setFps(int fps)
 {
     Q_D(MovieCapture);
-    d->frameTimer.setInterval(1000/fps);
+    if( d->method == MovieCapture::TimeDriven ){
+        d->frameTimer.setInterval(1000/fps);
+    }
+    d->fps = fps;
 }
 
-void MovieCapture::setDestination(const QString &path)
+void MovieCapture::setFilename(const QString &path)
 {
     Q_D(MovieCapture);
     d->destinationFile = path;
 }
 
+void MovieCapture::setSnapshotMethod(MovieCapture::SnapshotMethod method)
+{
+    Q_D(MovieCapture);
+    d->method = method;
+}
+
 int MovieCapture::fps() const
 {
     Q_D(const MovieCapture);
-    return 1000/d->frameTimer.interval();
+    return d->fps;
 }
 
 QString MovieCapture::destination() const
@@ -77,16 +84,42 @@ QString MovieCapture::destination() const
     return d->destinationFile;
 }
 
+MovieCapture::SnapshotMethod MovieCapture::snapshotMethod() const
+{
+    Q_D(const MovieCapture);
+    return d->method;
+}
+
 void MovieCapture::recordFrame()
 {
     Q_D(MovieCapture);
+    QImage const screenshot = d->marbleWidget->mapScreenShot().toImage().convertToFormat(QImage::Format_RGB888);
+    if (d->process.state() == QProcess::NotRunning) {
+        QStringList const arguments = QStringList()
+                << "-y"
+                << "-r" << QString::number(fps())
+                << "-f" << "rawvideo"
+                << "-pix_fmt" << "rgb24"
+                << "-s" << QString("%1x%2").arg( screenshot.width() ).arg( screenshot.height() )
+                << "-i" << "pipe:"
+                << "-b" << "2000k"
+                << d->destinationFile;
+        d->process.start( d->encoderExec, arguments );
+        connect(&d->process, SIGNAL(finished(int)), this, SLOT(processWrittenMovie(int)));
+    }
+    d->process.write( (char*) screenshot.bits(), screenshot.byteCount() );
 
-    QString numFormat = QString("%1").arg(d->frameCount, 6, 10, QChar('0'));
-    QString fileFormat = QString("marble-%1-frame-%2.bmp").arg(d->sessionId).arg(numFormat);
-    QString path = d->tempDir.absoluteFilePath(fileFormat);
-
-    d->marbleWidget->mapScreenShot().save(path, "BMP");
-    d->frameCount++;
+    for (int i=0; i<30 && d->process.bytesToWrite()>0; ++i) {
+        QTime t;
+        int then = d->process.bytesToWrite();
+        t.start();
+        d->process.waitForBytesWritten( 100 );
+        int span = t.elapsed();
+        int now = d->process.bytesToWrite();
+        int bytesWritten = then - now;
+        double rate = ( bytesWritten * 1000.0 ) / ( qMax(1, span) * 1024 );
+        emit rateCalculated( rate );
+    }
 }
 
 void MovieCapture::startRecording()
@@ -111,13 +144,9 @@ void MovieCapture::startRecording()
         }
     }
 
-    d->sessionId = qAbs(QDateTime::currentMSecsSinceEpoch());
-
-    d->tempDir = QDir::temp();
-    d->tempDir.mkdir(QString::number(d->sessionId));
-    d->tempDir.cd(QString::number(d->sessionId));
-
-    d->frameTimer.start();
+    if( d->method == MovieCapture::TimeDriven ){
+        d->frameTimer.start();
+    }
     recordFrame();
 }
 
@@ -126,31 +155,24 @@ void MovieCapture::stopRecording()
     Q_D(MovieCapture);
 
     d->frameTimer.stop();
-    d->frameCount = 0;
+    d->process.closeWriteChannel();
+}
 
-    QProcess *avconv = new QProcess(this);
-    QString input = QString("%1/marble-%2-frame-%06d.bmp")
-            .arg(d->tempDir.path()).arg(d->sessionId);
-    QString output = d->destinationFile;
-    QString argv = QString("-i %1 -r %2 -b 2000k -y %3")
-            .arg(input).arg(fps()).arg(output);
+void MovieCapture::cancelRecording()
+{
+    Q_D(MovieCapture);
 
-    connect(avconv, SIGNAL(finished(int)), this, SLOT(processWrittenMovie(int)));
-    avconv->start(d->encoderExec+' '+argv);
+    d->frameTimer.stop();
+    d->process.close();
+    QFile::remove( d->destinationFile );
 }
 
 void MovieCapture::processWrittenMovie(int exitCode)
 {
-    if (exitCode != 0)
+    if (exitCode != 0) {
         mDebug() << "[*] avconv finished with" << exitCode;
-
-    Q_D(MovieCapture);
-    foreach(const QString &bmp,
-            d->tempDir.entryList(QStringList() << "*.bmp", QDir::Files)) {
-        d->tempDir.remove(bmp);
+        emit errorOccured();
     }
-    d->tempDir.cdUp();
-    d->tempDir.rmdir(QString::number(d->sessionId));
 }
 
 } // namespace Marble

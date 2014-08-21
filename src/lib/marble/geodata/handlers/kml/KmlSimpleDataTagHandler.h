@@ -25,8 +25,8 @@ public:
     virtual GeoNode* parse( GeoParser& ) const;
 };
 
-}   // namespace kml
+}
 
-}   // namespace Marble
+}
 
 #endif

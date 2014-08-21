@@ -25,6 +25,7 @@ MovieCaptureDialog::MovieCaptureDialog(MarbleWidget *widget, QWidget *parent) :
     m_recorder(new MovieCapture(widget, parent))
 {
     ui->setupUi(this);
+    m_recorder->setSnapshotMethod(MovieCapture::TimeDriven);
 
     connect(ui->fpsSlider, SIGNAL(valueChanged(int)),
             ui->fpsSpin, SLOT(setValue(int)));
@@ -77,7 +78,7 @@ void MovieCaptureDialog::loadDestinationFile()
     }
 
     ui->destinationEdit->setText(destination);
-    m_recorder->setDestination(destination);
+    m_recorder->setFilename(destination);
 }
 
 void MovieCaptureDialog::startRecording()

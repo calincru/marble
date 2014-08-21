@@ -21,7 +21,7 @@ namespace Marble
 
 class KmlSimpleFieldTagWriter : public GeoTagWriter
 {
-  public:
+public:
     virtual bool write( const GeoNode *node, GeoWriter& writer ) const;
 
 private:
