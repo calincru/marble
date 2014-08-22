@@ -82,7 +82,8 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
     }
 
     if ( state() == SceneGraphicsItem::Editing ) {
-        return outerNodeContains( point ) != -1 || polygonContains( point ) ||
+        return ( polygonContains( point ) && innerBoundsContain( point ) == -1 ) ||
+               outerNodeContains( point ) != -1 ||
                innerNodeContains( point ) != QPair<int, int>( -1, -1 );
 
     } else if ( state() == SceneGraphicsItem::AddingPolygonHole ) {
@@ -94,10 +95,10 @@ bool AreaAnnotation::containsPoint( const QPoint &point ) const
                innerNodeContains( point ) != QPair<int, int>( -1, -1 );
 
     } else if ( state() == SceneGraphicsItem::AddingNodes ) {
-        return virtualNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
+        return ( polygonContains( point ) && innerBoundsContain( point ) == -1 ) ||
+               virtualNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
                innerNodeContains( point ) != QPair<int, int>( -1, -1 ) ||
-               outerNodeContains( point ) != -1 ||
-               polygonContains( point );
+               outerNodeContains( point ) != -1;
     }
 
     return false;
@@ -870,7 +871,7 @@ int AreaAnnotation::innerBoundsContain( const QPoint &point ) const
 
 bool AreaAnnotation::polygonContains( const QPoint &point ) const
 {
-    return m_boundariesList.first().contains( point ) && innerBoundsContain( point ) == -1;
+    return m_boundariesList.first().contains( point );
 }
 
 bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
@@ -915,7 +916,8 @@ bool AreaAnnotation::processEditingOnPress( QMouseEvent *mouseEvent )
 
     // If neither outer boundary nodes nor inner boundary nodes contain the event position,
     // then check if the interior of the polygon (excepting its 'holes') contains this point.
-    if ( polygonContains( mouseEvent->pos() ) ) {
+    if ( polygonContains( mouseEvent->pos() ) &&
+         innerBoundsContain( mouseEvent->pos() ) == -1 ) {
         if ( mouseEvent->button() == Qt::RightButton ) {
             setRequest( SceneGraphicsItem::ShowPolygonRmbMenu );
         } else {
