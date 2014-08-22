@@ -789,7 +789,7 @@ void AreaAnnotation::drawNodes( GeoPainter *painter )
         } else {
             Q_ASSERT( i != -1 && j != -1 );
 
-            const GeoDataCoordinates coords = i ?
+            const GeoDataCoordinates coords = j ?
                                 innerRings.at(i).at(j).interpolate( innerRings.at(i).at(j - 1), 0.5 ) :
                                 innerRings.at(i).first().interpolate( innerRings.at(i).last(), 0.5 );
             painter->drawEllipse( coords, d_hoveredDim, d_hoveredDim );
