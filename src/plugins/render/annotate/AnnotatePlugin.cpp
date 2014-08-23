@@ -924,13 +924,11 @@ void AnnotatePlugin::enableActionsOnItemType( const QString &type )
     if ( type == SceneGraphicsTypes::SceneGraphicAreaAnnotation ) {
         m_actions.first()->actions().at(9)->setEnabled( true );
         m_actions.first()->actions().at(10)->setEnabled( true );
-        m_actions.first()->actions().at(11)->setEnabled( true );
     } else if ( type == SceneGraphicsTypes::SceneGraphicPolylineAnnotation ) {
         m_actions.first()->actions().at(10)->setEnabled( true );
-        m_actions.first()->actions().at(11)->setEnabled( true );
     }
 
-    m_actions.first()->actions().at(12)->setEnabled( true );
+    m_actions.first()->actions().at(11)->setEnabled( true );
 }
 
 void AnnotatePlugin::disableFocusActions()
@@ -940,7 +938,6 @@ void AnnotatePlugin::disableFocusActions()
     m_actions.first()->actions().at(9)->setEnabled( false );
     m_actions.first()->actions().at(10)->setEnabled( false );
     m_actions.first()->actions().at(11)->setEnabled( false );
-    m_actions.first()->actions().at(12)->setEnabled( false );
 }
 
 void AnnotatePlugin::addContextItems()
