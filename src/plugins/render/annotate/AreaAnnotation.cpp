@@ -27,7 +27,6 @@
 #include "MergingPolygonNodesAnimation.h"
 #include "PolylineNode.h"
 
-#include <QDebug>
 
 namespace Marble {
 

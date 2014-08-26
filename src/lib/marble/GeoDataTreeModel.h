@@ -72,9 +72,9 @@ class MARBLE_EXPORT GeoDataTreeModel : public QAbstractItemModel
 
     bool setData ( const QModelIndex & index, const QVariant & value, int role = Qt::EditRole );
 
-    void reset();
-
     QItemSelectionModel *selectionModel();
+
+    GeoDataDocument *rootDocument();
 
 public Q_SLOTS:
 
@@ -84,7 +84,6 @@ public Q_SLOTS:
       *   i.e. GeoDataTreeModel will not delete the passed document at its destruction.
       */
     void setRootDocument( GeoDataDocument *document );
-    GeoDataDocument* rootDocument();
 
     int addFeature( GeoDataContainer *parent, GeoDataFeature *feature, int row = -1 );
 
@@ -99,8 +98,6 @@ public Q_SLOTS:
     void removeDocument( int index );
 
     void removeDocument( GeoDataDocument* document );
-
-    void update();
 
 Q_SIGNALS:
     /// insert and remove row don't trigger any signal that proxies forward

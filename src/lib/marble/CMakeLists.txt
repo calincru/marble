@@ -43,8 +43,8 @@ INCLUDE(geodata/CMakeLists.txt)
 INCLUDE(graphicsview/CMakeLists.txt)
 INCLUDE(layers/CMakeLists.txt)
 
-set(GENERIC_LIB_VERSION "0.18.20")
-set(GENERIC_LIB_SOVERSION "19")
+set(GENERIC_LIB_VERSION "0.19.20")
+set(GENERIC_LIB_SOVERSION "20")
 
 if (QTONLY)
   # ce: don't know why this is needed here - on win32 'O2' is activated by default in release mode
@@ -360,7 +360,6 @@ else()
     ${Qt5WebKitWidgets_LIBRARIES}
     ${Qt5Svg_LIBRARIES}
     ${Qt5Script_LIBRARIES}
-    ${Qt5Quick_LIBRARIES}
     )
 endif()
 
