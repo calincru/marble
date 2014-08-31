@@ -238,7 +238,6 @@ QVector<GeoDataFeature*> GeoDataContainer::featureList() const
  */
 GeoDataFeature* GeoDataContainer::child( int i )
 {
-    detach();
     return p()->m_vector.at(i);
 }
 
@@ -331,13 +330,11 @@ void GeoDataContainer::clear()
 
 QVector<GeoDataFeature*>::Iterator GeoDataContainer::begin()
 {
-    detach();
     return p()->m_vector.begin();
 }
 
 QVector<GeoDataFeature*>::Iterator GeoDataContainer::end()
 {
-    detach();
     return p()->m_vector.end();
 }
 
