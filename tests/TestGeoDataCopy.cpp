@@ -114,10 +114,10 @@ void TestGeoDataCopy::initTestCase()
     coord3.set(15.7107,53.0235, 143.4, GeoDataCoordinates::Degree);
     coord3.setDetail(4);
     testCoordinate(coord3, 143.4, 4, coordString[2]);
-    
+
     point1.setCoordinates( GeoDataCoordinates(13.7107, 51.0235, 123.4, GeoDataCoordinates::Degree, 2) );
     testCoordinate(point1.coordinates(), 123.4, 2, coordString[0]);
-    
+
     point2.setCoordinates( GeoDataCoordinates(14.7107, 52.0235, 133.4, GeoDataCoordinates::Degree, 3) );
     testCoordinate(point2.coordinates(), 133.4, 3, coordString[1]);
 
@@ -128,10 +128,10 @@ void TestGeoDataCopy::initTestCase()
 void TestGeoDataCopy::copyCoordinates()
 {
     GeoDataCoordinates other = coord1;
-    
+
     // make sure that the coordinate contains the right values
     testCoordinate(other, 123.4, 2, coordString[0]);
-    
+
     QVERIFY(coord1 == other);
 }
 
@@ -147,13 +147,13 @@ void TestGeoDataCopy::copyPoint()
     QCOMPARE(point.extrude(), true);
 
     GeoDataPoint other = point;
-    
+
     // make sure that the coordinate contains the right values
     testCoordinate(other.coordinates(), 123.4, 2, coordString[0]);
     QCOMPARE(other.extrude(), true);
-    
+
     QVERIFY(point.coordinates() == other.coordinates());
-    
+
     point = GeoDataPoint( GeoDataCoordinates(13.7107, 51.0235, 123.4, GeoDataCoordinates::Degree, 17) );
     point.setExtrude(false);
     QCOMPARE(other.coordinates().detail(), 2);
@@ -166,7 +166,7 @@ void TestGeoDataCopy::copyLineString()
 {
     GeoDataLineString lineString;
     lineString.setTessellate(true);
-    
+
 
     lineString.append(coord1);
     lineString.append(coord2);
@@ -211,23 +211,23 @@ void TestGeoDataCopy::copyPolygon()
     GeoDataLinearRing linearRing2;
     GeoDataLinearRing linearRing3;
     GeoDataLinearRing linearRing4;
-    
+
     linearRing1.append(coord1); linearRing1.append(coord2); linearRing1.append(coord3);
     linearRing2.append(coord3); linearRing2.append(coord2); linearRing2.append(coord1);
     linearRing3.append(coord1); linearRing3.append(coord2); linearRing3.append(coord3);
     linearRing3.append(coord3); linearRing3.append(coord2); linearRing3.append(coord1);
     linearRing4.append(coord3); linearRing4.append(coord2); linearRing4.append(coord1);
     linearRing4.append(coord1); linearRing4.append(coord2); linearRing4.append(coord3);
-    
+
     GeoDataPolygon polygon;
     polygon.appendInnerBoundary(linearRing1);
     polygon.appendInnerBoundary(linearRing2);
     polygon.appendInnerBoundary(linearRing3);
     polygon.setOuterBoundary(linearRing4);
     polygon.setTessellate(true);
-    
+
     QCOMPARE(polygon.innerBoundaries().size(), 3);
-    
+
     GeoDataPolygon other = polygon;
     QCOMPARE(other.innerBoundaries().size(), 3);
     QVERIFY(other.innerBoundaries()[0][0] == coord1);
@@ -242,7 +242,7 @@ void TestGeoDataCopy::copyPolygon()
     QVERIFY(other.innerBoundaries()[2][3] == coord3);
     QVERIFY(other.innerBoundaries()[2][4] == coord2);
     QVERIFY(other.innerBoundaries()[2][5] == coord1);
-    
+
     QCOMPARE(other.outerBoundary().size(), 6);
 
     QVERIFY(other.outerBoundary()[0] == coord3);
@@ -251,7 +251,7 @@ void TestGeoDataCopy::copyPolygon()
     QVERIFY(other.outerBoundary()[3] == coord1);
     QVERIFY(other.outerBoundary()[4] == coord2);
     QVERIFY(other.outerBoundary()[5] == coord3);
-    
+
     QVERIFY(other.tessellate());
 }
 
@@ -261,21 +261,21 @@ void TestGeoDataCopy::copyMultiGeometry()
     GeoDataLinearRing linearRing2;
     GeoDataLinearRing linearRing3;
     GeoDataLinearRing linearRing4;
-    
+
     linearRing1.append(coord1); linearRing1.append(coord2); linearRing1.append(coord3);
     linearRing2.append(coord3); linearRing2.append(coord2); linearRing2.append(coord1);
     linearRing3.append(coord1); linearRing3.append(coord2); linearRing3.append(coord3);
     linearRing3.append(coord3); linearRing3.append(coord2); linearRing3.append(coord1);
     linearRing4.append(coord3); linearRing4.append(coord2); linearRing4.append(coord1);
     linearRing4.append(coord1); linearRing4.append(coord2); linearRing4.append(coord3);
-    
+
     GeoDataPolygon *polygon = new GeoDataPolygon;
     polygon->appendInnerBoundary(linearRing1);
     polygon->appendInnerBoundary(linearRing2);
     polygon->appendInnerBoundary(linearRing3);
     polygon->setOuterBoundary(linearRing4);
     polygon->setTessellate(true);
-    
+
     GeoDataMultiGeometry multiGeometry;
     multiGeometry.append(polygon);
     multiGeometry.append(new GeoDataLinearRing(linearRing1));
@@ -299,7 +299,7 @@ void TestGeoDataCopy::copyMultiGeometry()
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->innerBoundaries()[2][3] == coord3);
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->innerBoundaries()[2][4] == coord2);
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->innerBoundaries()[2][5] == coord1);
-    
+
     QCOMPARE(static_cast<GeoDataPolygon*>(other.child(0))->outerBoundary().size(), 6);
 
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->outerBoundary()[0] == coord3);
@@ -308,7 +308,7 @@ void TestGeoDataCopy::copyMultiGeometry()
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->outerBoundary()[3] == coord1);
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->outerBoundary()[4] == coord2);
     QVERIFY(static_cast<GeoDataPolygon*>(other.child(0))->outerBoundary()[5] == coord3);
-    
+
     QVERIFY(static_cast<GeoDataLinearRing*>(other.child(1))->at(0) == coord1);
     QVERIFY(static_cast<GeoDataLinearRing*>(other.child(1))->at(1) == coord2);
     QVERIFY(static_cast<GeoDataLinearRing*>(other.child(1))->at(2) == coord3);
@@ -422,7 +422,7 @@ void TestGeoDataCopy::copyPlacemark()
     QCOMPARE(placemark.name(), QString::fromLatin1("Patrick Spendrin"));
 
     GeoDataPlacemark other = placemark;
-    
+
     testCoordinate(other.coordinate(), 123.4, 2, coordString[0]);
     testCoordinate(static_cast<GeoDataPoint*>(other.geometry())->coordinates(), 123.4, 2, coordString[0]);
     QCOMPARE(other.area(), 12345678.0);
@@ -444,7 +444,7 @@ void TestGeoDataCopy::copyPlacemark()
 void TestGeoDataCopy::copyHotSpot()
 {
     QPointF point(0.25, 0.75);
-    
+
 
     GeoDataHotSpot first(point);
     GeoDataHotSpot::Units xunits;
@@ -455,7 +455,7 @@ void TestGeoDataCopy::copyHotSpot()
     QVERIFY(second.hotSpot(xunits, yunits) == QPointF(0.25, 0.75));
 
     first.setHotSpot(QPointF(0.3333333, 0.666666));
-    
+
     QVERIFY(first.hotSpot(xunits, yunits) == QPointF(0.3333333, 0.666666));
     QVERIFY(second.hotSpot(xunits, yunits) == QPointF(0.25, 0.75));
 }
@@ -475,10 +475,10 @@ void TestGeoDataCopy::copyLatLonBox()
     QCOMPARE(other.south(GeoDataCoordinates::Degree), 12.2);
     QCOMPARE(other.east(GeoDataCoordinates::Degree), 110.0);
     QCOMPARE(other.west(GeoDataCoordinates::Degree), 44.9);
-    
+
     llbox.setNorth(0.1);
     other.setSouth(1.4);
-    
+
     QCOMPARE(llbox.north(), 0.1);
     QCOMPARE(llbox.south(GeoDataCoordinates::Degree), 12.2);
     QCOMPARE(other.north(GeoDataCoordinates::Degree), 30.1);
@@ -493,7 +493,7 @@ void TestGeoDataCopy::copyStyle()
     GeoDataStyle style;
 
     style.setLineStyle( line );
-    
+
     QCOMPARE(style.lineStyle().width(), (float)2.0);
     QVERIFY(style.lineStyle().color() == Qt::green);
 }
