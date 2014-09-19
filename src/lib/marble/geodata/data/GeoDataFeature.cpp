@@ -614,7 +614,9 @@ const GeoDataAbstractView* GeoDataFeature::abstractView() const
 
 GeoDataAbstractView *GeoDataFeature::abstractView()
 {
-    detach();
+    // FIXME: Calling detach() doesn't help at all because the m_abstractView
+    // object isn't actually copied in the Private class as well.
+    // detach();
     return d->m_abstractView;
 }
 

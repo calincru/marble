@@ -5,11 +5,11 @@
 // find a copy of this license in LICENSE.txt in the top directory of
 // the source code.
 //
-// Copyright 2013      Bernhard Beschow  <bbeschow@cs.tu-berlin.de>
+// Copyright 2014      Torsten Rahn <rahn@kde.org>
 //
 
 // Local
-#include "GnomonicProjection.h"
+#include "LambertAzimuthalProjection.h"
 #include "AbstractProjection_p.h"
 
 #include "MarbleDebug.h"
@@ -29,44 +29,44 @@
 namespace Marble
 {
 
-class GnomonicProjectionPrivate : public AzimuthalProjectionPrivate
+class LambertAzimuthalProjectionPrivate : public AzimuthalProjectionPrivate
 {
   public:
-    explicit GnomonicProjectionPrivate( GnomonicProjection * parent );
+    explicit LambertAzimuthalProjectionPrivate( LambertAzimuthalProjection * parent );
 
-    Q_DECLARE_PUBLIC( GnomonicProjection )
+    Q_DECLARE_PUBLIC( LambertAzimuthalProjection )
 };
 
-GnomonicProjection::GnomonicProjection()
-    : AzimuthalProjection( new GnomonicProjectionPrivate( this ) )
+LambertAzimuthalProjection::LambertAzimuthalProjection()
+    : AzimuthalProjection( new LambertAzimuthalProjectionPrivate( this ) )
 {
     setMinLat( minValidLat() );
     setMaxLat( maxValidLat() );
 }
 
-GnomonicProjection::GnomonicProjection( GnomonicProjectionPrivate *dd )
+LambertAzimuthalProjection::LambertAzimuthalProjection( LambertAzimuthalProjectionPrivate *dd )
         : AzimuthalProjection( dd )
 {
     setMinLat( minValidLat() );
     setMaxLat( maxValidLat() );
 }
 
-GnomonicProjection::~GnomonicProjection()
+LambertAzimuthalProjection::~LambertAzimuthalProjection()
 {
 }
 
 
-GnomonicProjectionPrivate::GnomonicProjectionPrivate( GnomonicProjection * parent )
+LambertAzimuthalProjectionPrivate::LambertAzimuthalProjectionPrivate( LambertAzimuthalProjection * parent )
         : AzimuthalProjectionPrivate( parent )
 {
 }
 
-qreal GnomonicProjection::clippingRadius() const
+qreal LambertAzimuthalProjection::clippingRadius() const
 {
     return 1;
 }
 
-bool GnomonicProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
+bool LambertAzimuthalProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
                                              const ViewportParams *viewport,
                                              qreal &x, qreal &y, bool &globeHidesPoint ) const
 {
@@ -76,16 +76,20 @@ bool GnomonicProjection::screenCoordinates( const GeoDataCoordinates &coordinate
     const qreal phi1 = viewport->centerLatitude();
 
     qreal cosC = qSin( phi1 ) * qSin( phi ) + qCos( phi1 ) * qCos( phi ) * qCos( lambda - lambdaPrime );
-
     // Prevent division by zero
-    if (fabs(cosC < 0.0001)) cosC = 0.0001;
+    if (cosC <= 0) {
+        globeHidesPoint = true;
+        return false;
+    }
+
+    qreal k = qSqrt(2 / (1 + cosC));
 
     // Let (x, y) be the position on the screen of the placemark..
-    x = ( qCos( phi ) * qSin( lambda - lambdaPrime ) ) / cosC;
-    y = ( qCos( phi1 ) * qSin( phi ) - qSin( phi1 ) * qCos( phi ) * qCos( lambda - lambdaPrime ) ) / cosC;
+    x = ( qCos( phi ) * qSin( lambda - lambdaPrime ) ) * k;
+    y = ( qCos( phi1 ) * qSin( phi ) - qSin( phi1 ) * qCos( phi ) * qCos( lambda - lambdaPrime ) ) * k;
 
-    x *= viewport->radius() / 2;
-    y *= viewport->radius() / 2;
+    x *= viewport->radius() / qSqrt(2);
+    y *= viewport->radius() / qSqrt(2);
 
     const qint64  radius  = clippingRadius() * viewport->radius();
 
@@ -107,7 +111,7 @@ bool GnomonicProjection::screenCoordinates( const GeoDataCoordinates &coordinate
     return true;
 }
 
-bool GnomonicProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
+bool LambertAzimuthalProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
                                              const ViewportParams *viewport,
                                              qreal *x, qreal &y,
                                              int &pointRepeatNum,
@@ -133,7 +137,7 @@ bool GnomonicProjection::screenCoordinates( const GeoDataCoordinates &coordinate
 }
 
 
-bool GnomonicProjection::geoCoordinates( const int x, const int y,
+bool LambertAzimuthalProjection::geoCoordinates( const int x, const int y,
                                           const ViewportParams *viewport,
                                           qreal& lon, qreal& lat,
                                           GeoDataCoordinates::Unit unit ) const
@@ -145,7 +149,7 @@ bool GnomonicProjection::geoCoordinates( const int x, const int y,
     const qreal rx = ( - viewport->width()  / 2 + x );
     const qreal ry = (   viewport->height() / 2 - y );
     const qreal p = qMax( qSqrt( rx*rx + ry*ry ), 0.0001 ); // ensure we don't divide by zero
-    const qreal c = qAtan(2 * p / radius);
+    const qreal c = 2 * qAsin( p / (qSqrt(2) * radius)  );
     const qreal sinc = qSin(c);
 
     lon = centerLon + qAtan2( rx*sinc , ( p*qCos( centerLat )*qCos( c ) - ry*qSin( centerLat )*sinc  ) );
@@ -153,7 +157,7 @@ bool GnomonicProjection::geoCoordinates( const int x, const int y,
     while ( lon < -M_PI ) lon += 2 * M_PI;
     while ( lon >  M_PI ) lon -= 2 * M_PI;
 
-    lat = qAsin( qCos(c)*qSin(centerLat) + ry*sinc*qCos(centerLat)/p );
+    lat = qAsin( qCos(c)*qSin(centerLat) + (ry*sinc*qCos(centerLat))/p );
 
     if ( unit == GeoDataCoordinates::Degree ) {
         lon *= RAD2DEG;

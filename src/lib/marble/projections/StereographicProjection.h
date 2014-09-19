@@ -9,8 +9,8 @@
 //
 
 
-#ifndef MARBLE_GNOMONICPROJECTION_H
-#define MARBLE_GNOMONICPROJECTION_H
+#ifndef MARBLE_STEREOGRAPHICPROJECTION_H
+#define MARBLE_STEREOGRAPHICPROJECTION_H
 
 
 #include "AbstractProjection.h"
@@ -19,23 +19,23 @@
 namespace Marble
 {
 
-class GnomonicProjectionPrivate;
+class StereographicProjectionPrivate;
 
 /**
  * @short A class to implement the spherical projection used by the "Globe" view.
  */
 
-class GnomonicProjection : public AzimuthalProjection
+class StereographicProjection : public AzimuthalProjection
 {
     // Not a QObject so far because we don't need to send signals.
  public:
 
     /**
-     * @brief Construct a new GnomonicProjection.
+     * @brief Construct a new StereographicProjection.
      */
-    GnomonicProjection();
+    StereographicProjection();
 
-    virtual ~GnomonicProjection();
+    virtual ~StereographicProjection();
 
     virtual qreal clippingRadius() const;
 
@@ -75,11 +75,11 @@ class GnomonicProjection : public AzimuthalProjection
                          GeoDataCoordinates::Unit unit = GeoDataCoordinates::Degree ) const;
 
  protected:
-    GnomonicProjection(GnomonicProjectionPrivate *dd );
+    StereographicProjection(StereographicProjectionPrivate *dd );
 
  private:
-    Q_DECLARE_PRIVATE(GnomonicProjection)
-    Q_DISABLE_COPY( GnomonicProjection )
+    Q_DECLARE_PRIVATE(StereographicProjection)
+    Q_DISABLE_COPY( StereographicProjection )
 };
 
 }

@@ -196,6 +196,12 @@ QString MarbleWidget::projection( ) const
         return "Spherical";
     case Marble::Gnomonic:
         return "Gnomonic";
+    case Marble::Stereographic:
+        return "Stereographic";
+    case Marble::LambertAzimuthal:
+        return "Lambert Azimuthal Equal-Area";
+    case Marble::VerticalPerspective:
+        return "Perspective Globe";
     }
 
     Q_ASSERT( false && "Marble got a new projection which we do not know about yet" );
@@ -281,12 +287,15 @@ void MarbleWidget::forwardMouseClick(qreal lon, qreal lat, Marble::GeoDataCoordi
     Marble::GeoDataCoordinates position( lon, lat, unit );
     Marble::GeoDataCoordinates::Unit degree = Marble::GeoDataCoordinates::Degree;
     QPoint const point = pixel( position.longitude( degree ), position.latitude( degree ) );
-    QVector<const Marble::GeoDataPlacemark*> const placemarks = m_marbleWidget->whichFeatureAt( point );
-    if ( !placemarks.isEmpty() ) {
-        if ( placemarks.size() == 1 ) {
+    QVector<const Marble::GeoDataFeature*> const features = m_marbleWidget->whichFeatureAt( point );
+    if ( !features.isEmpty() ) {
+        if ( features.size() == 1 ) {
             Placemark* placemark = new Placemark;
-            placemark->setGeoDataPlacemark( *placemarks.first() );
-            emit placemarkSelected( placemark );
+            const Marble::GeoDataPlacemark * geoDataPlacemark = dynamic_cast<const Marble::GeoDataPlacemark*>( features.first() );
+            if ( geoDataPlacemark ) {
+                placemark->setGeoDataPlacemark( *geoDataPlacemark );
+                emit placemarkSelected( placemark );
+            }
         }
     } else {
         emit mouseClickGeoPosition( position.longitude( degree ),

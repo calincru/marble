@@ -182,10 +182,6 @@ MarbleModel::MarbleModel( QObject *parent )
     new QNetworkConfigurationManager( this );
 #endif
 
-    // The thread will be started at setting persistent tile cache size.
-    connect( this, SIGNAL(themeChanged(QString)),
-             &d->m_storageWatcher, SLOT(updateTheme(QString)) );
-
     // connect the StoragePolicy used by the download manager to the FileStorageWatcher
     connect( &d->m_storagePolicy, SIGNAL(cleared()),
              &d->m_storageWatcher, SLOT(resetCurrentSize()) );
@@ -251,6 +247,12 @@ void MarbleModel::setMapThemeId( const QString &mapThemeId )
         return;
 
     GeoSceneDocument *mapTheme = MapThemeManager::loadMapTheme( mapThemeId );
+    setMapTheme( mapTheme );
+}
+
+void MarbleModel::setMapTheme( GeoSceneDocument *document )
+{
+    GeoSceneDocument *mapTheme = document;
     if ( !mapTheme ) {
         // Check whether the previous theme works
         if ( d->m_mapTheme ){

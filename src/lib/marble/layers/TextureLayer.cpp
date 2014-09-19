@@ -20,7 +20,7 @@
 #include "SphericalScanlineTextureMapper.h"
 #include "EquirectScanlineTextureMapper.h"
 #include "MercatorScanlineTextureMapper.h"
-#include "GnomonicScanlineTextureMapper.h"
+#include "GenericScanlineTextureMapper.h"
 #include "TileScalingTextureMapper.h"
 #include "GeoDataGroundOverlay.h"
 #include "GeoPainter.h"
@@ -399,7 +399,10 @@ void TextureLayer::setProjection( Projection projection )
             }
             break;
         case Gnomonic:
-            d->m_texmapper = new GnomonicScanlineTextureMapper( &d->m_tileLoader );
+        case Stereographic:
+        case LambertAzimuthal:
+        case VerticalPerspective:
+            d->m_texmapper = new GenericScanlineTextureMapper( &d->m_tileLoader );
             break;
         default:
             d->m_texmapper = 0;
