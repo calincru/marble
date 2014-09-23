@@ -1,6 +1,8 @@
 # Marble - KDE
 
-It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and contains all my work on my *GSoC Project*. A more detailed description of what my work involves can be found on [my blog](http://calincruceru.wordpress.com/).
+It is a copy of [Marble](http://marble.kde.org/) (which is part of KDE) and
+contains all my work on my *GSoC Project*. A more detailed description of what
+my work involves can be found on [my blog](http://calincruceru.net/).
 
 ## How to install
 
