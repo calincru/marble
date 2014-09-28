@@ -9,8 +9,8 @@
 //
 
 
-#ifndef MARBLE_VERTICALPERSPECTIVEPROJECTION_H
-#define MARBLE_VERTICALPERSPECTIVEPROJECTION_H
+#ifndef MARBLE_AZIMUTHALEQUIDISTANTPROJECTION_H
+#define MARBLE_AZIMUTHALEQUIDISTANTPROJECTION_H
 
 
 #include "AbstractProjection.h"
@@ -19,23 +19,23 @@
 namespace Marble
 {
 
-class VerticalPerspectiveProjectionPrivate;
+class AzimuthalEquidistantProjectionPrivate;
 
 /**
  * @short A class to implement the spherical projection used by the "Globe" view.
  */
 
-class VerticalPerspectiveProjection : public AzimuthalProjection
+class AzimuthalEquidistantProjection : public AzimuthalProjection
 {
     // Not a QObject so far because we don't need to send signals.
  public:
 
     /**
-     * @brief Construct a new VerticalPerspectiveProjection.
+     * @brief Construct a new AzimuthalEquidistantProjection.
      */
-    VerticalPerspectiveProjection();
+    AzimuthalEquidistantProjection();
 
-    virtual ~VerticalPerspectiveProjection();
+    virtual ~AzimuthalEquidistantProjection();
 
     /**
      * @brief Returns the user-visible name of the projection.
@@ -52,6 +52,7 @@ class VerticalPerspectiveProjection : public AzimuthalProjection
      * @brief Returns an icon for the projection.
      */
     QIcon icon() const;
+
 
     virtual qreal clippingRadius() const;
 
@@ -91,11 +92,11 @@ class VerticalPerspectiveProjection : public AzimuthalProjection
                          GeoDataCoordinates::Unit unit = GeoDataCoordinates::Degree ) const;
 
  protected:
-    VerticalPerspectiveProjection(VerticalPerspectiveProjectionPrivate *dd );
+    AzimuthalEquidistantProjection(AzimuthalEquidistantProjectionPrivate *dd );
 
  private:
-    Q_DECLARE_PRIVATE(VerticalPerspectiveProjection)
-    Q_DISABLE_COPY( VerticalPerspectiveProjection )
+    Q_DECLARE_PRIVATE(AzimuthalEquidistantProjection)
+    Q_DISABLE_COPY( AzimuthalEquidistantProjection )
 };
 
 }

@@ -61,6 +61,21 @@ GnomonicProjectionPrivate::GnomonicProjectionPrivate( GnomonicProjection * paren
 {
 }
 
+QString GnomonicProjection::name() const
+{
+    return QObject::tr( "Gnomonic" );
+}
+
+QString GnomonicProjection::description() const
+{
+    return QObject::tr( "<p><b>Gnomonic Projection</b> (\"rectilinear\")</p><p>Applications: Used for displaying panorama photography. Also used for navigation, radio and seismic work.</p>" );
+}
+
+QIcon GnomonicProjection::icon() const
+{
+    return QIcon(":/icons/map-gnomonic.png");
+}
+
 qreal GnomonicProjection::clippingRadius() const
 {
     return 1;
@@ -78,7 +93,9 @@ bool GnomonicProjection::screenCoordinates( const GeoDataCoordinates &coordinate
     qreal cosC = qSin( phi1 ) * qSin( phi ) + qCos( phi1 ) * qCos( phi ) * qCos( lambda - lambdaPrime );
 
     // Prevent division by zero
-    if (fabs(cosC < 0.0001)) cosC = 0.0001;
+    if (fabs(cosC) < 0.0001) {
+        cosC = 0.0001;
+    }
 
     // Let (x, y) be the position on the screen of the placemark..
     x = ( qCos( phi ) * qSin( lambda - lambdaPrime ) ) / cosC;

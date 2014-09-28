@@ -9,7 +9,7 @@
 //
 
 // Local
-#include "StereographicProjection.h"
+#include "AzimuthalEquidistantProjection.h"
 #include "AbstractProjection_p.h"
 
 #include "MarbleDebug.h"
@@ -29,59 +29,58 @@
 namespace Marble
 {
 
-class StereographicProjectionPrivate : public AzimuthalProjectionPrivate
+class AzimuthalEquidistantProjectionPrivate : public AzimuthalProjectionPrivate
 {
   public:
-    explicit StereographicProjectionPrivate( StereographicProjection * parent );
+    explicit AzimuthalEquidistantProjectionPrivate( AzimuthalEquidistantProjection * parent );
 
-    Q_DECLARE_PUBLIC( StereographicProjection )
+    Q_DECLARE_PUBLIC( AzimuthalEquidistantProjection )
 };
 
-StereographicProjection::StereographicProjection()
-    : AzimuthalProjection( new StereographicProjectionPrivate( this ) )
+AzimuthalEquidistantProjection::AzimuthalEquidistantProjection()
+    : AzimuthalProjection( new AzimuthalEquidistantProjectionPrivate( this ) )
 {
     setMinLat( minValidLat() );
     setMaxLat( maxValidLat() );
 }
 
-StereographicProjection::StereographicProjection( StereographicProjectionPrivate *dd )
+AzimuthalEquidistantProjection::AzimuthalEquidistantProjection( AzimuthalEquidistantProjectionPrivate *dd )
         : AzimuthalProjection( dd )
 {
     setMinLat( minValidLat() );
     setMaxLat( maxValidLat() );
 }
 
-StereographicProjection::~StereographicProjection()
+AzimuthalEquidistantProjection::~AzimuthalEquidistantProjection()
 {
 }
 
-
-StereographicProjectionPrivate::StereographicProjectionPrivate( StereographicProjection * parent )
-        : AzimuthalProjectionPrivate( parent )
+QString AzimuthalEquidistantProjection::name() const
 {
+    return QObject::tr( "Azimuthal Equidistant" );
 }
 
-QString StereographicProjection::name() const
+QString AzimuthalEquidistantProjection::description() const
 {
-    return QObject::tr( "Stereographic" );
+    return QObject::tr( "<p><b>Azimuthal Equidistant Projection</b> (\"fish eye\")</p><p>Applications: Display of seismic and radio data and for use in digital planetariums.</p>" );
 }
 
-QString StereographicProjection::description() const
-{
-    return QObject::tr( "<p><b>Stereographic Projection</b> (\"orthogonal\")</p><p>Applications: Used for planetary cartography, geology and panorama photography.</p>" );
-}
-
-QIcon StereographicProjection::icon() const
+QIcon AzimuthalEquidistantProjection::icon() const
 {
     return QIcon(":/icons/map-globe.png");
 }
 
-qreal StereographicProjection::clippingRadius() const
+AzimuthalEquidistantProjectionPrivate::AzimuthalEquidistantProjectionPrivate( AzimuthalEquidistantProjection * parent )
+        : AzimuthalProjectionPrivate( parent )
+{
+}
+
+qreal AzimuthalEquidistantProjection::clippingRadius() const
 {
     return 1;
 }
 
-bool StereographicProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
+bool AzimuthalEquidistantProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
                                              const ViewportParams *viewport,
                                              qreal &x, qreal &y, bool &globeHidesPoint ) const
 {
@@ -97,14 +96,16 @@ bool StereographicProjection::screenCoordinates( const GeoDataCoordinates &coord
         return false;
     }
 
-    qreal k = 1 / (1 + cosC);
+    qreal c = qAcos(cosC);
+
+    qreal k = c / qSin( c );
 
     // Let (x, y) be the position on the screen of the placemark..
     x = ( qCos( phi ) * qSin( lambda - lambdaPrime ) ) * k;
     y = ( qCos( phi1 ) * qSin( phi ) - qSin( phi1 ) * qCos( phi ) * qCos( lambda - lambdaPrime ) ) * k;
 
-    x *= viewport->radius();
-    y *= viewport->radius();
+    x *= 2 * viewport->radius() / M_PI;
+    y *= 2 * viewport->radius() / M_PI;
 
     const qint64  radius  = clippingRadius() * viewport->radius();
 
@@ -126,7 +127,7 @@ bool StereographicProjection::screenCoordinates( const GeoDataCoordinates &coord
     return true;
 }
 
-bool StereographicProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
+bool AzimuthalEquidistantProjection::screenCoordinates( const GeoDataCoordinates &coordinates,
                                              const ViewportParams *viewport,
                                              qreal *x, qreal &y,
                                              int &pointRepeatNum,
@@ -152,27 +153,27 @@ bool StereographicProjection::screenCoordinates( const GeoDataCoordinates &coord
 }
 
 
-bool StereographicProjection::geoCoordinates( const int x, const int y,
+bool AzimuthalEquidistantProjection::geoCoordinates( const int x, const int y,
                                           const ViewportParams *viewport,
                                           qreal& lon, qreal& lat,
                                           GeoDataCoordinates::Unit unit ) const
 {
     const qint64  radius  = viewport->radius();
     // Calculate how many degrees are being represented per pixel.
+    const qreal rad2Pixel = ( 2 * radius ) / M_PI;
     const qreal centerLon = viewport->centerLongitude();
     const qreal centerLat = viewport->centerLatitude();
-    const qreal rx = ( - viewport->width()  / 2 + x );
-    const qreal ry = (   viewport->height() / 2 - y );
-    const qreal p = qMax( qSqrt( rx*rx + ry*ry ), 0.0001 ); // ensure we don't divide by zero
-    const qreal c = 2 * qAtan2( p , radius );
+    const qreal rx = ( - viewport->width()  / 2 + x ) / rad2Pixel;
+    const qreal ry = (   viewport->height() / 2 - y ) / rad2Pixel;
+    const qreal c = qMax( qSqrt( rx*rx + ry*ry ), 0.0001 ); // ensure we don't divide by zero
     const qreal sinc = qSin(c);
 
-    lon = centerLon + qAtan2( rx*sinc , ( p*qCos( centerLat )*qCos( c ) - ry*qSin( centerLat )*sinc  ) );
+    lon = centerLon + qAtan2( rx*sinc , ( c*qCos( centerLat )*qCos( c ) - ry*qSin( centerLat )*sinc  ) );
 
     while ( lon < -M_PI ) lon += 2 * M_PI;
     while ( lon >  M_PI ) lon -= 2 * M_PI;
 
-    lat = qAsin( qCos(c)*qSin(centerLat) + (ry*sinc*qCos(centerLat))/p );
+    lat = qAsin( qCos(c)*qSin(centerLat) + (ry*sinc*qCos(centerLat))/c );
 
     if ( unit == GeoDataCoordinates::Degree ) {
         lon *= RAD2DEG;
