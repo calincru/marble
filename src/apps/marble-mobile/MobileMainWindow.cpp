@@ -436,7 +436,6 @@ void MainWindow::readSettings(const QVariantMap& overrideSettings)
             foreach( const PositionProviderPlugin* plugin, pluginManager->positionProviderPlugins() ) {
                 if ( plugin->nameId() == positionProvider ) {
                     PositionProviderPlugin* instance = plugin->newInstance();
-                    instance->setMarbleModel( m_marbleWidget->model() );
                     tracking->setPositionProviderPlugin( instance );
                     break;
                 }
@@ -545,7 +544,7 @@ void MainWindow::writeSettings()
         QString positionProvider;
         PositionTracking* tracking = m_marbleWidget->model()->positionTracking();
         tracking->writeSettings();
-        if ( tracking && tracking->positionProviderPlugin() ) {
+        if ( tracking->positionProviderPlugin() ) {
             positionProvider = tracking->positionProviderPlugin()->nameId();
         }
         settings.setValue( "activePositionTrackingPlugin", positionProvider );

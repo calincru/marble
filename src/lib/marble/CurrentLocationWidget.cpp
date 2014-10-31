@@ -63,6 +63,7 @@ class CurrentLocationWidgetPrivate
     void updateRecenterComboBox( AutoNavigation::CenterMode centerMode );
     void updateAutoZoomCheckBox( bool autoZoom );
     void updateActivePositionProvider( PositionProviderPlugin* );
+    void updateGuidanceMode();
     void saveTrack();
     void openTrack();
     void clearTrack();
@@ -105,8 +106,8 @@ void CurrentLocationWidget::setMarbleWidget( MarbleWidget *widget )
 {
     d->m_widget = widget;
 
+    delete d->m_adjustNavigation;
     d->m_adjustNavigation = new AutoNavigation( widget->model(), widget->viewport(), this );
-    d->m_widget->model()->routingManager()->setAutoNavigation( d->m_adjustNavigation );
 
     const PluginManager* pluginManager = d->m_widget->model()->pluginManager();
     d->m_positionProviderPlugins = pluginManager->positionProviderPlugins();
@@ -139,10 +140,6 @@ void CurrentLocationWidget::setMarbleWidget( MarbleWidget *widget )
              SIGNAL(statusChanged(PositionProviderStatus)),this,
              SLOT(adjustPositionTrackingStatus(PositionProviderStatus)) );
 
-    disconnect( d->m_adjustNavigation, SIGNAL(recenterModeChanged(AutoNavigation::CenterMode)),
-             this, SLOT(updateRecenterComboBox(AutoNavigation::CenterMode)) );
-    disconnect( d->m_adjustNavigation, SIGNAL(autoZoomToggled(bool)),
-             this, SLOT(updateAutoZoomCheckBox(bool)) );
     disconnect( d->m_widget->model(), SIGNAL(trackedPlacemarkChanged(const GeoDataPlacemark*)),
              this, SLOT(trackPlacemark()) );
 
@@ -175,6 +172,8 @@ void CurrentLocationWidget::setMarbleWidget( MarbleWidget *widget )
 
     connect( d->m_widget, SIGNAL(visibleLatLonAltBoxChanged(GeoDataLatLonAltBox)),
              d->m_adjustNavigation, SLOT(inhibitAutoAdjustments()) );
+    connect( d->m_widget->model()->routingManager(), SIGNAL(guidanceModeEnabledChanged(bool)),
+             this, SLOT(updateGuidanceMode()) );
 
     connect (d->m_currentLocationUi.showTrackCheckBox, SIGNAL(clicked(bool)),
              d->m_widget->model()->positionTracking(), SLOT(setTrackVisible(bool)));
@@ -203,10 +202,10 @@ void CurrentLocationWidgetPrivate::adjustPositionTrackingStatus( PositionProvide
 
     switch ( status ) {
         case PositionProviderStatusUnavailable:
-        html += QObject::tr( "Waiting for current location information..." );
+            html += QObject::tr( "No position available." );
             break;
         case PositionProviderStatusAcquiring:
-            html += QObject::tr( "Initializing current location service..." );
+            html += QObject::tr( "Waiting for current location information..." );
             break;
         case PositionProviderStatusAvailable:
             Q_ASSERT( false );
@@ -240,6 +239,14 @@ void CurrentLocationWidgetPrivate::updateActivePositionProvider( PositionProvide
     m_currentLocationUi.recenterComboBox->setEnabled( plugin );
     m_currentLocationUi.autoZoomCheckBox->setEnabled( plugin );
 
+}
+
+void CurrentLocationWidgetPrivate::updateGuidanceMode()
+{
+    const bool enabled = m_widget->model()->routingManager()->guidanceModeEnabled();
+
+    m_adjustNavigation->setAutoZoom( enabled );
+    m_adjustNavigation->setRecenter( enabled ? AutoNavigation::RecenterOnBorder : AutoNavigation::DontRecenter );
 }
 
 void CurrentLocationWidgetPrivate::receiveGpsCoordinates( const GeoDataCoordinates &position, qreal speed )
@@ -311,31 +318,26 @@ void CurrentLocationWidgetPrivate::receiveGpsCoordinates( const GeoDataCoordinat
 
 void CurrentLocationWidgetPrivate::changePositionProvider( const QString &provider )
 {
-    bool hasProvider = ( provider != QObject::tr("Disabled") );
-
-    if ( hasProvider ) {
-        foreach( const PositionProviderPlugin* plugin, m_positionProviderPlugins ) {
-            if ( plugin->guiString() == provider ) {
-                m_currentLocationUi.locationLabel->setEnabled( true );
-                PositionProviderPlugin* instance = plugin->newInstance();
-                PositionTracking *tracking = m_widget->model()->positionTracking();
-                instance->setMarbleModel( m_widget->model() );
-                tracking->setPositionProviderPlugin( instance );
-                m_widget->update();
-                return;
-            }
+    foreach( const PositionProviderPlugin* plugin, m_positionProviderPlugins ) {
+        if ( plugin->guiString() == provider ) {
+            m_currentLocationUi.locationLabel->setEnabled( true );
+            PositionProviderPlugin* instance = plugin->newInstance();
+            PositionTracking *tracking = m_widget->model()->positionTracking();
+            tracking->setPositionProviderPlugin( instance );
+            m_widget->update();
+            return;
         }
     }
-    else {
-        m_currentLocationUi.locationLabel->setEnabled( false );
-        m_widget->model()->positionTracking()->setPositionProviderPlugin( 0 );
-        m_widget->update();
-    }
+
+    // requested provider not found -> disable position tracking
+    m_currentLocationUi.locationLabel->setEnabled( false );
+    m_widget->model()->positionTracking()->setPositionProviderPlugin( 0 );
+    m_widget->update();
 }
 
 void CurrentLocationWidgetPrivate::trackPlacemark()
 {
-    changePositionProvider( "Placemark" );
+    changePositionProvider( QObject::tr( "Placemark" ) );
     m_adjustNavigation->setRecenter( AutoNavigation::AlwaysRecenter );
 }
 

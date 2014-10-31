@@ -62,6 +62,7 @@
 #include "MarbleDirs.h"
 #include "FileManager.h"
 #include "GeoDataTreeModel.h"
+#include "PlacemarkPositionProviderPlugin.h"
 #include "Planet.h"
 #include "PlanetFactory.h"
 #include "PluginManager.h"
@@ -71,6 +72,7 @@
 #include "TileCreatorDialog.h"
 #include "TileLoader.h"
 #include "routing/RoutingManager.h"
+#include "RouteSimulationPositionProviderPlugin.h"
 #include "BookmarkManager.h"
 #include "ElevationModel.h"
 
@@ -82,8 +84,8 @@ class MarbleModelPrivate
  public:
     MarbleModelPrivate()
         : m_clock(),
-          m_planet( new Planet( PlanetFactory::construct( "earth" ) ) ),
-          m_sunLocator( &m_clock, m_planet ),
+          m_planet( PlanetFactory::construct( "earth" ) ),
+          m_sunLocator( &m_clock, &m_planet ),
           m_pluginManager(),
           m_homePoint( -9.4, 54.8, 0.0, GeoDataCoordinates::Degree ),  // Some point that tackat defined. :-)
           m_homeZoom( 1050 ),
@@ -91,18 +93,18 @@ class MarbleModelPrivate
           m_storagePolicy( MarbleDirs::localPath() ),
           m_downloadManager( &m_storagePolicy ),
           m_storageWatcher( MarbleDirs::localPath() ),
-          m_fileManager( 0 ),
           m_treeModel(),
           m_descendantProxy(),
           m_placemarkProxyModel(),
           m_placemarkSelectionModel( 0 ),
+          m_fileManager( &m_treeModel, &m_pluginManager ),
           m_positionTracking( &m_treeModel ),
           m_trackedPlacemark( 0 ),
           m_bookmarkManager( &m_treeModel ),
           m_routingManager( 0 ),
           m_legend( 0 ),
           m_workOffline( false ),
-          m_elevationModel( 0 )
+          m_elevationModel( &m_downloadManager )
     {
         m_descendantProxy.setSourceModel( &m_treeModel );
 
@@ -117,14 +119,16 @@ class MarbleModelPrivate
 
     ~MarbleModelPrivate()
     {
-        delete m_fileManager;
         delete m_mapTheme;
-        delete m_planet;
     }
+
+    void assignNewStyle( const QString &filePath, const GeoDataStyle &style );
+
+    void assignFillColors( const QString &filePath );
 
     // Misc stuff.
     MarbleClock              m_clock;
-    Planet                  *m_planet;
+    Planet                   m_planet;
     SunLocator               m_sunLocator;
 
     PluginManager            m_pluginManager;
@@ -143,8 +147,6 @@ class MarbleModelPrivate
     FileStorageWatcher       m_storageWatcher;
 
     // Places on the map
-    FileManager             *m_fileManager;
-
     GeoDataTreeModel         m_treeModel;
     KDescendantsProxyModel   m_descendantProxy;
     QSortFilterProxyModel    m_placemarkProxyModel;
@@ -152,6 +154,8 @@ class MarbleModelPrivate
 
     // Selection handling
     QItemSelectionModel      m_placemarkSelectionModel;
+
+    FileManager              m_fileManager;
 
     //Gps Stuff
     PositionTracking         m_positionTracking;
@@ -164,7 +168,7 @@ class MarbleModelPrivate
 
     bool                     m_workOffline;
 
-    ElevationModel           *m_elevationModel;
+    ElevationModel           m_elevationModel;
 };
 
 MarbleModel::MarbleModel( QObject *parent )
@@ -188,8 +192,7 @@ MarbleModel::MarbleModel( QObject *parent )
     connect( &d->m_storagePolicy, SIGNAL(sizeChanged(qint64)),
              &d->m_storageWatcher, SLOT(addToCurrentSize(qint64)) );
 
-    d->m_fileManager = new FileManager( this );
-    connect( d->m_fileManager, SIGNAL(fileAdded( QString)),
+    connect( &d->m_fileManager, SIGNAL(fileAdded( QString)),
              this, SLOT(assignFillColors( QString)) );
 
     d->m_routingManager = new RoutingManager( this, this );
@@ -197,7 +200,8 @@ MarbleModel::MarbleModel( QObject *parent )
     connect(&d->m_clock,   SIGNAL(timeChanged()),
             &d->m_sunLocator, SLOT(update()) );
 
-    d->m_elevationModel = new ElevationModel( this );
+    d->m_pluginManager.addPositionProviderPlugin( new PlacemarkPositionProviderPlugin( this ) );
+    d->m_pluginManager.addPositionProviderPlugin( new RouteSimulationPositionProviderPlugin( this ) );
 }
 
 MarbleModel::~MarbleModel()
@@ -313,13 +317,13 @@ void MarbleModel::setMapTheme( GeoSceneDocument *document )
 */
     //Don't change the planet unless we have to...
     qreal const radiusAttributeValue = d->m_mapTheme->head()->radius();
-    if( d->m_mapTheme->head()->target().toLower() != d->m_planet->id() || radiusAttributeValue != d->m_planet->radius() ) {
+    if( d->m_mapTheme->head()->target().toLower() != d->m_planet.id() || radiusAttributeValue != d->m_planet.radius() ) {
         mDebug() << "Changing Planet";
-        *(d->m_planet) = Magrathea::construct( d->m_mapTheme->head()->target().toLower() );
+        d->m_planet = Magrathea::construct( d->m_mapTheme->head()->target().toLower() );
         if ( radiusAttributeValue > 0.0 ) {
-		    d->m_planet->setRadius( radiusAttributeValue );
+            d->m_planet.setRadius( radiusAttributeValue );
         }
-        sunLocator()->setPlanet(d->m_planet);
+        sunLocator()->setPlanet( &d->m_planet );
     }
 
     QStringList fileList;
@@ -391,12 +395,14 @@ void MarbleModel::setMapTheme( GeoSceneDocument *document )
                      * then assignNewStyle otherwise assignFillColors.
                      */
                 currentDatasets.removeAt( datasetIndex );
-                if ( data->colors().isEmpty() ) {
+                if ( style ) {
                     qDebug() << "setMapThemeId-> color: " << style->polyStyle().color() << " file: " << filename;
-                    assignNewStyle( filename, style );
+                    d->assignNewStyle( filename, *style );
+                    delete style;
+                    style = 0;
                 }
                 else {
-                    assignFillColors( data->sourceFile() );
+                    d->assignFillColors( data->sourceFile() );
                 }
             }
             else {
@@ -408,24 +414,26 @@ void MarbleModel::setMapTheme( GeoSceneDocument *document )
     }
     // unload old currentDatasets which are not part of the new map
     foreach(const GeoSceneGeodata data, currentDatasets) {
-        d->m_fileManager->removeFile( data.sourceFile() );
+        d->m_fileManager.removeFile( data.sourceFile() );
     }
     // load new datasets
-    d->m_fileManager->addFile( fileList, propertyList, styleList, MapDocument );
+    for ( int i = 0 ; i < fileList.size(); ++i ) {
+        d->m_fileManager.addFile( fileList.at(i), propertyList.at(i), styleList.at(i), MapDocument );
+    }
 
     mDebug() << "THEME CHANGED: ***" << mapTheme->head()->mapThemeId();
     emit themeChanged( mapTheme->head()->mapThemeId() );
 }
 
-void MarbleModel::assignNewStyle( const QString &filePath, GeoDataStyle *style )
+void MarbleModelPrivate::assignNewStyle( const QString &filePath, const GeoDataStyle &style )
 {
-        GeoDataDocument *doc = d->m_fileManager->at( filePath );
+        GeoDataDocument *doc = m_fileManager.at( filePath );
         Q_ASSERT( doc );
         GeoDataStyleMap styleMap;
         styleMap.setId("default-map");
-        styleMap.insert( "normal", QString("#").append(style->id()) );
+        styleMap.insert( "normal", QString("#").append(style.id()) );
         doc->addStyleMap( styleMap );
-        doc->addStyle( *style );
+        doc->addStyle( style );
 
         QVector<GeoDataFeature*>::iterator iter = doc->begin();
         QVector<GeoDataFeature*>::iterator const end = doc->end();
@@ -437,13 +445,11 @@ void MarbleModel::assignNewStyle( const QString &filePath, GeoDataStyle *style )
                     if ( placemark->geometry()->nodeType() != GeoDataTypes::GeoDataTrackType &&
                         placemark->geometry()->nodeType() != GeoDataTypes::GeoDataPointType )
                     {
-                        placemark->setStyleUrl( QString("#").append( style->id() ) );
+                        placemark->setStyleUrl( QString("#").append( style.id() ) );
                     }
                 }
             }
         }
-        delete style;
-        style = 0;
 }
 
 void MarbleModel::home( qreal &lon, qreal &lat, int& zoom ) const
@@ -519,22 +525,22 @@ PositionTracking *MarbleModel::positionTracking() const
 
 FileManager *MarbleModel::fileManager()
 {
-    return d->m_fileManager;
+    return &d->m_fileManager;
 }
 
 qreal MarbleModel::planetRadius()   const
 {
-    return d->m_planet->radius();
+    return d->m_planet.radius();
 }
 
 QString MarbleModel::planetName()   const
 {
-    return d->m_planet->name();
+    return d->m_planet.name();
 }
 
 QString MarbleModel::planetId() const
 {
-    return d->m_planet->id();
+    return d->m_planet.id();
 }
 
 MarbleClock *MarbleModel::clock()
@@ -646,7 +652,7 @@ PluginManager* MarbleModel::pluginManager()
 
 const Planet *MarbleModel::planet() const
 {
-    return d->m_planet;
+    return &d->m_planet;
 }
 
 void MarbleModel::addDownloadPolicies( const GeoSceneDocument *mapTheme )
@@ -728,17 +734,17 @@ void MarbleModel::setLegend( QTextDocument * legend )
 void MarbleModel::addGeoDataFile( const QString& filename )
 {
     GeoDataStyle* dummyStyle = new GeoDataStyle;
-    d->m_fileManager->addFile( filename, filename, dummyStyle, UserDocument, true );
+    d->m_fileManager.addFile( filename, filename, dummyStyle, UserDocument, true );
 }
 
 void MarbleModel::addGeoDataString( const QString& data, const QString& key )
 {
-    d->m_fileManager->addData( key, data, UserDocument );
+    d->m_fileManager.addData( key, data, UserDocument );
 }
 
 void MarbleModel::removeGeoData( const QString& fileName )
 {
-    d->m_fileManager->removeFile( fileName );
+    d->m_fileManager.removeFile( fileName );
 }
 
 void MarbleModel::updateProperty( const QString &property, bool value )
@@ -754,8 +760,8 @@ void MarbleModel::updateProperty( const QString &property, bool value )
     }
 }
 
-void MarbleModel::assignFillColors( const QString &filePath ) {
-    foreach( GeoSceneLayer *layer, d->m_mapTheme->map()->layers() ) {
+void MarbleModelPrivate::assignFillColors( const QString &filePath ) {
+    foreach( GeoSceneLayer *layer, m_mapTheme->map()->layers() ) {
         if ( layer->backend() == dgml::dgmlValue_geodata 
              || layer->backend() == dgml::dgmlValue_vector )
         {
@@ -763,7 +769,7 @@ void MarbleModel::assignFillColors( const QString &filePath ) {
                 GeoSceneGeodata *data = static_cast<GeoSceneGeodata*>( dataset );
                 if ( data ) {
                     if ( data->sourceFile() == filePath ) {
-                        GeoDataDocument *doc = d->m_fileManager->at( filePath );
+                        GeoDataDocument *doc = m_fileManager.at( filePath );
                         Q_ASSERT( doc );
                         QPen pen = data->pen();
                         QBrush brush = data->brush();
@@ -855,12 +861,12 @@ void MarbleModel::setWorkOffline( bool workOffline )
 
 ElevationModel* MarbleModel::elevationModel()
 {
-    return d->m_elevationModel;
+    return &d->m_elevationModel;
 }
 
 const ElevationModel* MarbleModel::elevationModel() const
 {
-    return d->m_elevationModel;
+    return &d->m_elevationModel;
 }
 
 }

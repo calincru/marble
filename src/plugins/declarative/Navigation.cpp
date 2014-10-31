@@ -40,7 +40,7 @@ public:
 
     Marble::RouteSegment nextRouteSegment();
 
-    void updateNextInstructionDistance( const Marble::RoutingModel *model );
+    void updateNextInstructionDistance( const Marble::Route &route );
 };
 
 NavigationPrivate::NavigationPrivate() :
@@ -50,14 +50,14 @@ NavigationPrivate::NavigationPrivate() :
     // nothing to do
 }
 
-void NavigationPrivate::updateNextInstructionDistance( const Marble::RoutingModel *model )
+void NavigationPrivate::updateNextInstructionDistance( const Marble::Route &route )
 {
-    Marble::GeoDataCoordinates position = model->route().position();
-    Marble::GeoDataCoordinates interpolated = model->route().positionOnRoute();
-    Marble::GeoDataCoordinates onRoute = model->route().currentWaypoint();
+    const Marble::GeoDataCoordinates position = route.position();
+    const Marble::GeoDataCoordinates interpolated = route.positionOnRoute();
+    const Marble::GeoDataCoordinates onRoute = route.currentWaypoint();
     qreal distance = Marble::EARTH_RADIUS * ( distanceSphere( position, interpolated ) + distanceSphere( interpolated, onRoute ) );
     qreal remaining = 0.0;
-    const Marble::RouteSegment &segment = model->route().currentSegment();
+    const Marble::RouteSegment &segment = route.currentSegment();
     for ( int i=0; i<segment.path().size(); ++i ) {
         if ( segment.path()[i] == onRoute ) {
             distance += segment.path().length( Marble::EARTH_RADIUS, i );
@@ -66,14 +66,14 @@ void NavigationPrivate::updateNextInstructionDistance( const Marble::RoutingMode
     }
 
     bool upcoming = false;
-    for ( int i=0; i<model->route().size(); ++i ) {
-        const Marble::RouteSegment &segment = model->route().at( i );
+    for ( int i=0; i<route.size(); ++i ) {
+        const Marble::RouteSegment &segment = route.at( i );
 
         if ( upcoming ) {
             remaining += segment.path().length( Marble::EARTH_RADIUS );
         }
 
-        if ( segment == model->route().currentSegment() ) {
+        if ( segment == route.currentSegment() ) {
             upcoming = true;
         }
     }
@@ -117,6 +117,7 @@ void Navigation::setMap( MarbleWidget* widget )
         connect( d->m_marbleWidget->model()->routingManager()->routingModel(),
                 SIGNAL(positionChanged()), this, SLOT(update()) );
 
+        delete d->m_autoNavigation;
         d->m_autoNavigation = new Marble::AutoNavigation( d->m_marbleWidget->model(), d->m_marbleWidget->viewport(), this );
         connect( d->m_autoNavigation, SIGNAL(zoomIn(FlyToMode)),
                  d->m_marbleWidget, SLOT(zoomIn()) );
@@ -129,8 +130,6 @@ void Navigation::setMap( MarbleWidget* widget )
                  d->m_autoNavigation, SLOT(inhibitAutoAdjustments()) );
         connect( d->m_marbleWidget->model()->positionTracking(), SIGNAL(statusChanged(PositionProviderStatus)),
                  &d->m_voiceNavigation, SLOT(handleTrackingStatusChange(PositionProviderStatus)) );
-
-        d->m_marbleWidget->model()->routingManager()->setAutoNavigation( d->m_autoNavigation );
     }
     emit mapChanged();
 }
@@ -144,6 +143,8 @@ void Navigation::setGuidanceModeEnabled( bool enabled )
 {
     if ( d->m_marbleWidget ) {
         d->m_marbleWidget->model()->routingManager()->setGuidanceModeEnabled( enabled );
+        d->m_autoNavigation->setAutoZoom( enabled );
+        d->m_autoNavigation->setRecenter( enabled ? Marble::AutoNavigation::RecenterOnBorder : Marble::AutoNavigation::DontRecenter );
 
         if ( enabled && !d->m_muted ) {
             //d->m_audio.announceStart();
@@ -244,7 +245,7 @@ bool Navigation::deviated() const
 void Navigation::update()
 {
     Marble::RoutingModel const * model = d->m_marbleWidget->model()->routingManager()->routingModel();
-    d->updateNextInstructionDistance( model );
+    d->updateNextInstructionDistance( model->route() );
     emit nextInstructionDistanceChanged();
     emit destinationDistanceChanged();
     Marble::RouteSegment segment = model->route().currentSegment();

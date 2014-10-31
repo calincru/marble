@@ -12,10 +12,11 @@ endif()
 set( my_SRCS
   ElevationProfileFloatItem.cpp
   ElevationProfilePlotAxis.cpp
+  ElevationProfileDataSource.cpp
+  ElevationProfileContextMenu.cpp
  )
 set( elevationprofile_UI ElevationProfileConfigWidget.ui )
 
 qt_wrap_ui( my_SRCS ${elevationprofile_UI})
-marble_qt4_automoc( ${my_SRCS} )
 
 marble_add_plugin( ElevationProfileFloatItem ${my_SRCS} )

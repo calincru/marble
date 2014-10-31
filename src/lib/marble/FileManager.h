@@ -21,10 +21,11 @@
 namespace Marble
 {
 
-class MarbleModel;
 class FileManagerPrivate;
 class FileLoader;
 class GeoDataLatLonBox;
+class GeoDataTreeModel;
+class PluginManager;
 
 /**
  * This class is responsible for loading the
@@ -43,7 +44,7 @@ class FileManager : public QObject
      *
      * @param parent The parent object.
      */
-    explicit FileManager( MarbleModel *model,  QObject *parent = 0 );
+    explicit FileManager( GeoDataTreeModel *treeModel, const PluginManager *pluginManager, QObject *parent = 0 );
 
     /**
      * Destroys the file manager.
@@ -54,12 +55,6 @@ class FileManager : public QObject
      * Loads a new file into the manager.
      */
     void addFile( const QString &fileName, const QString &property, const GeoDataStyle* style, DocumentRole role, bool recenter = false );
-
-
-    /**
-     * Loads multiple files into the manager.
-     */
-    void addFile( const QStringList &fileNames, const QStringList &propertyList, const QList<const GeoDataStyle*> &styles, DocumentRole role );
 
 
     /**

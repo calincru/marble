@@ -21,6 +21,8 @@
 #include <GeoDataSimpleArrayData.h>
 #include "TestUtils.h"
 
+#include <QDateTime>
+
 using namespace Marble;
 
 
@@ -29,6 +31,8 @@ class TestGeoDataTrack : public QObject
     Q_OBJECT
 private slots:
     void initTestCase();
+    void defaultConstructor();
+    void interpolate();
     void simpleParseTest();
     void removeBeforeTest();
     void removeAfterTest();
@@ -39,6 +43,42 @@ private slots:
 void TestGeoDataTrack::initTestCase()
 {
     MarbleDebug::setEnabled( true );
+}
+
+void TestGeoDataTrack::defaultConstructor()
+{
+    const GeoDataTrack track;
+
+    QCOMPARE( track.size(), 0 );
+    QCOMPARE( track.interpolate(), false );
+    QCOMPARE( track.coordinatesList().size(), 0 );
+    QCOMPARE( track.whenList().size(), 0 );
+    QCOMPARE( track.lineString()->size(), 0 );
+    QCOMPARE( track.latLonAltBox(), GeoDataLatLonAltBox() );
+    QCOMPARE( track.coordinatesAt( QDateTime( QDate( 2014, 8, 16 ), QTime( 8, 0, 0 ) ) ), GeoDataCoordinates() );
+}
+
+void TestGeoDataTrack::interpolate()
+{
+    GeoDataTrack track;
+    track.setInterpolate( true );
+
+    const QDateTime date1( QDate( 2014, 8, 16 ), QTime( 4, 57, 26 ) );
+    const QDateTime date2( QDate( 2014, 8, 16 ), QTime( 12, 47, 16 ) );
+    const GeoDataCoordinates coordinates1( 13.592294, 52.675926, 71, GeoDataCoordinates::Degree );
+    const GeoDataCoordinates coordinates2( 13.572776, 53.517952, 97, GeoDataCoordinates::Degree );
+    track.addPoint( date1, coordinates1 );
+    track.addPoint( date2, coordinates2 );
+
+    const GeoDataCoordinates interpolated = track.coordinatesAt( QDateTime( QDate( 2014, 8, 16 ), QTime( 8, 0, 0 ) ) );
+    QCOMPARE( interpolated.longitude( GeoDataCoordinates::Degree ), 13.5848002666755789391572761815 );
+    QCOMPARE( interpolated.latitude( GeoDataCoordinates::Degree ), 53.0031187444621139093214878812 );
+
+    const GeoDataCoordinates beforeStart = track.coordinatesAt( QDateTime( QDate( 2014, 8, 16 ), QTime( 0, 0, 0 ) ) );
+    QCOMPARE( beforeStart, GeoDataCoordinates() );
+
+    const GeoDataCoordinates afterEnd = track.coordinatesAt( QDateTime( QDate( 2014, 8, 16 ), QTime( 23, 0, 0 ) ) );
+    QCOMPARE( afterEnd, GeoDataCoordinates() );
 }
 
     //"Simple Example" from kmlreference
