@@ -38,6 +38,7 @@
 #include "PlaybackAnimatedUpdateItem.h"
 #include "GeoDataAnimatedUpdate.h"
 #include "MarbleMath.h"
+#include "Planet.h"
 
 #include <QTime>
 #include <QTimer>
@@ -337,8 +338,6 @@ RoutingWidget::RoutingWidget( MarbleWidget *marbleWidget, QWidget *parent ) :
              this, SLOT(activatePlacemark(QModelIndex)) );
     connect( d->m_routingManager, SIGNAL(stateChanged(RoutingManager::State)),
              this, SLOT(updateRouteState(RoutingManager::State)) );
-    connect( d->m_routingManager, SIGNAL(routeRetrieved(GeoDataDocument*)),
-             this, SLOT(indicateRoutingFailure(GeoDataDocument*)) );
     connect( d->m_routeRequest, SIGNAL(positionAdded(int)),
              this, SLOT(insertInputWidget(int)) );
     connect( d->m_routeRequest, SIGNAL(positionRemoved(int)),
@@ -440,7 +439,7 @@ void RoutingWidget::retrieveRoute()
         d->m_routingLayer->synchronizeWith( d->m_ui.directionsListView->selectionModel() );
     }
 
-    if( d->m_playback ){
+    if( d->m_playback ) {
         d->m_playback->stop();
     }
 }
@@ -579,13 +578,24 @@ void RoutingWidget::removeInputWidget( int index )
 void RoutingWidget::updateRouteState( RoutingManager::State state )
 {
     clearTour();
-    if ( state != RoutingManager::Retrieved ) {
+
+    switch ( state ) {
+    case RoutingManager::Downloading:
         d->m_ui.routeComboBox->setVisible( false );
         d->m_ui.routeComboBox->clear();
-    }
-
-    if ( state == RoutingManager::Downloading ) {
         d->m_progressTimer.start();
+        d->m_ui.resultLabel->setVisible( false );
+    break;
+    case RoutingManager::Retrieved: {
+        d->m_progressTimer.stop();
+        d->m_ui.searchButton->setIcon( QIcon() );
+        if ( d->m_routingManager->routingModel()->rowCount() == 0 ) {
+            const QString results = tr( "No route found" );
+            d->m_ui.resultLabel->setText( "<font color=\"red\">" + results + "</font>" );
+            d->m_ui.resultLabel->setVisible( true );
+        }
+    }
+    break;
     }
 
     d->m_saveRouteButton->setEnabled( d->m_routingManager->routingModel()->rowCount() > 0 );
@@ -644,7 +654,6 @@ void RoutingWidget::updateProgress()
         d->m_currentFrame = ( d->m_currentFrame + 1 ) % d->m_progressAnimation.size();
         QIcon frame = d->m_progressAnimation[d->m_currentFrame];
         d->m_ui.searchButton->setIcon( frame );
-        d->m_ui.resultLabel->setVisible( false );
     }
 }
 
@@ -663,9 +672,6 @@ void RoutingWidget::updateAlternativeRoutes()
     if ( d->m_ui.routeComboBox->currentIndex() < 0 && d->m_ui.routeComboBox->count() > 0 ) {
         d->m_ui.routeComboBox->setCurrentIndex( 0 );
     }
-
-    d->m_progressTimer.stop();
-    d->m_ui.searchButton->setIcon( QIcon() );
 
     QString const results = tr( "routes found: %1" ).arg( d->m_ui.routeComboBox->count() );
     d->m_ui.resultLabel->setText( results );
@@ -769,17 +775,6 @@ void RoutingWidget::openCloudRoutesDialog()
     delete dialog;
 }
 
-void RoutingWidget::indicateRoutingFailure( GeoDataDocument* route )
-{
-    if ( !route ) {
-        d->m_progressTimer.stop();
-        d->m_ui.searchButton->setIcon( QIcon() );
-        QString const results = tr( "No route found" );
-        d->m_ui.resultLabel->setText( "<font color=\"red\">" + results + "</font>" );
-        d->m_ui.resultLabel->setVisible( true );
-    }
-}
-
 void RoutingWidget::updateActiveRoutingProfile()
 {
     RoutingProfile const profile = d->m_routingManager->routeRequest()->routingProfile();
@@ -859,6 +854,9 @@ void RoutingWidget::resizeEvent(QResizeEvent *e)
 
 void RoutingWidget::toggleRoutePlay()
 {
+    if (!d->m_playback)
+        return;
+
     if( !d->m_playing ){
         d->m_playing = true;
         d->m_playButton->setIcon( QIcon( ":/marble/playback-pause.png" ) );
@@ -909,9 +907,10 @@ void RoutingWidget::initializeTour()
     totalDistance = 0.0;
     GeoDataCoordinates last = path.at( 0 );
     int j=0; // next waypoint
+    qreal planetRadius = d->m_widget->model()->planet()->radius();
     for( int i=1; i<path.size(); ++i ){
         GeoDataCoordinates coordinates = path.at( i );
-        totalDistance += EARTH_RADIUS * distanceSphere( path.at( i-1 ), coordinates ); // Distance to route start
+        totalDistance += planetRadius * distanceSphere( path.at( i-1 ), coordinates ); // Distance to route start
         while (totalDistance >= allWaypoints[j].distance && j+1<allWaypoints.size()) {
             ++j;
         }
@@ -921,7 +920,7 @@ void RoutingWidget::initializeTour()
         double const waypointDistance = qMin( lastDistance, nextDistance ); // distance to closest waypoint
         double const step = qBound( 100.0, waypointDistance*2, 1000.0 ); // support point distance (higher density close to waypoints)
 
-        double const distance = EARTH_RADIUS * distanceSphere( last, coordinates );
+        double const distance = planetRadius * distanceSphere( last, coordinates );
         if( i > 1 && distance < step ){
             continue;
         }

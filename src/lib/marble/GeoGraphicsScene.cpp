@@ -14,7 +14,10 @@
 #include "GeoDataGroundOverlay.h"
 #include "GeoDataLatLonBox.h"
 #include "GeoDataPhotoOverlay.h"
+#include "GeoDataStyle.h"
+#include "GeoDataStyleMap.h"
 #include "GeoDataPlacemark.h"
+#include "GeoDataDocument.h"
 #include "GeoDataTypes.h"
 #include "GeoGraphicsItem.h"
 #include "TileId.h"
@@ -33,14 +36,60 @@ bool zValueLessThan( GeoGraphicsItem* i1, GeoGraphicsItem* i2 )
 class GeoGraphicsScenePrivate
 {
 public:
+    GeoGraphicsScene *q;
+    GeoGraphicsScenePrivate(GeoGraphicsScene *parent) :
+        q(parent)
+    {
+    }
 
-    void addItems(const TileId &tileId, QList<GeoGraphicsItem*> &result, int maxZoomLevel ) const;
+    ~GeoGraphicsScenePrivate()
+    {
+        q->clear();
+    }
+
+    static void mergeItems( QList<GeoGraphicsItem *> &result, const QList<GeoGraphicsItem *> &objects, int maxZoomLevel );
 
     QMap<TileId, QList<GeoGraphicsItem*> > m_items;
     QMultiHash<const GeoDataFeature*, TileId> m_features;
+
+    // Stores the items which have been clicked;
+    QList<GeoGraphicsItem*> m_selectedItems;
+
+    GeoDataStyle *highlightStyle(const GeoDataDocument *document, const GeoDataStyleMap &styleMap);
+
+    void selectItem( GeoGraphicsItem *item );
+    void applyHighlightStyle( GeoGraphicsItem *item, GeoDataStyle *style );
 };
 
-GeoGraphicsScene::GeoGraphicsScene( QObject* parent ): QObject( parent ), d( new GeoGraphicsScenePrivate() )
+GeoDataStyle *GeoGraphicsScenePrivate::highlightStyle( const GeoDataDocument *document,
+                                                       const GeoDataStyleMap &styleMap )
+{
+    // @todo Consider QUrl parsing when external styles are suppported
+    QString highlightStyleId = styleMap.value("highlight");
+    highlightStyleId.remove('#');
+    if ( !highlightStyleId.isEmpty() ) {
+        GeoDataStyle *highlightStyle = new GeoDataStyle( document->style(highlightStyleId) );
+        return highlightStyle;
+    }
+    else {
+        return 0;
+    }
+}
+
+void GeoGraphicsScenePrivate::selectItem( GeoGraphicsItem* item )
+{
+    m_selectedItems.append( item );
+}
+
+void GeoGraphicsScenePrivate::applyHighlightStyle(GeoGraphicsItem* item, GeoDataStyle* highlightStyle )
+{
+    item->setHighlightStyle( highlightStyle );
+    item->setHighlighted( true );
+}
+
+GeoGraphicsScene::GeoGraphicsScene( QObject* parent ):
+    QObject( parent ),
+    d( new GeoGraphicsScenePrivate(this) )
 {
 
 }
@@ -48,17 +97,6 @@ GeoGraphicsScene::GeoGraphicsScene( QObject* parent ): QObject( parent ), d( new
 GeoGraphicsScene::~GeoGraphicsScene()
 {
     delete d;
-}
-
-void GeoGraphicsScene::eraseAll()
-{
-    for( QMap< TileId, QList< GeoGraphicsItem* > >::const_iterator i = d->m_items.constBegin();
-         i != d->m_items.constEnd(); ++i )
-    {
-        qDeleteAll(*i);
-    }
-    d->m_items.clear();
-    d->m_features.clear();
 }
 
 QList< GeoGraphicsItem* > GeoGraphicsScene::items( const GeoDataLatLonBox &box, int zoomLevel ) const
@@ -109,11 +147,81 @@ QList< GeoGraphicsItem* > GeoGraphicsScene::items( const GeoDataLatLonBox &box, 
         coords.getCoords( &x1, &y1, &x2, &y2 );
         for ( int x = x1; x <= x2; ++x ) {
             for ( int y = y1; y <= y2; ++y ) {
-                d->addItems( TileId ( 0, level, x, y ), result, zoomLevel );
+                const TileId tileId = TileId( 0, level, x, y );
+                GeoGraphicsScenePrivate::mergeItems( result, d->m_items.value( tileId ), zoomLevel );
             }
         }
     }
     return result;
+}
+
+QList< GeoGraphicsItem* > GeoGraphicsScene::selectedItems() const
+{
+    return d->m_selectedItems;
+}
+
+void GeoGraphicsScene::applyHighlight( const QVector< GeoDataPlacemark* > &selectedPlacemarks )
+{
+    /**
+     * First set the items, which were selected previously, to
+     * use normal style
+     */
+    foreach ( GeoGraphicsItem *item, d->m_selectedItems ) {
+        item->setHighlighted( false );
+    }
+
+    // Also clear the list to store the new selected items
+    d->m_selectedItems.clear();
+
+    /**
+     * Process the placemark. which were under mouse
+     * while clicking, and update corresponding graphics
+     * items to use highlight style
+     */
+    foreach( const GeoDataPlacemark *placemark, selectedPlacemarks ) {
+        QList<TileId> tiles = d->m_features.values( placemark );
+        foreach( const TileId &tileId, tiles ) {
+            QList<GeoGraphicsItem*> clickedItems = d->m_items[tileId];
+            foreach ( GeoGraphicsItem *item, clickedItems ) {
+                if ( item->feature() == placemark ) {
+                    GeoDataObject *parent = placemark->parent();
+                    if ( parent ) {
+                        if ( parent->nodeType() == GeoDataTypes::GeoDataDocumentType ) {
+                            GeoDataDocument *doc = static_cast<GeoDataDocument*>( parent );
+                            QString styleUrl = placemark->styleUrl();
+                            styleUrl.remove('#');
+                            if ( !styleUrl.isEmpty() ) {
+                                GeoDataStyleMap const &styleMap = doc->styleMap( styleUrl );
+                                GeoDataStyle *style = d->highlightStyle( doc, styleMap );
+                                if ( style ) {
+                                    d->selectItem( item );
+                                    d->applyHighlightStyle( item, style );
+                                }
+                            }
+
+                            /**
+                            * If a placemark is using an inline style instead of a shared
+                            * style ( e.g in case when theme file specifies the colorMap
+                            * attribute ) then highlight it if any of the style maps have a
+                            * highlight styleId
+                            */
+                            else {
+                                foreach ( const GeoDataStyleMap &styleMap, doc->styleMaps() ) {
+                                    GeoDataStyle *style = d->highlightStyle( doc, styleMap );
+                                    if ( style ) {
+                                        d->selectItem( item );
+                                        d->applyHighlightStyle( item, style );
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    emit repaintNeeded();
 }
 
 void GeoGraphicsScene::removeItem( const GeoDataFeature* feature )
@@ -125,6 +233,7 @@ void GeoGraphicsScene::removeItem( const GeoDataFeature* feature )
             if( item->feature() == feature ) {
                 d->m_features.remove( feature );
                 tileList.removeAll( item );
+                delete item;
                 break;
             }
         }
@@ -133,7 +242,11 @@ void GeoGraphicsScene::removeItem( const GeoDataFeature* feature )
 
 void GeoGraphicsScene::clear()
 {
+    foreach(const QList<GeoGraphicsItem*> &list, d->m_items.values()) {
+        qDeleteAll(list);
+    }
     d->m_items.clear();
+    d->m_features.clear();
 }
 
 void GeoGraphicsScene::addItem( GeoGraphicsItem* item )
@@ -157,9 +270,8 @@ void GeoGraphicsScene::addItem( GeoGraphicsItem* item )
     d->m_features.insert( item->feature(), key );
 }
 
-void GeoGraphicsScenePrivate::addItems( const TileId &tileId, QList<GeoGraphicsItem *> &result, int maxZoomLevel ) const
+void GeoGraphicsScenePrivate::mergeItems( QList<GeoGraphicsItem *> &result, const QList<GeoGraphicsItem *> &objects, int maxZoomLevel )
 {
-    const QList< GeoGraphicsItem* > &objects = m_items.value(tileId);
     QList< GeoGraphicsItem* >::iterator before = result.begin();
     QList< GeoGraphicsItem* >::const_iterator currentItem = objects.constBegin();
     while( currentItem != objects.end() ) {

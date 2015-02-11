@@ -63,6 +63,8 @@
 #include "HttpDownloadManager.h"
 #include "BookmarkManager.h"
 #include "NewBookmarkFolderDialog.h"
+#include "GeoSceneDocument.h"
+#include "GeoSceneHead.h"
 #include "GeoDataCoordinates.h"
 #include "GeoDataDocument.h"
 #include "GeoDataFolder.h"
@@ -210,6 +212,8 @@ MainWindow::MainWindow(const QString& marbleDataPath, const QVariantMap& cmdLine
 
     connect( m_controlView->marbleWidget(), SIGNAL(themeChanged(QString)),
              this, SLOT(updateMapEditButtonVisibility(QString)) );
+    connect(m_controlView->marbleModel(), SIGNAL(themeChanged(QString)),
+            this, SLOT(updateApplicationTitle(QString)));
     connect( m_controlView, SIGNAL(showMapWizard()), this, SLOT(showMapWizard()) );
     connect( m_controlView, SIGNAL(mapThemeDeleted()), this, SLOT(fallBackToDefaultTheme()) );
 
@@ -739,7 +743,7 @@ void MainWindow::createPluginMenus()
 
         // menus
         const QList<QActionGroup*> *tmp_actionGroups = (*i)->actionGroups();
-        if( (*i)->enabled() && tmp_actionGroups ) {
+        if( (*i)->enabled() && tmp_actionGroups && (*i)->nameId() != "annotation" ) {
            foreach( QActionGroup *ag, *tmp_actionGroups ) {
                if( !ag->actions().isEmpty() ) {
                    m_pluginMenus.append( m_viewMenu->addSeparator() );
@@ -1603,6 +1607,14 @@ void MainWindow::changeRecordingState()
 {
     m_recordMovieAction->setEnabled( !m_recordMovieAction->isEnabled() );
     m_stopRecordingAction->setEnabled( !m_stopRecordingAction->isEnabled() );
+}
+
+void MainWindow::updateApplicationTitle(const QString&)
+{
+    GeoSceneDocument *theme = m_controlView->marbleModel()->mapTheme();
+    if (theme) {
+        setWindowTitle(tr("Marble Virtual Globe") + " - " + theme->head()->name());
+    }
 }
 
 void MainWindow::showMapWizard()

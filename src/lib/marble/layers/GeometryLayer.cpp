@@ -43,11 +43,13 @@
 #include "TileId.h"
 #include "MarbleGraphicsItem.h"
 #include "MarblePlacemarkModel.h"
+#include "GeoDataTreeModel.h"
 
 // Qt
 #include <qmath.h>
 #include <QAbstractItemModel>
 #include <QModelIndex>
+#include <QColor>
 
 namespace Marble
 {
@@ -110,6 +112,10 @@ GeometryLayer::GeometryLayer( const QAbstractItemModel *model )
              this, SLOT(removePlacemarks(QModelIndex,int,int)) );
     connect( model, SIGNAL(modelReset()),
              this, SLOT(resetCacheData()) );
+    connect( this, SIGNAL(highlightedPlacemarksChanged(QVector<GeoDataPlacemark*>)),
+             &d->m_scene, SLOT(applyHighlight(QVector<GeoDataPlacemark*>)) );
+    connect( &d->m_scene, SIGNAL(repaintNeeded()),
+             this, SIGNAL(repaintNeeded()) );
 }
 
 GeometryLayer::~GeometryLayer()
@@ -409,23 +415,29 @@ void GeometryLayer::addPlacemarks( QModelIndex parent, int first, int last )
 void GeometryLayer::removePlacemarks( QModelIndex parent, int first, int last )
 {
     Q_ASSERT( last < d->m_model->rowCount( parent ) );
+    bool isRepaintNeeded = false;
     for( int i=first; i<=last; ++i ) {
         QModelIndex index = d->m_model->index( i, 0, parent );
         Q_ASSERT( index.isValid() );
         const GeoDataObject *object = qvariant_cast<GeoDataObject*>(index.data( MarblePlacemarkModel::ObjectPointerRole ) );
         const GeoDataFeature *feature = dynamic_cast<const GeoDataFeature*>( object );
-        Q_ASSERT( feature );
-        d->removeGraphicsItems( feature );
+        if( feature != 0 ) {
+            d->removeGraphicsItems( feature );
+            isRepaintNeeded = true;
+        }
     }
-    emit repaintNeeded();
+    if( isRepaintNeeded ) {
+        emit repaintNeeded();
+    }
 
 }
 
 void GeometryLayer::resetCacheData()
 {
-    d->m_scene.eraseAll();
+    d->m_scene.clear();
     qDeleteAll( d->m_items );
     d->m_items.clear();
+
     const GeoDataObject *object = static_cast<GeoDataObject*>( d->m_model->index( 0, 0, QModelIndex() ).internalPointer() );
     if ( object && object->parent() )
         d->createGraphicsItems( object->parent() );
@@ -461,6 +473,94 @@ QVector<const GeoDataFeature*> GeometryLayer::whichFeatureAt(const QPoint& curpo
     }
 
     return result;
+}
+
+void GeometryLayer::handleHighlight( qreal lon, qreal lat, GeoDataCoordinates::Unit unit )
+{
+    GeoDataCoordinates clickedPoint( lon, lat, 0, unit );
+    QVector<GeoDataPlacemark*> selectedPlacemarks;
+
+    for ( int i = 0; i < d->m_model->rowCount(); ++i ) {
+        QVariant const data = d->m_model->data ( d->m_model->index ( i, 0 ), MarblePlacemarkModel::ObjectPointerRole );
+        GeoDataObject *object = qvariant_cast<GeoDataObject*> ( data );
+        Q_ASSERT ( object );
+        if ( object->nodeType() == GeoDataTypes::GeoDataDocumentType ) {
+            Q_ASSERT( dynamic_cast<const GeoDataDocument *>( object ) != 0 );
+            GeoDataDocument* doc = static_cast<GeoDataDocument*> ( object );
+                bool isHighlight = false;
+
+                foreach ( const GeoDataStyleMap &styleMap, doc->styleMaps() ) {
+                    if ( styleMap.contains( QString("highlight") ) ) {
+                        isHighlight = true;
+                        break;
+                    }
+                }
+
+                /*
+                 * If a document doesn't specify any highlight
+                 * styleId in its style maps then there is no need
+                 * to further check that document for placemarks
+                 * which have been clicked because we won't
+                 * highlight them.
+                 */
+                if ( isHighlight ) {
+                    QVector<GeoDataFeature*>::Iterator iter = doc->begin();
+                    QVector<GeoDataFeature*>::Iterator const end = doc->end();
+
+                    for ( ; iter != end; ++iter ) {
+                        if ( (*iter)->nodeType() == GeoDataTypes::GeoDataPlacemarkType ) {
+                            GeoDataPlacemark *placemark = static_cast<GeoDataPlacemark*>( *iter );
+                            GeoDataPolygon *polygon = dynamic_cast<GeoDataPolygon*>( placemark->geometry() );
+                            GeoDataLineString *lineString = dynamic_cast<GeoDataLineString*>( placemark->geometry() );
+                            GeoDataMultiGeometry *multiGeometry = dynamic_cast<GeoDataMultiGeometry*>(placemark->geometry() );
+                            if ( polygon &&
+                                polygon->contains( clickedPoint ) )
+                            {
+                                selectedPlacemarks.push_back( placemark );
+                            }
+
+                            if ( lineString &&
+                                lineString->nodeType() == GeoDataTypes::GeoDataLinearRingType )
+                            {
+                                GeoDataLinearRing *linearRing = static_cast<GeoDataLinearRing*>( lineString );
+                                if ( linearRing->contains( clickedPoint ) ) {
+                                    selectedPlacemarks.push_back( placemark );
+                                }
+                            }
+
+                            if ( multiGeometry ) {
+                                QVector<GeoDataGeometry*>::Iterator multiIter = multiGeometry->begin();
+                                QVector<GeoDataGeometry*>::Iterator const multiEnd = multiGeometry->end();
+
+                                for ( ; multiIter != multiEnd; ++multiIter ) {
+                                    GeoDataPolygon *poly = dynamic_cast<GeoDataPolygon*>( *multiIter );
+                                    GeoDataLineString *linestring = dynamic_cast<GeoDataLineString*>( *multiIter );
+
+                                    if ( poly &&
+                                        poly->contains( clickedPoint ) )
+                                    {
+                                        selectedPlacemarks.push_back( placemark );
+                                        break;
+                                    }
+
+                                    if ( linestring &&
+                                        linestring->nodeType() == GeoDataTypes::GeoDataLinearRingType )
+                                    {
+                                        GeoDataLinearRing *linearRing = static_cast<GeoDataLinearRing*>( linestring );
+                                        if ( linearRing->contains( clickedPoint ) ) {
+                                            selectedPlacemarks.push_back( placemark );
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    emit highlightedPlacemarksChanged( selectedPlacemarks );
 }
 
 }

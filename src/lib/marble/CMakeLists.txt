@@ -95,6 +95,12 @@ set(marblewidget_SRCS
     MapViewWidget.cpp
     FileViewWidget.cpp
     TourWidget.cpp
+    FlyToEditWidget.cpp
+    TourControlEditWidget.cpp
+    WaitEditWidget.cpp
+    SoundCueEditWidget.cpp
+    RemoveItemEditWidget.cpp
+    TourItemDelegate.cpp
     TourPlayback.cpp
     LegendWidget.cpp
     PlaybackItem.cpp
@@ -193,6 +199,8 @@ set(marblewidget_SRCS
     MovieCapture.cpp
     MovieCaptureDialog.cpp
     TourCaptureDialog.cpp
+    EditPlacemarkDialog.cpp
+    AddLinkDialog.cpp
 
     AbstractDataPlugin.cpp
     AbstractDataPluginModel.cpp
@@ -222,6 +230,7 @@ set(marblewidget_SRCS
     MathHelper.cpp
 
     LatLonEdit.cpp
+    PlacemarkEditHeader.cpp
 
     MapThemeSortFilterProxyModel.cpp
 
@@ -317,6 +326,7 @@ set (marblewidget_UI
     MarbleAboutDialog.ui
     SunControlWidget.ui
     LatLonEdit.ui
+    PlacemarkEditHeader.ui
     routing/RoutingWidget.ui
     DataMigrationWidget.ui
     EditBookmarkDialog.ui
@@ -334,6 +344,9 @@ set (marblewidget_UI
     MarbleCloudSyncSettingsWidget.ui
     MovieCaptureDialog.ui
     TourCaptureDialog.ui
+    EditPlacemarkDialog.ui
+    AddLinkDialog.ui
+    ElevationWidget.ui
 )
 
 # FIXME: cleaner approach of src/lib/marblwidget/MarbleControlBox.* vs. marble.qrc
@@ -444,6 +457,12 @@ install( FILES
     LegendWidget.h
     FileViewWidget.h
     TourWidget.h
+    FlyToEditWidget.h
+    TourControlEditWidget.h
+    WaitEditWidget.h
+    SoundCueEditWidget.h
+    RemoveItemEditWidget.h
+    TourItemDelegate.h
     TourPlayback.h
     CurrentLocationWidget.h
     MarbleNavigator.h
@@ -546,6 +565,8 @@ install( FILES
     marble_export.h
     Planet.h
     PlanetFactory.h
+    EditPlacemarkDialog.h
+    AddLinkDialog.h
 
     AbstractDataPlugin.h
     AbstractDataPluginModel.h
@@ -553,6 +574,7 @@ install( FILES
     AbstractWorkerThread.h
 
     LatLonEdit.h
+    PlacemarkEditHeader.h
     MapWizard.h
     MapThemeDownloadDialog.h
     ElevationModel.h

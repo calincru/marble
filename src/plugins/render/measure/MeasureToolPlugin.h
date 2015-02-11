@@ -28,13 +28,10 @@
 #include <QPen>
 #include <QAction>
 
-namespace Ui {
-    class MeasureConfigWidget;
-}
-
 namespace Marble
 {
 
+class MeasureConfigDialog;
 class MeasureToolPlugin : public RenderPlugin, public DialogConfigurationInterface
 {
     Q_OBJECT
@@ -45,6 +42,11 @@ class MeasureToolPlugin : public RenderPlugin, public DialogConfigurationInterfa
 
  public:
     explicit MeasureToolPlugin( const MarbleModel *marbleModel = 0 );
+
+    enum PaintMode {
+        Polygon = 0,
+        Circular
+    };
 
     QStringList backendTypes() const;
     QString renderPolicy() const;
@@ -81,8 +83,7 @@ class MeasureToolPlugin : public RenderPlugin, public DialogConfigurationInterfa
 
  private:
     void  drawMeasurePoints( GeoPainter *painter ) const;
-    void  drawTotalDistanceLabel( GeoPainter *painter,
-                                  qreal totalDistance ) const;
+    void  drawInfobox( GeoPainter *painter ) const;
     void  drawSegments( GeoPainter *painter );
     void  addContextItems();
     void  removeContextItems();
@@ -100,8 +101,11 @@ class MeasureToolPlugin : public RenderPlugin, public DialogConfigurationInterfa
  private:
     Q_DISABLE_COPY( MeasureToolPlugin )
 
+    QString meterToPreferredUnit(qreal meters, bool isSquare = false) const;
+
     // The line strings in the distance path.
     GeoDataLineString m_measureLineString;
+    GeoDataLatLonAltBox m_latLonAltBox;
 
     const QPixmap m_mark;
     QFont   m_font_regular;
@@ -116,10 +120,26 @@ class MeasureToolPlugin : public RenderPlugin, public DialogConfigurationInterfa
 
     MarbleWidget* m_marbleWidget;
 
-    QDialog * m_configDialog;
-    Ui::MeasureConfigWidget * m_uiConfigWidget;
+    MeasureConfigDialog *m_configDialog;
+
     bool m_showDistanceLabel;
     bool m_showBearingLabel;
+    bool m_showBearingChangeLabel;
+
+    bool m_showPolygonArea;
+    bool m_showCircularArea;
+    bool m_showRadius;
+    bool m_showPerimeter;
+    bool m_showCircumference;
+
+    qreal m_totalDistance;
+    qreal m_polygonArea;
+    qreal m_circularArea;
+    qreal m_radius;
+    qreal m_perimeter;
+    qreal m_circumference;
+
+    PaintMode m_paintMode;
 };
 
 }

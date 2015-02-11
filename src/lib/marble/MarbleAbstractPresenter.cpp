@@ -60,13 +60,11 @@ namespace Marble
         Quaternion rotTheta(1.0, 0.0, deltaLon / 180.0, 0.0);
 
         Quaternion axis = map()->viewport()->planetAxis();
-        qreal lon(0.0), lat(0.0);
-        axis.getSpherical(lon, lat);
         axis = rotTheta * axis;
         axis *= rotPhi;
         axis.normalize();
-        lat = -axis.pitch();
-        lon = axis.yaw();
+        const qreal lat = -axis.pitch();
+        const qreal lon = axis.yaw();
 
         GeoDataLookAt target = lookAt();
         target.setLongitude(lon);
@@ -104,28 +102,17 @@ namespace Marble
 
     QString MarbleAbstractPresenter::distanceString() const
     {
-        qreal dist = distance();
-        QString distanceUnitString;
+        // distance() returns data in km, so translating to meters
+        qreal dist = distance() * KM2METER, convertedDistance;
 
-        const MarbleLocale::MeasurementSystem measurementSystem =
-                MarbleGlobal::getInstance()->locale()->measurementSystem();
+        MarbleLocale::MeasureUnit unit;
+        MarbleLocale *locale = MarbleGlobal::getInstance()->locale();
+        locale->meterToTargetUnit(dist, locale->measurementSystem(),
+                                  convertedDistance, unit);
+        QString unitString = locale->unitAbbreviation(unit);
 
-        switch (measurementSystem)
-        {
-        case MarbleLocale::MetricSystem:
-            distanceUnitString = tr("km");
-            break;
-        case MarbleLocale::ImperialSystem:
-            dist *= KM2MI;
-            distanceUnitString = tr("mi");
-            break;
-        case MarbleLocale::NauticalSystem:
-            dist *= KM2NM;
-            distanceUnitString = tr("nm");
-            break;
-        }
-
-        return QString("%L1 %2").arg(dist, 8, 'f', 1, QChar(' ')).arg(distanceUnitString);
+        return QString("%L1 %2").arg(convertedDistance, 8, 'f', 1, QChar(' '))
+                                .arg(unitString);
     }
 
     GeoDataLookAt MarbleAbstractPresenter::lookAt() const

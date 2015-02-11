@@ -79,8 +79,18 @@ public:
     void addItemToList_keepExisting_data();
     void addItemToList_keepExisting();
 
+    void switchMapTheme_data();
+    void switchMapTheme();
+
     void setFavoriteItemsOnly_data();
     void setFavoriteItemsOnly();
+
+    void itemsVersusInitialized_data();
+    void itemsVersusInitialized();
+
+    void itemsVersusAddedAngularResolution();
+
+    void itemsVersusSetSticky();
 
  private:
     const MarbleModel m_marbleModel;
@@ -125,19 +135,16 @@ void AbstractDataPluginModelTest::destructor()
 void AbstractDataPluginModelTest::addItemToList_data()
 {
     QTest::addColumn<bool>( "initialized" );
-    QTest::addColumn<QString>( "planetId" );
 
     const bool isInitialized = true;
 
-    addRow() << isInitialized << m_marbleModel.planetId();
-    addRow() << !isInitialized << m_marbleModel.planetId();
-    addRow() << isInitialized << QString( "Saturn" );
+    addRow() << isInitialized;
+    addRow() << !isInitialized;
 }
 
 void AbstractDataPluginModelTest::addItemToList()
 {
     QFETCH( bool, initialized );
-    QFETCH( QString, planetId );
 
     TestDataPluginModel model( &m_marbleModel );
 
@@ -147,7 +154,6 @@ void AbstractDataPluginModelTest::addItemToList()
 
     TestDataPluginItem *item = new TestDataPluginItem();
     item->setInitialized( initialized );
-    item->setTarget( planetId );
     item->setId( "foo" );
 
     QSignalSpy itemsUpdatedSpy( &model, SIGNAL(itemsUpdated()) );
@@ -157,10 +163,7 @@ void AbstractDataPluginModelTest::addItemToList()
     QVERIFY( model.itemExists( "foo" ) );
     QCOMPARE( model.findItem( "foo" ), item );
     QCOMPARE( itemsUpdatedSpy.count() == 1, initialized );
-
-    const bool visible = initialized && ( m_marbleModel.planetId() == planetId );
-
-    QCOMPARE( static_cast<bool>( model.items( &fullViewport, 1 ).contains( item ) ), visible );
+    QCOMPARE( static_cast<bool>( model.items( &fullViewport, 1 ).contains( item ) ), initialized );
 }
 
 void AbstractDataPluginModelTest::addItemToList_keepExisting_data()
@@ -208,6 +211,44 @@ void AbstractDataPluginModelTest::addItemToList_keepExisting()
     QCOMPARE( itemsUpdatedSpy.count(), 0 );
 }
 
+void AbstractDataPluginModelTest::switchMapTheme_data()
+{
+    QTest::addColumn<QString>( "mapThemeId" );
+    QTest::addColumn<bool>( "planetChanged" );
+
+    addRow() << "earth/bluemarble/bluemarble.dgml" << false;
+    addRow() << "moon/clementine/clementine.dgml" << true;
+}
+
+void AbstractDataPluginModelTest::switchMapTheme()
+{
+    QFETCH( QString, mapThemeId );
+    QFETCH( bool, planetChanged );
+
+    MarbleModel marbleModel;
+
+    marbleModel.setMapThemeId( "earth/openstreetmap/openstreetmap.dgml" );
+    QCOMPARE( marbleModel.mapThemeId(), QString( "earth/openstreetmap/openstreetmap.dgml" ) );
+
+    TestDataPluginModel model( &marbleModel );
+
+    TestDataPluginItem *const item = new TestDataPluginItem();
+    item->setId( "foo" );
+    model.addItemToList( item );
+
+    QCOMPARE( model.findItem( "foo" ), item );
+
+    marbleModel.setMapThemeId( mapThemeId );
+    QCOMPARE( marbleModel.mapThemeId(), mapThemeId );
+
+    if ( planetChanged ) {
+        QCOMPARE( model.findItem( "foo" ), static_cast<AbstractDataPluginItem *>( 0 ) );
+    }
+    else {
+        QCOMPARE( model.findItem( "foo" ), item );
+    }
+}
+
 void AbstractDataPluginModelTest::setFavoriteItemsOnly_data()
 {
     QTest::addColumn<bool>( "itemIsFavorite" );
@@ -227,7 +268,6 @@ void AbstractDataPluginModelTest::setFavoriteItemsOnly()
     TestDataPluginItem *item = new TestDataPluginItem;
     item->setId( "foo" );
     item->setInitialized( true );
-    item->setTarget( m_marbleModel.planetId() );
     item->setFavorite( itemIsFavorite );
 
     TestDataPluginModel model( &m_marbleModel );
@@ -239,6 +279,66 @@ void AbstractDataPluginModelTest::setFavoriteItemsOnly()
     const bool visible = !favoriteItemsOnly || itemIsFavorite;
 
     QCOMPARE( static_cast<bool>( model.items( &fullViewport, 1 ).contains( item ) ), visible );
+}
+
+void AbstractDataPluginModelTest::itemsVersusInitialized_data()
+{
+    QTest::addColumn<bool>( "initialized" );
+
+    addRow() << true;
+    addRow() << false;
+}
+
+void AbstractDataPluginModelTest::itemsVersusInitialized()
+{
+    QFETCH( bool, initialized );
+
+    TestDataPluginItem *item = new TestDataPluginItem;
+    item->setInitialized( initialized );
+
+    TestDataPluginModel model( &m_marbleModel );
+    model.addItemToList( item );
+
+    QCOMPARE( static_cast<bool>( model.items( &fullViewport, 1 ).contains( item ) ), initialized );
+}
+
+void AbstractDataPluginModelTest::itemsVersusAddedAngularResolution()
+{
+    const ViewportParams zoomedViewport( Equirectangular, 0, 0, 10000, QSize( 230, 230 ) );
+
+    TestDataPluginItem *item = new TestDataPluginItem;
+    item->setInitialized( true );
+
+    TestDataPluginModel model( &m_marbleModel );
+    model.addItemToList( item );
+
+    QVERIFY( model.items( &zoomedViewport, 1 ).contains( item ) ); // calls setAddedAngularResolution()
+    QVERIFY( !model.items( &fullViewport, 1 ).contains( item ) ); // addedAngularResolution() is too low
+}
+
+void AbstractDataPluginModelTest::itemsVersusSetSticky()
+{
+    const ViewportParams zoomedViewport( Equirectangular, 0, 0, 10000, QSize( 230, 230 ) );
+
+    TestDataPluginItem *item = new TestDataPluginItem;
+    item->setInitialized( true );
+    item->setSticky( false );
+
+    TestDataPluginModel model( &m_marbleModel );
+    model.addItemToList( item );
+
+    QVERIFY( model.items( &zoomedViewport, 1 ).contains( item ) );
+    QVERIFY( !model.items( &fullViewport, 1 ).contains( item ) );
+
+    item->setSticky( true );
+
+    QVERIFY( model.items( &zoomedViewport, 1 ).contains( item ) );
+    QVERIFY( model.items( &fullViewport, 1 ).contains( item ) );
+
+    item->setSticky( false );
+
+    QVERIFY( model.items( &zoomedViewport, 1 ).contains( item ) );
+    QVERIFY( !model.items( &fullViewport, 1 ).contains( item ) );
 }
 
 QTEST_MAIN( AbstractDataPluginModelTest )

@@ -17,6 +17,10 @@ add_subdirectory( reverse-geocoding )
 add_subdirectory( vehicletracking )
 add_subdirectory( search )
 
+if(QT5BUILD)
+    add_subdirectory( marble-game )
+endif()
+
 if(NOT QT4_FOUND)
     add_subdirectory( marbleQuick2 )
 endif()

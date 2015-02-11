@@ -216,9 +216,21 @@ const qreal NM2FT = 6080; // nm feet
 const qreal M2FT = 3.2808;
 const qreal FT2M = 1.0 / M2FT;
 
+// Conversion Metric / Imperial System: meter vs inch
+const qreal M2IN = 39.3701;
+const qreal IN2M = 1.0 / M2IN;
+
+// Conversion Metric / Imperial System: meter vs yard
+const qreal M2YD = 1.09361;
+const qreal YD2M = 1.0 / M2YD;
+
 // Conversion meter vs millimeter
-const qreal M2MM = 1000;
+const qreal M2MM = 1000.0;
 const qreal MM2M = 1.0 / M2MM;
+
+// Conversion meter vs centimeter
+const qreal M2CM = 100.0;
+const qreal CM2M = 1.0 / M2CM;
 
 // Conversion degree vs. radians
 const qreal DEG2RAD = M_PI / 180.0;
@@ -269,15 +281,6 @@ const unsigned int c_defaultTileSize = 675;
 
 class MarbleGlobalPrivate;
 class MarbleLocale;
-
-#ifdef __GNUC__
-#define MARBLE_DEPRECATED(func) func __attribute__ ((deprecated))
-#elif defined(_MSC_VER)
-#define MARBLE_DEPRECATED(func) __declspec(deprecated) func
-#else
-#pragma message("WARNING: You need to implement MARBLE_DEPRECATED for this compiler in MarbleGlobal.h")
-#define MARBLE_DEPRECATED(func) func
-#endif
 
 class  MARBLE_EXPORT MarbleGlobal
 {

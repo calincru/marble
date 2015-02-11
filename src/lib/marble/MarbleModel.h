@@ -36,6 +36,7 @@
 #include <QVector>
 
 #include "MarbleGlobal.h"
+#include "GeoDataCoordinates.h"
 
 class QItemSelectionModel;
 class QAbstractItemModel;
@@ -200,7 +201,7 @@ class MARBLE_EXPORT MarbleModel : public QObject
      * @param data the raw data to load
      * @param key the name to remove this raw data later
      */
-    void addGeoDataString( const QString& data, const QString& key = "data" );
+    void addGeoDataString( const QString& data, const QString& key = QLatin1String("data") );
 
     /**
      * @brief Remove the file or raw data from the treeModel
@@ -266,6 +267,11 @@ class MARBLE_EXPORT MarbleModel : public QObject
 
     QTextDocument * legend();
 
+    /**
+     * @brief Uses the given text document as the new content of the legend
+     * Any previous legend content is overwritten. MarbleModel takes ownership
+     * of the passed document.
+     */
     void setLegend( QTextDocument * document );
 
     bool workOffline() const;
@@ -327,7 +333,7 @@ class MARBLE_EXPORT MarbleModel : public QObject
      * @see home(), setHome()
      */
     void homeChanged( const GeoDataCoordinates &newHomePoint );
-    
+
  private:
     Q_DISABLE_COPY( MarbleModel )
 

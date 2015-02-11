@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Service
 Name=KML Geographic Compressed Data
+Name[bg]=Географски данни – KML, компресирани
 Name[ca]=Dades geogràfiques comprimides KML
 Name[da]=KML geografiske komprimerede data
 Name[de]=KML-Geografiedaten (komprimiert)
@@ -9,6 +10,7 @@ Name[es]=Datos geográficos comprimidos KML
 Name[et]=KML tihendatud geograafilised andmed
 Name[fi]=Pakattu KML-paikkatieto
 Name[fr]=Données géographiques KML compressées
+Name[hu]=KML földrajzi tömörített adat
 Name[it]=Dati geografici compressi KML
 Name[nds]=Komprimeert KML-Geodaten
 Name[nl]=KML Geographic Compressed Data

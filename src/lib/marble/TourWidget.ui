@@ -23,9 +23,6 @@
      <addaction name="m_actionOpenTour"/>
      <addaction name="m_actionSaveTour"/>
      <addaction name="m_actionSaveTourAs"/>
-     <addaction name="m_actionRecord"/>
-     <addaction name="separator"/>
-     <addaction name="m_actionAddFlyTo"/>
      <addaction name="separator"/>
      <addaction name="m_actionMoveUp"/>
      <addaction name="m_actionMoveDown"/>
@@ -50,6 +47,15 @@
        <addaction name="actionPlay"/>
        <addaction name="separator"/>
        <addaction name="actionStop"/>
+       <addaction name="separator"/>
+       <addaction name="m_actionRecord"/>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="m_elapsedTime">
+       <property name="text">
+        <string>--:--</string>
+       </property>
       </widget>
      </item>
      <item>
@@ -59,21 +65,16 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QLabel" name="m_totalTime">
+       <property name="text">
+        <string>--:--</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>
-  <action name="m_actionAddFlyTo">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="libmarble.qrc">
-     <normaloff>:/marble/list-add.png</normaloff>:/marble/list-add.png</iconset>
-   </property>
-   <property name="text">
-    <string>Add FlyTo</string>
-   </property>
-  </action>
   <action name="m_actionMoveUp">
    <property name="enabled">
     <bool>false</bool>

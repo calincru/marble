@@ -23,6 +23,14 @@ print "//
 
 print "    // Generated automatically by $0\n";
 
+print "#include \"AprsGatherer.h\"
+
+using namespace Marble;
+
+void AprsGatherer::initMicETables()
+{
+";
+
 foreach my $c ('0'..'9') {
     print "    m_dstCallDigits['$c']          = $c;\n";
     print "    m_dstCallSouthEast['$c']       = true;\n";
@@ -93,8 +101,14 @@ print "    m_customMessageText[7] = \"M7: EMERGENCY\";\n";
 print "\n";
 
 foreach my $chr (ord('!') .. ord('~')) {
-    printf ("    m_pixmaps[QPair<QChar, QChar>('/','%c')] = " .
-	    "\"aprs/primary/%02d.png\";\n", $chr, $chr-ord('!'));
-    printf ("    m_pixmaps[QPair<QChar, QChar>('\\\\','%c')] = " .
-	    "\"aprs/secondary/%02d.png\";\n", $chr, $chr-ord('!'));
+    my $str = chr($chr);
+    if ($chr eq ord('\'') or $chr eq ord('\\')) {
+        $str = "\\$str";
+    }
+    printf ("    m_pixmaps[QPair<QChar, QChar>('/','%s')] = " .
+	    "\"aprs/primary/%02d.png\";\n", $str, $chr-ord('!'));
+    printf ("    m_pixmaps[QPair<QChar, QChar>('\\\\','%s')] = " .
+	    "\"aprs/secondary/%02d.png\";\n", $str, $chr-ord('!'));
 }
+
+print "}\n";

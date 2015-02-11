@@ -24,7 +24,6 @@
 namespace Marble
 {
 
-class AlternativeRoutesModelPrivate;
 class RouteRequest;
 class GeoDataDocument;
 
@@ -80,12 +79,6 @@ public:
     /** Returns the waypoints contained in the route as a linestring */
     static const GeoDataLineString* waypoints( const GeoDataDocument* document );
 
-    /** Returns the distance between the given point and the given great circle path */
-    static qreal distance( const GeoDataCoordinates &satellite, const GeoDataCoordinates &lineA, const GeoDataCoordinates &lineB );
-
-    /** Returns the minimal distance of each waypoint of routeA to routeB */
-    static QVector<qreal> deviation( const GeoDataDocument* routeA, const GeoDataDocument* routeB );
-
 public Q_SLOTS:
     void setCurrentRoute( int index );
 
@@ -97,7 +90,8 @@ private Q_SLOTS:
     void addRestrainedRoutes();
 
 private:
-    AlternativeRoutesModelPrivate *const d;
+    class Private;
+    Private *const d;
 };
 
 } // namespace Marble

@@ -61,8 +61,11 @@ public:
     
     ~AbstractDataPluginModelPrivate();
 
+    QString generateFilename( const QString& id, const QString& type ) const;
+    QString generateFilepath( const QString& id, const QString& type ) const;
+
     void updateFavoriteItems();
-    
+
     AbstractDataPluginModel *m_parent;
     const QString m_name;
     const MarbleModel *const m_marbleModel;
@@ -70,7 +73,7 @@ public:
     GeoDataLatLonAltBox m_downloadedBox;
     qint32 m_lastNumber;
     qint32 m_downloadedNumber;
-    QString m_downloadedTarget;
+    QString m_currentPlanetId;
     QList<AbstractDataPluginItem*> m_itemSet;
     QHash<QString, AbstractDataPluginItem*> m_downloadingItems;
     QList<AbstractDataPluginItem*> m_displayedItems;
@@ -119,6 +122,7 @@ AbstractDataPluginModelPrivate::AbstractDataPluginModelPrivate( const QString& n
       m_downloadedBox(),
       m_lastNumber( 0 ),
       m_downloadedNumber( 0 ),
+      m_currentPlanetId( marbleModel->planetId() ),
       m_downloadTimer( m_parent ),
       m_descriptionFileNumber( 0 ),
       m_itemSettings(),
@@ -155,6 +159,14 @@ void AbstractDataPluginModelPrivate::updateFavoriteItems()
                 m_parent->getItem( id );
             }
         }
+    }
+}
+
+void AbstractDataPluginModel::themeChanged()
+{
+    if ( d->m_currentPlanetId != d->m_marbleModel->planetId() ) {
+        clear();
+        d->m_currentPlanetId = d->m_marbleModel->planetId();
     }
 }
 
@@ -253,7 +265,10 @@ AbstractDataPluginModel::AbstractDataPluginModel( const QString &name, const Mar
     // Initializing file and download System
     connect( &d->m_downloadManager, SIGNAL(downloadComplete(QString,QString)),
              this ,                 SLOT(processFinishedJob(QString,QString)) );
-    
+
+    connect( marbleModel, SIGNAL(themeChanged(QString)),
+             this, SLOT(themeChanged()) );
+
     // We want to download a new description file every timeBetweenDownloads ms
     connect( &d->m_downloadTimer, SIGNAL(timeout()),
              this,               SLOT(handleChangedViewport()),
@@ -275,7 +290,6 @@ QList<AbstractDataPluginItem*> AbstractDataPluginModel::items( const ViewportPar
                                                                qint32 number )
 {
     GeoDataLatLonAltBox currentBox = viewport->viewLatLonAltBox();
-    QString target = d->m_marbleModel->planetId();
     QList<AbstractDataPluginItem*> list;
     
     Q_ASSERT( !d->m_displayedItems.contains( 0 ) && "Null item in m_displayedItems. Please report a bug to marble-devel@kde.org" );
@@ -299,11 +313,6 @@ QList<AbstractDataPluginItem*> AbstractDataPluginModel::items( const ViewportPar
         if( !(*i)->initialized() ) {
             continue;
         }
-        
-        // Only show items that are on the current planet
-        if( (*i)->target() != target ) {
-            continue;
-        }
 
         // Hide non-favorite items if necessary
         if( d->m_favoriteItemsOnly && !(*i)->isFavorite() ) {
@@ -314,11 +323,15 @@ QList<AbstractDataPluginItem*> AbstractDataPluginModel::items( const ViewportPar
         if( (*i)->positions().isEmpty() ) {
             continue;
         }
-        
+
+        if ( list.contains( *i ) ) {
+            continue;
+        }
+
         // If the item was added initially at a nearer position, they don't have priority,
         // because we zoomed out since then.
         bool const alreadyDisplayed = d->m_displayedItems.contains( *i );
-        if( !list.contains( *i ) && ( !alreadyDisplayed || (*i)->addedAngularResolution() >= viewport->angularResolution() ) ) {
+        if ( !alreadyDisplayed || (*i)->addedAngularResolution() >= viewport->angularResolution() || (*i)->isSticky() ) {
             bool collides = false;
             int const length = list.length();
             for ( int j=0; !collides && j<length; ++j ) {
@@ -383,7 +396,7 @@ void AbstractDataPluginModel::downloadItem( const QUrl& url,
         return;
     }
 
-    QString id = generateFilename( item->id(), type );
+    QString id = d->generateFilename( item->id(), type );
 
     d->m_downloadManager.addJob( url, id, id, DownloadBrowse );
     d->m_downloadingItems.insert( id, item );
@@ -524,7 +537,7 @@ void AbstractDataPluginModel::scheduleItemSort()
     d->m_needsSorting = true;
 }
 
-QString AbstractDataPluginModel::generateFilename( const QString& id, const QString& type ) const
+QString AbstractDataPluginModelPrivate::generateFilename( const QString& id, const QString& type ) const
 {
     QString name;
     name += id;
@@ -534,19 +547,9 @@ QString AbstractDataPluginModel::generateFilename( const QString& id, const QStr
     return name;
 }
 
-QString AbstractDataPluginModel::generateFilepath( const QString& id, const QString& type ) const
+QString AbstractDataPluginModelPrivate::generateFilepath( const QString& id, const QString& type ) const
 {
-    return MarbleDirs::localPath() + "/cache/" + d->m_name + '/' + generateFilename( id, type );
-}
-
-bool AbstractDataPluginModel::fileExists( const QString& fileName ) const
-{
-    return d->m_storagePolicy.fileExists( fileName );
-}
-
-bool AbstractDataPluginModel::fileExists( const QString& id, const QString& type ) const
-{
-    return fileExists( generateFilename( id, type ) );
+    return MarbleDirs::localPath() + "/cache/" + m_name + '/' + generateFilename( id, type );
 }
 
 AbstractDataPluginItem *AbstractDataPluginModel::findItem( const QString& id ) const
@@ -580,8 +583,7 @@ void AbstractDataPluginModel::handleChangedViewport()
     if( d->m_lastNumber != 0
             // We don't need to download if nothing changed
             && ( !( d->m_downloadedBox == d->m_lastBox )
-                 || d->m_downloadedNumber != d->m_lastNumber
-                 || d->m_downloadedTarget != d->m_marbleModel->planetId() )
+                 || d->m_downloadedNumber != d->m_lastNumber )
             // We try to filter little changes of the bounding box
             && ( fabs( d->m_downloadedBox.east() - d->m_lastBox.east() ) * boxComparisonFactor
                  > d->m_lastBox.width()
@@ -599,8 +601,7 @@ void AbstractDataPluginModel::handleChangedViewport()
         // Save the download parameter
         d->m_downloadedBox = d->m_lastBox;
         d->m_downloadedNumber = d->m_lastNumber;
-        d->m_downloadedTarget = d->m_marbleModel->planetId();
-        
+
         // Get items
         getAdditionalItems( d->m_lastBox, d->m_lastNumber );
     }
@@ -640,7 +641,7 @@ void AbstractDataPluginModel::processFinishedJob( const QString& relativeUrlStri
                 return;
             }
             
-            (*i)->addDownloadedFile( generateFilepath( itemId, fileType ),
+            (*i)->addDownloadedFile( d->generateFilepath( itemId, fileType ),
                                      fileType );
 
             d->m_downloadingItems.erase( i );
@@ -669,6 +670,9 @@ void AbstractDataPluginModel::clear()
         (*iter)->deleteLater();
     }
     d->m_itemSet.clear();
+    d->m_lastBox = GeoDataLatLonAltBox();
+    d->m_downloadedBox = GeoDataLatLonAltBox();
+    d->m_downloadedNumber = 0;
     emit itemsUpdated();
 }
 

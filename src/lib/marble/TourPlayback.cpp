@@ -54,6 +54,7 @@ public:
     QList<AnimatedUpdateTrack*> m_animatedUpdateTracks;
     GeoDataFlyTo m_mapCenter;
     MarbleWidget *m_widget;
+    QUrl m_baseUrl;
 };
 
 TourPlaybackPrivate::TourPlaybackPrivate() :
@@ -103,7 +104,7 @@ void TourPlayback::showBalloon( GeoDataPlacemark* placemark )
 {
     GeoDataPoint* point = static_cast<GeoDataPoint*>( placemark->geometry() );
     d->m_widget->popupLayer()->setCoordinates( point->coordinates(), Qt::AlignRight | Qt::AlignVCenter );
-    d->m_widget->popupLayer()->setContent( placemark->description() );
+    d->m_widget->popupLayer()->setContent( placemark->description(), d->m_baseUrl );
     d->m_widget->popupLayer()->setVisible( true );
     d->m_widget->popupLayer()->setSize( QSizeF( 480, 500 ) );
 }
@@ -132,6 +133,16 @@ void TourPlayback::setMarbleWidget(MarbleWidget* widget)
                       d->m_widget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
 }
 
+void TourPlayback::setBaseUrl( const QUrl &baseUrl )
+{
+    d->m_baseUrl = baseUrl;
+}
+
+QUrl TourPlayback::baseUrl() const
+{
+    return d->m_baseUrl;
+}
+
 void TourPlayback::centerOn( const GeoDataCoordinates &coordinates )
 {
     if ( d->m_widget ) {
@@ -144,83 +155,13 @@ void TourPlayback::centerOn( const GeoDataCoordinates &coordinates )
 
 void TourPlayback::setTour(GeoDataTour *tour)
 {
-    d->m_mainTrack.clear();
-    qDeleteAll( d->m_soundTracks );
-    qDeleteAll( d->m_animatedUpdateTracks );
-    d->m_soundTracks.clear();
-    d->m_animatedUpdateTracks.clear();
-
     d->m_tour = tour;
     if ( !d->m_tour ) {
-        d->m_mainTrack.clear();
-        qDeleteAll(d->m_soundTracks);
-        qDeleteAll(d->m_animatedUpdateTracks);
-        d->m_soundTracks.clear();
-        d->m_animatedUpdateTracks.clear();
+        clearTracks();
         return;
     }
 
-    double delay = 0;
-    for( int i = 0; i < d->m_tour->playlist()->size(); i++){
-        GeoDataTourPrimitive* primitive = d->m_tour->playlist()->primitive( i );
-        if( primitive->nodeType() == GeoDataTypes::GeoDataFlyToType ){
-            const GeoDataFlyTo *flyTo = dynamic_cast<const GeoDataFlyTo*>(primitive);
-            d->m_mainTrack.append( new PlaybackFlyToItem( flyTo ) );
-            delay += flyTo->duration();
-        }
-        else if( primitive->nodeType() == GeoDataTypes::GeoDataWaitType ){
-            const GeoDataWait *wait = dynamic_cast<const GeoDataWait*>(primitive);
-
-            d->m_mainTrack.append( new PlaybackWaitItem( wait ) );
-            delay += wait->duration();
-        }
-        else if( primitive->nodeType() == GeoDataTypes::GeoDataTourControlType ){
-            const GeoDataTourControl *tourControl = dynamic_cast<const GeoDataTourControl*>(primitive);
-
-            d->m_mainTrack.append( new PlaybackTourControlItem( tourControl ) );
-        }
-        else if( primitive->nodeType() == GeoDataTypes::GeoDataSoundCueType ){
-            const GeoDataSoundCue *soundCue = dynamic_cast<const GeoDataSoundCue*>(primitive);
-            PlaybackSoundCueItem *item = new PlaybackSoundCueItem( soundCue );
-            SoundTrack *track = new SoundTrack( item );
-            track->setDelayBeforeTrackStarts( delay );
-            d->m_soundTracks.append( track );
-        }
-        else if( primitive->nodeType() == GeoDataTypes::GeoDataAnimatedUpdateType ){
-            GeoDataAnimatedUpdate *animatedUpdate = dynamic_cast<GeoDataAnimatedUpdate*>(primitive);
-            PlaybackAnimatedUpdateItem *item = new PlaybackAnimatedUpdateItem( animatedUpdate );
-            AnimatedUpdateTrack *track = new AnimatedUpdateTrack( item );
-            track->setDelayBeforeTrackStarts( delay + animatedUpdate->delayedStart() );
-            d->m_animatedUpdateTracks.append( track );
-            connect( track, SIGNAL( balloonHidden()), this, SLOT( hideBalloon() ) );
-            connect( track, SIGNAL( balloonShown( GeoDataPlacemark* ) ), this, SLOT( showBalloon( GeoDataPlacemark* ) ) );
-            connect( track, SIGNAL( updated( GeoDataFeature* ) ), this, SIGNAL( updated( GeoDataFeature* ) ) );
-            connect( track, SIGNAL(added(GeoDataContainer*,GeoDataFeature*,int)), this, SIGNAL(added(GeoDataContainer*,GeoDataFeature*,int)) );
-            connect( track, SIGNAL(removed(const GeoDataFeature*)), this, SIGNAL(removed(const GeoDataFeature*)) );
-        }
-    }
-
-    Q_ASSERT( d->m_widget );
-    GeoDataLookAt* lookat = new GeoDataLookAt( d->m_widget->lookAt() );
-    lookat->setAltitude( lookat->range() );
-    d->m_mapCenter.setView( lookat );
-    PlaybackFlyToItem* mapCenterItem = new PlaybackFlyToItem( &d->m_mapCenter );
-    PlaybackFlyToItem* before = mapCenterItem;
-    for ( int i=0; i<d->m_mainTrack.size(); ++i ) {
-        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack.at(i) );
-        if ( item ) {
-            item->setBefore( before );
-            before = item;
-        }
-    }
-    PlaybackFlyToItem* next = 0;
-    for ( int i=d->m_mainTrack.size()-1; i>=0; --i ) {
-        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack.at(i) );
-        if ( item ) {
-            item->setNext( next );
-            next = item;
-        }
-    }
+    updateTracks();
 }
 
 void TourPlayback::play()
@@ -266,25 +207,97 @@ void TourPlayback::stop()
 void TourPlayback::seek( double value )
 {
     double const offset = qBound( 0.0, value, d->m_mainTrack.duration() );
-    double const currentPosition = d->m_mainTrack.currentPosition();
     d->m_mainTrack.seek( offset );
     foreach( SoundTrack* track, d->m_soundTracks ){
         track->seek( offset );
     }
-    if( offset > currentPosition ){
-        foreach( AnimatedUpdateTrack* track, d->m_animatedUpdateTracks ){
-            track->seek( offset );
+    foreach( AnimatedUpdateTrack* track, d->m_animatedUpdateTracks ){
+        track->seek( offset );
+    }
+}
+
+int TourPlayback::mainTrackSize()
+{
+    return d->m_mainTrack.size();
+}
+
+PlaybackItem* TourPlayback::mainTrackItemAt( int i )
+{
+    return d->m_mainTrack.at( i );
+}
+
+void TourPlayback::updateTracks()
+{
+    clearTracks();
+    double delay = 0;
+    for( int i = 0; i < d->m_tour->playlist()->size(); i++){
+        GeoDataTourPrimitive* primitive = d->m_tour->playlist()->primitive( i );
+        if( primitive->nodeType() == GeoDataTypes::GeoDataFlyToType ){
+            const GeoDataFlyTo *flyTo = dynamic_cast<const GeoDataFlyTo*>(primitive);
+            d->m_mainTrack.append( new PlaybackFlyToItem( flyTo ) );
+            delay += flyTo->duration();
+        }
+        else if( primitive->nodeType() == GeoDataTypes::GeoDataWaitType ){
+            const GeoDataWait *wait = dynamic_cast<const GeoDataWait*>(primitive);
+
+            d->m_mainTrack.append( new PlaybackWaitItem( wait ) );
+            delay += wait->duration();
+        }
+        else if( primitive->nodeType() == GeoDataTypes::GeoDataTourControlType ){
+            const GeoDataTourControl *tourControl = dynamic_cast<const GeoDataTourControl*>(primitive);
+
+            d->m_mainTrack.append( new PlaybackTourControlItem( tourControl ) );
+        }
+        else if( primitive->nodeType() == GeoDataTypes::GeoDataSoundCueType ){
+            const GeoDataSoundCue *soundCue = dynamic_cast<const GeoDataSoundCue*>(primitive);
+            PlaybackSoundCueItem *item = new PlaybackSoundCueItem( soundCue );
+            SoundTrack *track = new SoundTrack( item );
+            track->setDelayBeforeTrackStarts( delay );
+            d->m_soundTracks.append( track );
+        }
+        else if( primitive->nodeType() == GeoDataTypes::GeoDataAnimatedUpdateType ){
+            GeoDataAnimatedUpdate *animatedUpdate = dynamic_cast<GeoDataAnimatedUpdate*>(primitive);
+            PlaybackAnimatedUpdateItem *item = new PlaybackAnimatedUpdateItem( animatedUpdate );
+            AnimatedUpdateTrack *track = new AnimatedUpdateTrack( item );
+            track->setDelayBeforeTrackStarts( delay + animatedUpdate->delayedStart() );
+            d->m_animatedUpdateTracks.append( track );
+            connect( track, SIGNAL( balloonHidden()), this, SLOT( hideBalloon() ) );
+            connect( track, SIGNAL( balloonShown( GeoDataPlacemark* ) ), this, SLOT( showBalloon( GeoDataPlacemark* ) ) );
+            connect( track, SIGNAL( updated( GeoDataFeature* ) ), this, SIGNAL( updated( GeoDataFeature* ) ) );
+            connect( track, SIGNAL(added(GeoDataContainer*,GeoDataFeature*,int)), this, SIGNAL(added(GeoDataContainer*,GeoDataFeature*,int)) );
+            connect( track, SIGNAL(removed(const GeoDataFeature*)), this, SIGNAL(removed(const GeoDataFeature*)) );
         }
     }
-    else if( offset < currentPosition ){
-        for( int i = d->m_animatedUpdateTracks.size()-1; i >= 0; i-- ){
-            if( d->m_animatedUpdateTracks[ i ]->delayBeforeTrackStarts() < offset ){
-                d->m_animatedUpdateTracks[ i ]->play();
-            } else {
-                d->m_animatedUpdateTracks[ i ]->stop();
-            }
+    Q_ASSERT( d->m_widget );
+    GeoDataLookAt* lookat = new GeoDataLookAt( d->m_widget->lookAt() );
+    lookat->setAltitude( lookat->range() );
+    d->m_mapCenter.setView( lookat );
+    PlaybackFlyToItem* mapCenterItem = new PlaybackFlyToItem( &d->m_mapCenter );
+    PlaybackFlyToItem* before = mapCenterItem;
+    for ( int i=0; i<d->m_mainTrack.size(); ++i ) {
+        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack.at(i) );
+        if ( item ) {
+            item->setBefore( before );
+            before = item;
         }
     }
+    PlaybackFlyToItem* next = 0;
+    for ( int i=d->m_mainTrack.size()-1; i>=0; --i ) {
+        PlaybackFlyToItem* item = qobject_cast<PlaybackFlyToItem*>( d->m_mainTrack.at(i) );
+        if ( item ) {
+            item->setNext( next );
+            next = item;
+        }
+    }
+}
+
+void TourPlayback::clearTracks()
+{
+    d->m_mainTrack.clear();
+    qDeleteAll(d->m_soundTracks);
+    qDeleteAll(d->m_animatedUpdateTracks);
+    d->m_soundTracks.clear();
+    d->m_animatedUpdateTracks.clear();
 }
 
 double TourPlayback::duration() const

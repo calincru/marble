@@ -14,13 +14,13 @@
 #include "MarbleDebug.h"
 #include "RemoteIconLoader.h"
 
+#include "GeoDataPlacemark.h"
 #include "GeoDataStyle.h"
 #include "PlacemarkLayer.h"
 
 #include <QApplication>
 #include <QPainter>
 #include <QPalette>
-#include <QPixmap>
 
 using namespace Marble;
 
@@ -34,6 +34,7 @@ VisiblePlacemark::VisiblePlacemark( const GeoDataPlacemark *placemark )
                      this, SLOT(setSymbolPixmap()) );
 
     drawLabelPixmap();
+    setSymbolPixmap();
 }
 
 const GeoDataPlacemark* VisiblePlacemark::placemark() const
@@ -42,14 +43,8 @@ const GeoDataPlacemark* VisiblePlacemark::placemark() const
 }
 
 const QPixmap& VisiblePlacemark::symbolPixmap() const
-{    
-    const GeoDataStyle* style = m_placemark->style();
-    if ( style ) {
-        m_symbolPixmap = QPixmap::fromImage( style->iconStyle().icon() );
-    } else {
-        mDebug() << "Style pointer null";
-    }
-    return  m_symbolPixmap;
+{
+    return m_symbolPixmap;
 }
 
 bool VisiblePlacemark::selected() const

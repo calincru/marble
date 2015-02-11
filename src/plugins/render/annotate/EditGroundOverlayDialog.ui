@@ -6,47 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>350</width>
-    <height>390</height>
+    <width>339</width>
+    <height>328</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Edit ground overlay</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="name_lbl">
-       <property name="text">
-        <string>Name</string>
-       </property>
-       <property name="buddy">
-        <cstring>m_name</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1" colspan="2">
-      <widget class="QLineEdit" name="m_name"/>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="link_lbl">
-       <property name="text">
-        <string>Link</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="m_link"/>
-     </item>
-     <item row="1" column="2">
-      <widget class="QPushButton" name="m_browseButton">
-       <property name="text">
-        <string>Browse...</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="Marble::PlacemarkEditHeader" name="m_header" native="true"/>
    </item>
    <item>
     <widget class="QTabWidget" name="tabWidget">
@@ -561,24 +530,15 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Marble::PlacemarkEditHeader</class>
+   <extends>QWidget</extends>
+   <header>PlacemarkEditHeader.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>UiEditGroundOverlayDialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>240</x>
-     <y>268</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>253</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>

@@ -25,7 +25,6 @@ namespace Marble
 SerialTrack::SerialTrack(): QObject()
 {
     m_currentIndex = 0;
-    m_duration = 0;
     m_finishedPosition = 0;
     m_currentPosition = 0;
     m_paused = true;
@@ -43,7 +42,12 @@ void SerialTrack::append(PlaybackItem* item)
     connect( item, SIGNAL( finished() ), this, SLOT( handleFinishedItem() ) ) ;
     connect( item, SIGNAL( paused() ), this, SLOT( pause() ) ) ;
     m_items.append( item );
-    m_duration += item->duration();
+    if( m_items.size() == 1 ) {
+        PlaybackFlyToItem *flyTo = dynamic_cast<PlaybackFlyToItem*>( item );
+        if( flyTo != 0 ) {
+            flyTo->setFirst( true )
+;        }
+    }
 }
 
 void SerialTrack::play()
@@ -117,14 +121,17 @@ void SerialTrack::seek( double offset )
 
 double SerialTrack::duration() const
 {
-    return m_duration;
+    double duration = 0.0;
+    foreach (PlaybackItem* item, m_items) {
+        duration += item->duration();
+    }
+    return duration;
 }
 
 void SerialTrack::clear()
 {
     qDeleteAll( m_items );
     m_items.clear();
-    m_duration = 0;
     m_currentIndex = 0;
     m_finishedPosition = 0;
     m_currentPosition = 0;

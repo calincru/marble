@@ -14,6 +14,7 @@
 #include "MarbleDebug.h"
 
 #include <QProcess>
+#include <QMessageBox>
 
 namespace Marble
 {
@@ -24,6 +25,19 @@ public:
     MovieCapturePrivate(MarbleWidget *widget) :
         marbleWidget(widget), method(MovieCapture::TimeDriven)
     {}
+
+    /**
+     * @brief This gets called when user doesn't have avconv/ffmpeg installed
+     */
+    void missingToolsWarning() {
+        QMessageBox::warning(marbleWidget,
+                             QObject::tr("Missing encoding tools"),
+                             QObject::tr("Marble requires additional software in order to "
+                                         "create movies. Please get %1 "
+                                        ).arg("<a href=\"https://libav.org/"
+                                               "download.html\">avconv</a>"),
+                             QMessageBox::Ok);
+    }
 
     QTimer frameTimer;
     MarbleWidget *marbleWidget;
@@ -44,6 +58,14 @@ MovieCapture::MovieCapture(MarbleWidget *widget, QObject *parent) :
         connect(&d->frameTimer, SIGNAL(timeout()), this, SLOT(recordFrame()));
     }
     d->fps = 30;
+    MovieFormat avi( "avi", tr( "AVI (mpeg4)" ), "avi" );
+    MovieFormat flv( "flv", tr( "FLV" ), "flv" );
+    MovieFormat mkv( "matroska", tr( "Matroska (h264)" ), "mkv" );
+    MovieFormat mp4( "mp4", tr( "MPEG-4" ), "mp4" );
+    MovieFormat vob( "vob", tr( "MPEG-2 PS (VOB)" ), "vob" );
+    MovieFormat ogg( "ogg", tr( "OGG" ), "ogg" );
+    MovieFormat swf( "swf", tr( "SWF" ), "swf" );
+    m_supportedFormats << avi << flv << mkv << mp4 << vob << ogg << swf;
 }
 
 MovieCapture::~MovieCapture()
@@ -84,10 +106,55 @@ QString MovieCapture::destination() const
     return d->destinationFile;
 }
 
+QList<MovieFormat> MovieCapture::availableFormats()
+{
+    Q_D(MovieCapture);
+    static QList<MovieFormat> availableFormats;
+    if ( availableFormats.isEmpty() && checkToolsAvailability() ) {
+        QProcess encoder(this);
+        foreach ( MovieFormat format, m_supportedFormats ) {
+            QString type = format.type();
+            QStringList args;
+            args << "-h" << "muxer=" + type;
+            encoder.start( d->encoderExec, args );
+            encoder.waitForFinished();
+            QString output = encoder.readAll();
+            bool isFormatAvailable = !output.contains( "Unknown format" );
+            if( isFormatAvailable ) {
+                availableFormats << format;
+            }
+        }
+    }
+    return availableFormats;
+}
+
 MovieCapture::SnapshotMethod MovieCapture::snapshotMethod() const
 {
     Q_D(const MovieCapture);
     return d->method;
+}
+
+bool MovieCapture::checkToolsAvailability()
+{
+    Q_D(MovieCapture);
+    static bool toolsAvailable = false;
+    if (toolsAvailable == false) {
+        QProcess encoder(this);
+        encoder.start("avconv -version");
+        encoder.waitForFinished();
+        if ( !encoder.readAll().isEmpty() ) { // avconv have output when it's here
+            d->encoderExec = "avconv";
+            toolsAvailable = true;
+        } else {
+            encoder.start("ffmpeg -version");
+            encoder.waitForFinished();
+            if ( !encoder.readAll().isEmpty() ) {
+                d->encoderExec = "ffmpeg";
+                toolsAvailable = true;
+            }
+        }
+    }
+    return toolsAvailable;
 }
 
 void MovieCapture::recordFrame()
@@ -122,32 +189,20 @@ void MovieCapture::recordFrame()
     }
 }
 
-void MovieCapture::startRecording()
+bool MovieCapture::startRecording()
 {
     Q_D(MovieCapture);
 
-    static bool toolsAvailable = false;
-    if (toolsAvailable == false) {
-        QProcess encoder(this);
-        encoder.start("avconv -version");
-        encoder.waitForFinished();
-        if ( !encoder.readAll().isEmpty() ) { // avconv have output when it's here
-            d->encoderExec = "avconv";
-        } else {
-            encoder.start("ffmpeg -version");
-            encoder.waitForFinished();
-            if ( !encoder.readAll().isEmpty() ) {
-                d->encoderExec = "ffmpeg";
-            } else {
-                return;
-            }
-        }
+    if( !checkToolsAvailability() ) {
+        d->missingToolsWarning();
+        return false;
     }
 
     if( d->method == MovieCapture::TimeDriven ){
         d->frameTimer.start();
     }
     recordFrame();
+    return true;
 }
 
 void MovieCapture::stopRecording()

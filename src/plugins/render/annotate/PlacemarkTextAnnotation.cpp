@@ -14,7 +14,10 @@
 #include "PlacemarkTextAnnotation.h"
 
 // Qt
+#include <QApplication>
+#include <QPalette>
 #include <QImage>
+#include <QDebug>
 
 // Marble
 #include "AbstractProjection.h"
@@ -31,7 +34,8 @@ namespace Marble
 
 PlacemarkTextAnnotation::PlacemarkTextAnnotation( GeoDataPlacemark *placemark ) :
     SceneGraphicsItem( placemark ),
-    m_movingPlacemark( false )
+    m_movingPlacemark( false ),
+    m_labelColor( QColor() )
 {
     if ( placemark->style()->iconStyle().iconPath().isNull() ) {
         GeoDataStyle *newStyle = new GeoDataStyle( *placemark->style() );
@@ -50,9 +54,21 @@ void PlacemarkTextAnnotation::paint( GeoPainter *painter, const ViewportParams *
 {
     Q_UNUSED( painter );
     m_viewport = viewport;
-    painter->drawImage( placemark()->coordinate(), hasFocus() ?
-                                                   QImage( MarbleDirs::path("bitmaps/redflag_32.png") ) :
-                                                   QImage( MarbleDirs::path("bitmaps/redflag_22.png") ) );
+
+    GeoDataStyle *newStyle = new GeoDataStyle(*placemark()->style());
+    GeoDataLabelStyle labelStyle = newStyle->labelStyle();
+
+    if (labelStyle.color() != QApplication::palette().highlight().color())
+        m_labelColor = labelStyle.color();
+
+    if (hasFocus()) {
+        labelStyle.setColor(QApplication::palette().highlight().color());
+    } else {
+        labelStyle.setColor(m_labelColor);
+    }
+
+    newStyle->setLabelStyle(labelStyle);
+    placemark()->setStyle(newStyle);
 
     qreal x, y;
     viewport->currentProjection()->screenCoordinates( placemark()->coordinate(), viewport, x, y );
@@ -81,6 +97,11 @@ void PlacemarkTextAnnotation::move( const GeoDataCoordinates &source, const GeoD
 const char *PlacemarkTextAnnotation::graphicType() const
 {
     return SceneGraphicsTypes::SceneGraphicTextAnnotation;
+}
+
+QColor PlacemarkTextAnnotation::labelColor() const
+{
+    return m_labelColor;
 }
 
 bool PlacemarkTextAnnotation::mousePressEvent( QMouseEvent *event )

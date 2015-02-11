@@ -15,6 +15,8 @@
 
 #include "marble_export.h"
 
+class QUrl;
+
 namespace Marble
 {
 
@@ -24,6 +26,7 @@ class GeoDataTour;
 class GeoDataPlacemark;
 class GeoDataFeature;
 class GeoDataContainer;
+class PlaybackItem;
 
 class TourPlaybackPrivate;
 
@@ -36,6 +39,16 @@ public:
 
     void setTour(GeoDataTour *tour);
     void setMarbleWidget( MarbleWidget *widget );
+
+    /**
+     * @brief setBaseUrl - sets base url for using in QWebView.
+     */
+    void setBaseUrl( const QUrl &baseUrl );
+
+    /**
+     * @brief baseUrl - gets base url which is using in QWebView.
+     */
+    QUrl baseUrl() const;
 
     /** Tour duration in seconds */
     double duration() const;
@@ -51,6 +64,18 @@ public:
      */
     void seek( double offset );
 
+    /** Size of main track (flyto, wait, tourcontrol primitives) **/
+    int mainTrackSize();
+    /**
+     * Element of main track (flyto, wait, tourcontrol primitives)
+     * @param i Position of element.
+     */
+    PlaybackItem* mainTrackItemAt( int i );
+
+public Q_SLOTS:
+    void updateTracks();
+    void clearTracks();
+
 Q_SIGNALS:
     void finished();
     void paused();
@@ -62,8 +87,8 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void stopTour();
-    void hideBalloon();
     void showBalloon( GeoDataPlacemark* );
+    void hideBalloon();
     void centerOn( const GeoDataCoordinates &coordinates );
 
 private:
