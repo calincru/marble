@@ -481,6 +481,13 @@ bool AnnotatePlugin::eventFilter( QObject *watched, QEvent *event )
             return true;
         }
 
+        // If we have an item which has the focus and the Delete key is pressed, delete the item
+        if ( m_focusItem && keyEvent->type() == QEvent::KeyPress && keyEvent->key() == Qt::Key_Delete &&
+             !m_editingDialogIsShown ) {
+            askToRemoveFocusItem();
+            return true;
+        }
+
         return false;
     }
 
@@ -1031,7 +1038,6 @@ void AnnotatePlugin::addTextAnnotation()
     m_graphicsItems.append( textAnnotation );
 
     QPointer<EditPlacemarkDialog> dialog = new EditPlacemarkDialog( placemark, m_marbleWidget );
-    dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(textAnnotationUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
@@ -1267,7 +1273,6 @@ void AnnotatePlugin::addPolygon()
     m_marbleWidget->update();
 
     QPointer<EditPolygonDialog> dialog = new EditPolygonDialog( m_polygonPlacemark, m_marbleWidget );
-    dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(polygonUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
@@ -1515,7 +1520,6 @@ void AnnotatePlugin::addPolyline()
     m_marbleWidget->update();
 
     QPointer<EditPolylineDialog> dialog = new EditPolylineDialog( m_polylinePlacemark, m_marbleWidget );
-    dialog->setFirstTimeEditing( true );
 
     connect( dialog, SIGNAL(polylineUpdated(GeoDataFeature*)),
              m_marbleWidget->model()->treeModel(), SLOT(updateFeature(GeoDataFeature*)) );
